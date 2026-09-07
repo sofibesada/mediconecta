@@ -1,0 +1,79 @@
+package ar.com.mediconecta.turnos.business;
+
+import ar.com.mediconecta.turnos.data.TurnoRepository;
+import ar.com.mediconecta.turnos.model.EstadoTurno;
+import ar.com.mediconecta.turnos.model.Turno;
+import jakarta.ejb.Stateful;
+import jakarta.inject.Inject;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Stateful
+public class TurnoService implements ITurnoService {
+
+    private static final int MINUTOS_HOLD = 5;
+
+    @Inject
+    private TurnoRepository turnoRepository;
+
+    @Override
+    public List<Turno> consultarDisponibilidad(Long profesionalId) {
+        return turnoRepository.listarDisponiblesPorProfesional(profesionalId);
+    }
+
+    @Override
+    public Turno reservarTemporalmente(Long pacienteId, Long turnoId) {
+        Turno turno = turnoRepository.buscarPorId(turnoId);
+        if (turno == null || turno.getEstado() != EstadoTurno.DISPONIBLE) {
+            throw new IllegalStateException("El turno no está disponible");
+        }
+        turno.setPacienteId(pacienteId);
+        turno.setEstado(EstadoTurno.RESERVADO_TEMPORAL);
+        turno.setHoldExpiraEn(LocalDateTime.now().plusMinutes(MINUTOS_HOLD));
+        return turnoRepository.actualizar(turno);
+    }
+
+    @Override
+    public Turno confirmarTurno(Long turnoId) {
+        Turno turno = turnoRepository.buscarPorId(turnoId);
+        if (turno == null || turno.getEstado() != EstadoTurno.RESERVADO_TEMPORAL) {
+            throw new IllegalStateException("El turno no tiene una reserva temporal activa");
+        }
+        if (turno.getHoldExpiraEn().isBefore(LocalDateTime.now())) {
+            turno.setEstado(EstadoTurno.DISPONIBLE);
+            turno.setPacienteId(null);
+            turnoRepository.actualizar(turno);
+            throw new IllegalStateException("El hold del turno expiró, volvé a reservarlo");
+        }
+        turno.setEstado(EstadoTurno.CONFIRMADO);
+        return turnoRepository.actualizar(turno);
+    }
+
+    @Override
+    public void cancelarTurno(Long turnoId) {
+        Turno turno = turnoRepository.buscarPorId(turnoId);
+        if (turno != null) {
+            turno.setEstado(EstadoTurno.CANCELADO);
+            turnoRepository.actualizar(turno);
+        }
+    }
+
+    @Override
+    public Turno reprogramarTurno(Long turnoId, LocalDateTime nuevaFecha) {
+        Turno turno = turnoRepository.buscarPorId(turnoId);
+        if (turno == null) {
+            throw new IllegalStateException("Turno no encontrado");
+        }
+        turno.setFechaHora(nuevaFecha);
+        return turnoRepository.actualizar(turno);
+    }
+
+    @Override
+    public Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora) {
+        Turno turno = new Turno();
+        turno.setProfesionalId(profesionalId);
+        turno.setFechaHora(fechaHora);
+        turno.setEstado(EstadoTurno.DISPONIBLE);
+        return turnoRepository.guardar(turno);
+    }
+}
