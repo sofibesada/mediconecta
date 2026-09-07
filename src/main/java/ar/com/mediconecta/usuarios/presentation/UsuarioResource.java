@@ -5,6 +5,7 @@ import ar.com.mediconecta.usuarios.model.Usuario;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 @Path("/usuarios")
 public class UsuarioResource {
@@ -15,14 +16,27 @@ public class UsuarioResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Usuario registrar(Usuario usuario) {
-        return usuarioService.registrarUsuario(usuario);
+    public UsuarioResponse registrar(Usuario usuario) {
+        return UsuarioResponse.from(usuarioService.registrarUsuario(usuario));
     }
 
     @GET
     @Path("/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Usuario buscar(@PathParam("id") Long id) {
-        return usuarioService.buscarUsuario(id);
+    public UsuarioResponse buscar(@PathParam("id") Long id) {
+        return UsuarioResponse.from(usuarioService.buscarUsuario(id));
+    }
+    @POST
+    @Path("/login")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response login(LoginRequest request) {
+        Usuario usuario = usuarioService.autenticar(request.email, request.password);
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity("{\"error\":\"Email o contraseña incorrectos\"}")
+                    .build();
+        }
+        return Response.ok(UsuarioResponse.from(usuario)).build();
     }
 }
