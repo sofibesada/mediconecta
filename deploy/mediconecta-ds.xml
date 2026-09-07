@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Datasource de MediConecta para WildFly.
+
+  Opcion A (recomendada para la entrega): copiar este archivo a
+      WILDFLY_HOME/standalone/deployments/mediconecta-ds.xml
+  WildFly lo levanta como datasource sin tocar standalone.xml.
+
+  Opcion B: dejar el <datasource> ya configurado en standalone.xml
+  (que es lo que hay hoy en la maquina de desarrollo).
+
+  Requisito previo en ambos casos: el driver de PostgreSQL instalado como
+  modulo 'org.postgresql' y registrado como driver 'postgresql'
+  (ver deploy/README.md).
+
+  La contrasena NO se versiona: se toma de la variable de entorno
+  MEDICONECTA_DB_PASSWORD. Arrancar WildFly con esa variable seteada, p. ej.:
+      set MEDICONECTA_DB_PASSWORD=tu_password   (Windows CMD)
+      $env:MEDICONECTA_DB_PASSWORD="tu_password" (PowerShell)
+-->
+<datasources xmlns="http://www.jboss.org/ironjacamar/schema">
+    <datasource jndi-name="java:/MediconectaDS"
+                pool-name="MediconectaDS"
+                enabled="true"
+                use-java-context="true">
+        <connection-url>jdbc:postgresql://localhost:5432/mediconecta</connection-url>
+        <driver>postgresql</driver>
+        <pool>
+            <min-pool-size>2</min-pool-size>
+            <max-pool-size>20</max-pool-size>
+        </pool>
+        <security>
+            <user-name>postgres</user-name>
+            <password>${env.MEDICONECTA_DB_PASSWORD}</password>
+        </security>
+        <validation>
+            <valid-connection-checker class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker"/>
+            <exception-sorter class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter"/>
+        </validation>
+    </datasource>
+</datasources>
