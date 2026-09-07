@@ -3,18 +3,32 @@ package ar.com.mediconecta.turnos.business;
 import ar.com.mediconecta.turnos.data.TurnoRepository;
 import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Turno;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.ejb.Stateful;
 import jakarta.inject.Inject;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.logging.Logger;
 
 @Stateful
 public class TurnoService implements ITurnoService {
 
     private static final int MINUTOS_HOLD = 5;
+    private static final Logger LOG = Logger.getLogger(TurnoService.class.getName());
 
     @Inject
     private TurnoRepository turnoRepository;
+
+    @PostConstruct
+    public void init() {
+        LOG.info("[Ciclo de vida] TurnoService @Stateful CREADO por WildFly - instancia #" + System.identityHashCode(this));
+    }
+
+    @PreDestroy
+    public void destroy() {
+        LOG.info("[Ciclo de vida] TurnoService @Stateful DESTRUIDO por WildFly - instancia #" + System.identityHashCode(this));
+    }
 
     @Override
     public List<Turno> consultarDisponibilidad(Long profesionalId) {

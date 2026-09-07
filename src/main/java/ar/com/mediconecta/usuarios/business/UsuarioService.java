@@ -2,17 +2,32 @@ package ar.com.mediconecta.usuarios.business;
 
 import ar.com.mediconecta.usuarios.data.UsuarioRepository;
 import ar.com.mediconecta.usuarios.model.Usuario;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.annotation.security.PermitAll;
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 import org.mindrot.jbcrypt.BCrypt;
 import jakarta.annotation.security.RolesAllowed;
+import java.util.logging.Logger;
 
 @Stateless
 public class UsuarioService implements IUsuarioService {
 
+    private static final Logger LOG = Logger.getLogger(UsuarioService.class.getName());
+
     @Inject
     private UsuarioRepository usuarioRepository;
+
+    @PostConstruct
+    public void init() {
+        LOG.info("[Ciclo de vida] UsuarioService @Stateless CREADO por WildFly (entra al pool) - instancia #" + System.identityHashCode(this));
+    }
+
+    @PreDestroy
+    public void destroy() {
+        LOG.info("[Ciclo de vida] UsuarioService @Stateless DESTRUIDO por WildFly (sale del pool) - instancia #" + System.identityHashCode(this));
+    }
 
     @Override
     @PermitAll
@@ -26,6 +41,12 @@ public class UsuarioService implements IUsuarioService {
     @RolesAllowed("admin")
     public Usuario buscarUsuario(Long id) {
         return usuarioRepository.buscarPorId(id);
+    }
+
+    @Override
+    @PermitAll
+    public boolean existeUsuario(Long id) {
+        return usuarioRepository.buscarPorId(id) != null;
     }
 
     @Override
