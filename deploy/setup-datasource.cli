@@ -1,0 +1,33 @@
+# ============================================================
+#  MediConecta - configuracion de PostgreSQL + MediconectaDS
+#  Uso:  jboss-cli.bat --connect --file=deploy/setup-datasource.cli
+#  Requiere la variable de entorno MEDICONECTA_DB_PASSWORD seteada.
+# ============================================================
+
+# 1. Registrar el driver de PostgreSQL como modulo.
+#    (Descargar postgresql-42.7.x.jar y ponerlo en la ruta indicada, o
+#     usar 'module add' como abajo.)
+module add --name=org.postgresql \
+  --resources=/ruta/a/postgresql-42.7.4.jar \
+  --dependencies=jakarta.transaction.api,jakarta.api
+
+# 2. Registrar el driver JDBC en el subsistema datasources.
+/subsystem=datasources/jdbc-driver=postgresql:add( \
+  driver-name=postgresql, \
+  driver-module-name=org.postgresql, \
+  driver-class-name=org.postgresql.Driver)
+
+# 3. Crear el datasource MediconectaDS.
+data-source add \
+  --name=MediconectaDS \
+  --jndi-name=java:/MediconectaDS \
+  --driver-name=postgresql \
+  --connection-url=jdbc:postgresql://localhost:5432/mediconecta \
+  --user-name=postgres \
+  --password=${env.MEDICONECTA_DB_PASSWORD} \
+  --min-pool-size=2 \
+  --max-pool-size=20 \
+  --enabled=true
+
+# 4. Probar la conexion.
+/subsystem=datasources/data-source=MediconectaDS:test-connection-in-pool
