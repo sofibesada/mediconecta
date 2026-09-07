@@ -7,6 +7,10 @@
     <persistence-unit name="mediconectaPU" transaction-type="JTA">
         <jta-data-source>java:/MediconectaDS</jta-data-source>
         <class>ar.com.mediconecta.usuarios.model.Usuario</class>
+        <class>ar.com.mediconecta.turnos.model.Turno</class>
+        <class>ar.com.mediconecta.historiaclinica.model.Diagnostico</class>
+        <class>ar.com.mediconecta.historiaclinica.model.Receta</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <properties>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="true"/>
