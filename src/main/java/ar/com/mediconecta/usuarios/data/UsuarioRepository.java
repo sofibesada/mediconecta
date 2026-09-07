@@ -19,4 +19,12 @@ public class UsuarioRepository {
     public Usuario buscarPorId(Long id) {
         return em.find(Usuario.class, id);
     }
+
+    public Usuario buscarPorEmail(String email) {
+        return em.createQuery("SELECT u FROM Usuario u WHERE u.email = :email", Usuario.class)
+                .setParameter("email", email)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+    }
 }
