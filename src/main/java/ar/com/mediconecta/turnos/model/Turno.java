@@ -27,6 +27,9 @@ public class Turno {
     @Column(name = "hold_expira_en")
     private LocalDateTime holdExpiraEn;
 
+    @Column(nullable = false)
+    private boolean urgente = false;
+
     public Turno() {}
 
     public Long getId() { return id; }
@@ -41,4 +44,6 @@ public class Turno {
     public void setEstado(EstadoTurno estado) { this.estado = estado; }
     public LocalDateTime getHoldExpiraEn() { return holdExpiraEn; }
     public void setHoldExpiraEn(LocalDateTime holdExpiraEn) { this.holdExpiraEn = holdExpiraEn; }
+    public boolean isUrgente() { return urgente; }
+    public void setUrgente(boolean urgente) { this.urgente = urgente; }
 }
