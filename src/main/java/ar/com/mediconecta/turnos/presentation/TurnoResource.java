@@ -1,5 +1,6 @@
 package ar.com.mediconecta.turnos.presentation;
 
+import ar.com.mediconecta.turnos.business.AgendaTurnoFacade;
 import ar.com.mediconecta.turnos.business.ITurnoService;
 import ar.com.mediconecta.turnos.model.Turno;
 import jakarta.inject.Inject;
@@ -12,6 +13,9 @@ public class TurnoResource {
 
     @Inject
     private ITurnoService turnoService;
+
+    @Inject
+    private AgendaTurnoFacade agendaTurnoFacade;
 
     @GET
     @Path("/disponibilidad/{profesionalId}")
@@ -46,4 +50,13 @@ public class TurnoResource {
     public Turno crear(CrearTurnoRequest request) {
         return turnoService.crearTurnoDisponible(request.profesionalId, request.fechaHora);
     }
+
+    @POST
+    @Path("/agendar")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Turno agendar(AgendarTurnoRequest request) {
+        return agendaTurnoFacade.agendarTurno(request.pacienteId, request.turnoId);
+    }
+
 }

@@ -52,10 +52,18 @@ public class TurnoService implements ITurnoService {
     @Override
     public void cancelarTurno(Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
-        if (turno != null) {
-            turno.setEstado(EstadoTurno.CANCELADO);
-            turnoRepository.actualizar(turno);
+        if (turno == null) {
+            return;
         }
+        PoliticaCancelacion politica = turno.isUrgente()
+                ? new PoliticaCancelacionUrgencia()
+                : new PoliticaCancelacionEstandar();
+
+        if (!politica.puedeCancelarse(turno)) {
+            throw new IllegalStateException("No se puede cancelar: faltan menos de 24hs para el turno");
+        }
+        turno.setEstado(EstadoTurno.CANCELADO);
+        turnoRepository.actualizar(turno);
     }
 
     @Override
