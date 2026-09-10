@@ -3,6 +3,7 @@ package ar.com.mediconecta.turnos.business;
 import ar.com.mediconecta.turnos.data.TurnoRepository;
 import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Turno;
+import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.ejb.Stateful;
@@ -19,6 +20,9 @@ public class TurnoService implements ITurnoService {
 
     @Inject
     private TurnoRepository turnoRepository;
+
+    @Inject
+    private IUsuarioService usuarioService;
 
     @PostConstruct
     public void init() {
@@ -38,6 +42,11 @@ public class TurnoService implements ITurnoService {
     @Override
     public List<Turno> listarTurnosDePaciente(Long pacienteId) {
         return turnoRepository.listarPorPaciente(pacienteId);
+    }
+
+    @Override
+    public List<Turno> listarTurnosDeProfesional(Long profesionalId) {
+        return turnoRepository.listarPorProfesional(profesionalId);
     }
 
     @Override
@@ -97,6 +106,9 @@ public class TurnoService implements ITurnoService {
 
     @Override
     public Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora) {
+        if (!usuarioService.esProfesional(profesionalId)) {
+            throw new IllegalArgumentException("El usuario indicado no existe o no es un profesional");
+        }
         Turno turno = new Turno();
         turno.setProfesionalId(profesionalId);
         turno.setFechaHora(fechaHora);

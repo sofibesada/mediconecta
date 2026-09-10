@@ -1,9 +1,11 @@
 package ar.com.mediconecta.usuarios.data;
 
+import ar.com.mediconecta.usuarios.model.RolUsuario;
 import ar.com.mediconecta.usuarios.model.Usuario;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
 
 @ApplicationScoped
 public class UsuarioRepository {
@@ -26,5 +28,11 @@ public class UsuarioRepository {
                 .getResultStream()
                 .findFirst()
                 .orElse(null);
+    }
+
+    public List<Usuario> listarPorRol(RolUsuario rol) {
+        return em.createQuery("SELECT u FROM Usuario u WHERE u.rol = :rol ORDER BY u.nombre", Usuario.class)
+                .setParameter("rol", rol)
+                .getResultList();
     }
 }

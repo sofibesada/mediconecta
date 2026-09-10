@@ -19,6 +19,10 @@ public class Usuario {
     @Column(nullable = false)
     private String password;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RolUsuario rol = RolUsuario.PACIENTE;
+
     public Usuario() {}
 
     public Long getId() { return id; }
@@ -29,4 +33,6 @@ public class Usuario {
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+    public RolUsuario getRol() { return rol; }
+    public void setRol(RolUsuario rol) { this.rol = rol; }
 }
