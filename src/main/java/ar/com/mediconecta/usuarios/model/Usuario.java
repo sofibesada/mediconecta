@@ -23,6 +23,9 @@ public class Usuario {
     @Column(nullable = false)
     private RolUsuario rol = RolUsuario.PACIENTE;
 
+    @Column(name = "debe_cambiar_password", nullable = false)
+    private boolean debeCambiarPassword = false;
+
     public Usuario() {}
 
     public Long getId() { return id; }
@@ -35,4 +38,6 @@ public class Usuario {
     public void setPassword(String password) { this.password = password; }
     public RolUsuario getRol() { return rol; }
     public void setRol(RolUsuario rol) { this.rol = rol; }
+    public boolean isDebeCambiarPassword() { return debeCambiarPassword; }
+    public void setDebeCambiarPassword(boolean debeCambiarPassword) { this.debeCambiarPassword = debeCambiarPassword; }
 }

@@ -35,4 +35,13 @@ public class UsuarioRepository {
                 .setParameter("rol", rol)
                 .getResultList();
     }
+
+    public List<Usuario> listarTodos() {
+        return em.createQuery("SELECT u FROM Usuario u ORDER BY u.rol, u.nombre", Usuario.class)
+                .getResultList();
+    }
+
+    public Usuario actualizar(Usuario usuario) {
+        return em.merge(usuario);
+    }
 }
