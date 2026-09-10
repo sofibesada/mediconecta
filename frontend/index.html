@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediConecta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --sky-600: #0284c7;
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;
+            --slate-400: #94a3b8;
+            --slate-500: #64748b;
+            --slate-600: #475569;
+            --slate-700: #334155;
+            --slate-900: #0f172a;
+            --amber-100: #fef3c7;
+            --amber-700: #b45309;
+            --white: #ffffff;
+            --green-600: #16a34a;
+            --red-600: #dc2626;
+        }
+
+        html, body { height: 100%; background: linear-gradient(135deg, var(--slate-50) 0%, rgba(14, 165, 233, 0.08) 50%, var(--slate-100) 100%); }
+
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--slate-700); line-height: 1.7; }
+
+        .app-container { display: flex; min-height: 100vh; }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 240px; background: var(--white); border-right: 1px solid var(--slate-200);
+            display: flex; flex-direction: column; padding: 32px 0; position: fixed;
+            height: 100vh; z-index: 100; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); overflow-y: auto;
+        }
+        .logo-section { padding: 0 24px 32px; border-bottom: 1px solid var(--slate-200); margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+        .user-badge {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--sky-600) 0%, #0369a1 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; color: var(--white); flex-shrink: 0;
+        }
+        .logo-text { font-family: 'Lora', serif; font-size: 14px; font-weight: 600; color: var(--slate-900); letter-spacing: 1px; }
+        .nav-section { padding: 0 12px; }
+        .nav-section-title { font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.5px; padding: 12px; margin-top: 16px; margin-bottom: 8px; }
+        .nav-item { padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 14px; color: var(--slate-600); margin-bottom: 4px; }
+        .nav-item:hover { background: var(--slate-100); color: var(--sky-600); }
+        .nav-item.activo { background: rgba(2, 132, 199, 0.08); color: var(--sky-600); font-weight: 600; }
+
+        .main-content { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+        /* HEADER */
+        .header { background: var(--white); padding: 24px 40px; border-bottom: 1px solid var(--slate-200); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+        .header-title { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; color: var(--slate-900); letter-spacing: 0.5px; }
+        .header-user { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--slate-600); }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 40px; }
+
+        .pantalla { display: none; animation: fadeIn 0.25s ease-in; }
+        .pantalla.activa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .page-title { font-family: 'Lora', serif; font-size: 28px; font-weight: 400; color: var(--slate-900); margin-bottom: 6px; letter-spacing: -0.5px; }
+        .page-subtitle { font-size: 13px; color: var(--slate-400); margin-bottom: 32px; letter-spacing: 0.3px; }
+        .section-gap { margin-top: 40px; }
+
+        /* LOGIN */
+        .login-container { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 120px); padding: 40px; }
+        .login-card { background: var(--white); border-radius: 16px; border: 1px solid var(--slate-200); padding: 48px; max-width: 400px; width: 100%; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+        .login-header { text-align: center; margin-bottom: 28px; }
+        .login-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--sky-600); display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 20px; color: var(--white); margin: 0 auto 16px; font-weight: 700; }
+        .login-title { font-family: 'Lora', serif; font-size: 24px; font-weight: 600; color: var(--slate-900); margin-bottom: 8px; }
+        .login-subtitle { font-size: 13px; color: var(--slate-400); }
+        .auth-toggle { display: flex; gap: 8px; margin: 24px 0; padding: 6px; background: var(--slate-100); border-radius: 8px; }
+        .toggle-btn { flex: 1; padding: 8px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--slate-600); transition: all 0.2s; }
+        .toggle-btn.activo { background: var(--white); color: var(--sky-600); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: var(--slate-700); margin-bottom: 6px; letter-spacing: 0.3px; text-transform: uppercase; }
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--slate-200); border-radius: 8px;
+            font-family: inherit; font-size: 14px; color: var(--slate-900); transition: all 0.2s; background: var(--white);
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--sky-600); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.08); }
+
+        button {
+            padding: 10px 16px; border: 1px solid var(--slate-200); border-radius: 8px;
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            font-family: inherit; letter-spacing: 0.3px;
+        }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
+        .btn-full { width: 100%; }
+        .btn-primary { background: var(--sky-600); color: var(--white); border-color: var(--sky-600); }
+        .btn-primary:hover:not(:disabled) { background: #0369a1; border-color: #0369a1; }
+        .btn-secondary { background: var(--white); color: var(--slate-700); border-color: var(--slate-200); }
+        .btn-secondary:hover:not(:disabled) { background: var(--slate-50); border-color: var(--slate-300); }
+        .btn-danger { background: var(--white); color: var(--red-600); border-color: #fecaca; }
+        .btn-danger:hover:not(:disabled) { background: #fef2f2; border-color: #fca5a5; }
+        .btn-sm { padding: 7px 12px; font-size: 12px; }
+
+        /* CARDS / LISTS */
+        .card { background: var(--white); border: 1px solid var(--slate-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-titulo { font-family: 'Lora', serif; font-size: 15px; font-weight: 600; color: var(--slate-900); margin-bottom: 16px; }
+
+        .lista { background: var(--white); border-radius: 12px; border: 1px solid var(--slate-200); overflow: hidden; }
+        .lista-header { padding: 16px 24px; border-bottom: 1px solid var(--slate-200); background: var(--slate-50); font-family: 'Lora', serif; font-size: 15px; font-weight: 600; color: var(--slate-900); }
+        .fila { padding: 18px 24px; border-bottom: 1px solid var(--slate-200); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .fila:last-child { border-bottom: none; }
+        .fila-info { flex: 1; min-width: 0; }
+        .fila-titulo { font-family: 'Lora', serif; font-size: 15px; font-weight: 600; color: var(--slate-900); margin-bottom: 4px; }
+        .fila-detalle { font-size: 12px; color: var(--slate-600); line-height: 1.6; }
+        .fila-acciones { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 6px; }
+        .badge-DISPONIBLE { background: rgba(2, 132, 199, 0.1); color: var(--sky-600); }
+        .badge-RESERVADO_TEMPORAL { background: var(--amber-100); color: var(--amber-700); }
+        .badge-CONFIRMADO { background: rgba(22, 163, 74, 0.12); color: var(--green-600); }
+        .badge-CANCELADO { background: #fee2e2; color: var(--red-600); }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .action-box { background: var(--white); border: 1px solid var(--slate-200); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+        .action-box:hover { border-color: var(--sky-600); box-shadow: 0 4px 12px rgba(2, 132, 199, 0.1); }
+        .action-title { font-size: 14px; font-weight: 600; color: var(--slate-900); margin-bottom: 4px; }
+        .action-description { font-size: 12px; color: var(--slate-600); }
+
+        .muted { color: var(--slate-400); font-size: 13px; padding: 20px 24px; }
+        .inline-hint { font-size: 11px; color: var(--slate-400); margin-top: 4px; }
+        .row-inline { display: flex; gap: 12px; align-items: flex-end; }
+        .row-inline .form-group { flex: 1; margin-bottom: 0; }
+
+        .hold-box { background: var(--amber-100); border: 1px solid #fde68a; border-radius: 10px; padding: 16px; margin-top: 16px; }
+        .hold-box strong { color: var(--amber-700); }
+
+        .kv { display: flex; justify-content: space-between; padding: 10px 0; font-size: 13px; border-bottom: 1px solid var(--slate-200); }
+        .kv:last-child { border-bottom: none; }
+        .kv-label { color: var(--slate-600); font-weight: 500; }
+        .kv-value { color: var(--slate-900); font-weight: 600; }
+
+        .confirmation { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 50px 40px; }
+        .confirmation-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--green-600); display: flex; align-items: center; justify-content: center; font-size: 34px; margin-bottom: 20px; color: var(--white); font-weight: bold; }
+        .confirmation-title { font-family: 'Lora', serif; font-size: 26px; font-weight: 400; color: var(--slate-900); margin-bottom: 8px; }
+        .confirmation-card { background: var(--white); border: 1px solid var(--slate-200); border-radius: 12px; padding: 24px; max-width: 440px; width: 100%; margin: 20px 0; text-align: left; }
+
+        /* TOAST */
+        #toast-wrap { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--white); border: 1px solid var(--slate-200); border-left: 4px solid var(--slate-400); border-radius: 8px; padding: 14px 18px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); max-width: 340px; animation: slideIn 0.2s ease-out; }
+        .toast.ok { border-left-color: var(--green-600); }
+        .toast.err { border-left-color: var(--red-600); }
+        .toast.info { border-left-color: var(--sky-600); }
+        @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--slate-200); flex-direction: row; padding: 16px; justify-content: space-between; align-items: center; }
+            .logo-section { margin: 0; padding: 0; border: none; }
+            .nav-section { display: none; }
+            .main-content { margin-left: 0; }
+            .content-area { padding: 24px; }
+            .row-inline { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <div id="toast-wrap"></div>
+
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="logo-section">
+                <div class="user-badge" id="userBadge">MC</div>
+                <div><div class="logo-text">MEDICONECTA</div></div>
+            </div>
+            <div class="nav-section" id="navPrincipal" hidden>
+                <div class="nav-section-title">Principal</div>
+                <div class="nav-item" data-pantalla="dashboard" onclick="ir('dashboard')">Inicio</div>
+                <div class="nav-item" data-pantalla="misCitas" onclick="ir('misCitas')">Mis Citas</div>
+                <div class="nav-item" data-pantalla="agendar" onclick="ir('agendar')">Agendar</div>
+                <div class="nav-item" data-pantalla="historia" onclick="ir('historia')">Historia Clínica</div>
+                <div class="nav-item" data-pantalla="perfil" onclick="ir('perfil')">Mi Perfil</div>
+            </div>
+            <div class="nav-section" id="navSalir" hidden style="margin-top: auto; border-top: 1px solid var(--slate-200); padding-top: 16px;">
+                <div class="nav-item" onclick="logout()">Cerrar Sesión</div>
+            </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main-content">
+            <div class="header">
+                <div class="header-title" id="headerTitle">MediConecta</div>
+                <div class="header-user"><span id="headerUser"></span></div>
+            </div>
+
+            <div class="content-area">
+
+                <!-- LOGIN -->
+                <div class="pantalla activa" id="login">
+                    <div class="login-container">
+                        <div class="login-card">
+                            <div class="login-header">
+                                <div class="login-icon">MC</div>
+                                <h1 class="login-title">MEDICONECTA</h1>
+                                <p class="login-subtitle">Plataforma de salud digital</p>
+                            </div>
+                            <div class="auth-toggle">
+                                <button class="toggle-btn activo" id="tabLogin" onclick="cambiarAuth('login')">Ingresar</button>
+                                <button class="toggle-btn" id="tabRegistro" onclick="cambiarAuth('registro')">Registrarse</button>
+                            </div>
+
+                            <div id="form-login">
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="username">
+                                </div>
+                                <div class="form-group">
+                                    <label>Contraseña</label>
+                                    <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+                                </div>
+                                <button class="btn-primary btn-full" id="btnLogin" onclick="hacerLogin()">Ingresar</button>
+                            </div>
+
+                            <div id="form-registro" hidden>
+                                <div class="form-group">
+                                    <label>Nombre</label>
+                                    <input type="text" id="regNombre" placeholder="Tu nombre completo">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="regEmail" placeholder="tu@email.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Contraseña</label>
+                                    <input type="password" id="regPass" placeholder="••••••••">
+                                </div>
+                                <button class="btn-primary btn-full" id="btnRegistro" onclick="hacerRegistro()">Crear Cuenta</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DASHBOARD -->
+                <div class="pantalla" id="dashboard">
+                    <h1 class="page-title" id="dashSaludo">Hola</h1>
+                    <p class="page-subtitle">Tu actividad en MediConecta</p>
+
+                    <div class="lista">
+                        <div class="lista-header">Próximos turnos</div>
+                        <div id="dashTurnos"><div class="muted">Cargando…</div></div>
+                    </div>
+
+                    <h1 class="page-title section-gap">Acciones rápidas</h1>
+                    <div class="quick-actions">
+                        <div class="action-box" onclick="ir('agendar')">
+                            <div class="action-title">Agendar un turno</div>
+                            <div class="action-description">Reservá una consulta con un profesional</div>
+                        </div>
+                        <div class="action-box" onclick="ir('misCitas')">
+                            <div class="action-title">Ver mis citas</div>
+                            <div class="action-description">Gestioná tus turnos agendados</div>
+                        </div>
+                        <div class="action-box" onclick="ir('historia')">
+                            <div class="action-title">Historia clínica</div>
+                            <div class="action-description">Diagnósticos y recetas</div>
+                        </div>
+                        <div class="action-box" onclick="ir('perfil')">
+                            <div class="action-title">Mi perfil</div>
+                            <div class="action-description">Tus datos de cuenta</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MIS CITAS -->
+                <div class="pantalla" id="misCitas">
+                    <h1 class="page-title">Mis Citas</h1>
+                    <p class="page-subtitle">Turnos donde figurás como paciente</p>
+                    <div style="margin-bottom:16px;">
+                        <button class="btn-secondary btn-sm" onclick="cargarMisCitas()">Actualizar</button>
+                    </div>
+                    <div class="lista">
+                        <div class="lista-header">Todos tus turnos</div>
+                        <div id="misCitasLista"><div class="muted">Cargando…</div></div>
+                    </div>
+                </div>
+
+                <!-- AGENDAR -->
+                <div class="pantalla" id="agendar">
+                    <h1 class="page-title">Agendar</h1>
+                    <p class="page-subtitle">Publicá disponibilidad y reservá turnos</p>
+
+                    <div class="card">
+                        <div class="card-titulo">1 · Publicar disponibilidad (como profesional)</div>
+                        <div class="row-inline">
+                            <div class="form-group">
+                                <label>ID del profesional</label>
+                                <input type="number" id="crearProfId" placeholder="ej. 4" list="profsConocidos">
+                                <div class="inline-hint">Es el <code>id</code> de un usuario. Podés usar el tuyo para probar.</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha y hora</label>
+                                <input type="datetime-local" id="crearFecha">
+                            </div>
+                            <button class="btn-primary" id="btnCrearTurno" onclick="crearTurno()">Crear turno</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-titulo">2 · Buscar turnos disponibles</div>
+                        <div class="row-inline">
+                            <div class="form-group">
+                                <label>ID del profesional</label>
+                                <input type="number" id="buscarProfId" placeholder="ej. 4" list="profsConocidos">
+                            </div>
+                            <button class="btn-primary" id="btnBuscarDisp" onclick="buscarDisponibilidad()">Buscar</button>
+                        </div>
+                        <div id="dispLista" style="margin-top:16px;"></div>
+                    </div>
+
+                    <div class="card" id="cardHold" hidden>
+                        <div class="card-titulo">3 · Reserva temporal activa</div>
+                        <div id="holdContenido"></div>
+                    </div>
+                </div>
+
+                <!-- HISTORIA CLINICA -->
+                <div class="pantalla" id="historia">
+                    <h1 class="page-title">Historia Clínica</h1>
+                    <p class="page-subtitle">Tus diagnósticos y recetas</p>
+                    <div style="margin-bottom:16px;">
+                        <button class="btn-secondary btn-sm" onclick="cargarHistoria()">Actualizar</button>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="lista">
+                            <div class="lista-header">Diagnósticos</div>
+                            <div id="histDiag"><div class="muted">Cargando…</div></div>
+                        </div>
+                        <div class="lista">
+                            <div class="lista-header">Recetas</div>
+                            <div id="histRec"><div class="muted">Cargando…</div></div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2 section-gap">
+                        <div class="card">
+                            <div class="card-titulo">Nuevo diagnóstico</div>
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="diagDesc" rows="3" placeholder="ej. Hipertensión arterial leve"></textarea>
+                            </div>
+                            <button class="btn-primary btn-full" id="btnDiag" onclick="agregarDiagnostico()">Registrar diagnóstico</button>
+                        </div>
+                        <div class="card">
+                            <div class="card-titulo">Nueva receta</div>
+                            <div class="form-group">
+                                <label>Medicamento</label>
+                                <input type="text" id="recMed" placeholder="ej. Enalapril 10mg">
+                            </div>
+                            <div class="form-group">
+                                <label>Indicaciones</label>
+                                <input type="text" id="recInd" placeholder="ej. 1 comprimido por día en ayunas">
+                            </div>
+                            <button class="btn-primary btn-full" id="btnRec" onclick="agregarReceta()">Registrar receta</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONFIRMACION -->
+                <div class="pantalla" id="confirmacion">
+                    <div class="confirmation">
+                        <div class="confirmation-icon">✓</div>
+                        <h1 class="confirmation-title">Turno confirmado</h1>
+                        <p class="page-subtitle">Tu consulta quedó agendada</p>
+                        <div class="confirmation-card" id="confirmCard"></div>
+                        <button class="btn-primary" style="min-width:260px;" onclick="ir('misCitas')">Ver mis citas</button>
+                    </div>
+                </div>
+
+                <!-- PERFIL -->
+                <div class="pantalla" id="perfil">
+                    <h1 class="page-title">Mi Perfil</h1>
+                    <p class="page-subtitle">Datos de tu cuenta</p>
+                    <div class="card" style="max-width:480px;">
+                        <div class="card-titulo">Cuenta</div>
+                        <div class="kv"><span class="kv-label">ID de usuario</span><span class="kv-value" id="perfId">—</span></div>
+                        <div class="kv"><span class="kv-label">Nombre</span><span class="kv-value" id="perfNombre">—</span></div>
+                        <div class="kv"><span class="kv-label">Email</span><span class="kv-value" id="perfEmail">—</span></div>
+                    </div>
+                    <p class="inline-hint" style="max-width:480px;">Teléfono, obra social y datos médicos todavía no los maneja el backend (previsto para entregas siguientes).</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <datalist id="profsConocidos"></datalist>
+
+    <script>
+    // ======================= CONFIG =======================
+    const API = "http://localhost:8080/mediconecta/api";
+
+    // ======================= ESTADO =======================
+    let usuario = leerLS("mc_user", null);
+    let conocidos = leerLS("mc_conocidos", []); // [{id, nombre, email}]
+    let turnoEnHold = null;
+    let holdTimer = null;
+
+    function leerLS(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
+    function guardarLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+    // ======================= HTTP =======================
+    async function api(path, { method = "GET", body } = {}) {
+        let res;
+        try {
+            res = await fetch(API + path, {
+                method,
+                headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+                body: body !== undefined ? JSON.stringify(body) : undefined
+            });
+        } catch (e) {
+            throw new Error("No se pudo conectar con el servidor (¿WildFly está levantado en localhost:8080?)");
+        }
+        const txt = await res.text();
+        let data = null;
+        if (txt) { try { data = JSON.parse(txt); } catch { data = txt; } }
+        if (!res.ok) {
+            const msg = (data && data.error) || (typeof data === "string" && data) || ("Error " + res.status);
+            throw new Error(msg);
+        }
+        return data;
+    }
+
+    // ======================= TOAST =======================
+    function toast(msg, tipo = "info") {
+        const el = document.createElement("div");
+        el.className = "toast " + tipo;
+        el.textContent = msg;
+        document.getElementById("toast-wrap").appendChild(el);
+        setTimeout(() => el.remove(), 4200);
+    }
+
+    // ======================= NAVEGACION =======================
+    const TITULOS = { dashboard: "Inicio", misCitas: "Mis Citas", agendar: "Agendar", historia: "Historia Clínica", perfil: "Mi Perfil", confirmacion: "Confirmación", login: "MediConecta" };
+
+    function ir(pantalla) {
+        document.querySelectorAll(".pantalla").forEach(p => p.classList.remove("activa"));
+        document.getElementById(pantalla).classList.add("activa");
+        document.querySelectorAll(".nav-item[data-pantalla]").forEach(n =>
+            n.classList.toggle("activo", n.dataset.pantalla === pantalla));
+        document.getElementById("headerTitle").textContent = TITULOS[pantalla] || "MediConecta";
+        if (pantalla === "dashboard") cargarDashboard();
+        if (pantalla === "misCitas") cargarMisCitas();
+        if (pantalla === "historia") cargarHistoria();
+        if (pantalla === "perfil") pintarPerfil();
+        if (pantalla === "agendar") prepararAgendar();
+    }
+
+    function cambiarAuth(tipo) {
+        const esLogin = tipo === "login";
+        document.getElementById("tabLogin").classList.toggle("activo", esLogin);
+        document.getElementById("tabRegistro").classList.toggle("activo", !esLogin);
+        document.getElementById("form-login").hidden = !esLogin;
+        document.getElementById("form-registro").hidden = esLogin;
+    }
+
+    // ======================= SESION =======================
+    function setUsuario(u) {
+        usuario = u;
+        guardarLS("mc_user", u);
+        recordarConocido(u);
+        aplicarSesion();
+        ir("dashboard");
+        toast("Sesión iniciada como " + u.nombre, "ok");
+    }
+
+    function logout() {
+        usuario = null;
+        localStorage.removeItem("mc_user");
+        clearInterval(holdTimer);
+        turnoEnHold = null;
+        aplicarSesion();
+        ir("login");
+    }
+
+    function aplicarSesion() {
+        const logueado = !!usuario;
+        document.getElementById("navPrincipal").hidden = !logueado;
+        document.getElementById("navSalir").hidden = !logueado;
+        document.getElementById("headerUser").textContent = logueado ? usuario.nombre : "";
+        document.getElementById("userBadge").textContent = logueado ? iniciales(usuario.nombre) : "MC";
+        if (!logueado) ir("login");
+    }
+
+    function iniciales(nombre) {
+        return (nombre || "").trim().split(/\s+/).slice(0, 2).map(s => s[0] || "").join("").toUpperCase() || "MC";
+    }
+
+    function recordarConocido(u) {
+        if (!u || u.id == null) return;
+        if (!conocidos.find(x => x.id === u.id)) {
+            conocidos.push({ id: u.id, nombre: u.nombre, email: u.email });
+            guardarLS("mc_conocidos", conocidos);
+        }
+        pintarDatalist();
+    }
+
+    function pintarDatalist() {
+        document.getElementById("profsConocidos").innerHTML =
+            conocidos.map(c => `<option value="${c.id}">${escapar(c.nombre)} (id ${c.id})</option>`).join("");
+    }
+
+    // ======================= AUTH =======================
+    async function hacerRegistro() {
+        const nombre = val("regNombre"), email = val("regEmail"), password = val("regPass");
+        if (!nombre || !email || !password) return toast("Completá nombre, email y contraseña", "err");
+        await conBoton("btnRegistro", async () => {
+            const u = await api("/usuarios", { method: "POST", body: { nombre, email, password } });
+            setUsuario(u);
+        });
+    }
+
+    async function hacerLogin() {
+        const email = val("loginEmail"), password = val("loginPass");
+        if (!email || !password) return toast("Completá email y contraseña", "err");
+        await conBoton("btnLogin", async () => {
+            const u = await api("/usuarios/login", { method: "POST", body: { email, password } });
+            setUsuario(u);
+        });
+    }
+
+    // ======================= DASHBOARD =======================
+    async function cargarDashboard() {
+        document.getElementById("dashSaludo").textContent = "Hola, " + (usuario?.nombre || "");
+        const cont = document.getElementById("dashTurnos");
+        cont.innerHTML = `<div class="muted">Cargando…</div>`;
+        try {
+            const turnos = (await api("/turnos/paciente/" + usuario.id))
+                .filter(t => t.estado !== "CANCELADO")
+                .slice(0, 4);
+            cont.innerHTML = turnos.length
+                ? turnos.map(filaTurno).join("")
+                : `<div class="muted">No tenés turnos agendados. Andá a “Agendar”.</div>`;
+        } catch (e) { cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+    }
+
+    // ======================= MIS CITAS =======================
+    async function cargarMisCitas() {
+        const cont = document.getElementById("misCitasLista");
+        cont.innerHTML = `<div class="muted">Cargando…</div>`;
+        try {
+            const turnos = await api("/turnos/paciente/" + usuario.id);
+            cont.innerHTML = turnos.length
+                ? turnos.map(t => filaTurno(t, true)).join("")
+                : `<div class="muted">Todavía no agendaste ningún turno.</div>`;
+        } catch (e) { cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+    }
+
+    function filaTurno(t, conAcciones) {
+        const acciones = conAcciones && t.estado !== "CANCELADO"
+            ? `<div class="fila-acciones"><button class="btn-danger btn-sm" onclick="cancelarTurno(${t.id})">Cancelar</button></div>`
+            : "";
+        return `
+        <div class="fila">
+            <div class="fila-info">
+                <div class="fila-titulo">Turno #${t.id} · Profesional #${t.profesionalId}</div>
+                <div class="fila-detalle">${fmtFecha(t.fechaHora)}${t.urgente ? " · <strong>Urgente</strong>" : ""}</div>
+                <span class="badge badge-${t.estado}">${t.estado.replace("_", " ")}</span>
+            </div>
+            ${acciones}
+        </div>`;
+    }
+
+    async function cancelarTurno(id) {
+        if (!confirm("¿Cancelar el turno #" + id + "?")) return;
+        try {
+            await api("/turnos/" + id, { method: "DELETE" });
+            toast("Turno #" + id + " cancelado", "ok");
+            cargarMisCitas();
+        } catch (e) { toast(e.message, "err"); }
+    }
+
+    // ======================= AGENDAR =======================
+    function prepararAgendar() {
+        pintarDatalist();
+        if (usuario && !val("crearProfId")) document.getElementById("crearProfId").value = usuario.id;
+        if (usuario && !val("buscarProfId")) document.getElementById("buscarProfId").value = usuario.id;
+        if (!val("crearFecha")) {
+            const d = new Date(Date.now() + 3 * 864e5);
+            d.setMinutes(0, 0, 0);
+            document.getElementById("crearFecha").value = d.toISOString().slice(0, 16);
+        }
+    }
+
+    async function crearTurno() {
+        const profesionalId = Number(val("crearProfId"));
+        let fechaHora = val("crearFecha");
+        if (!profesionalId || !fechaHora) return toast("Completá profesional y fecha/hora", "err");
+        if (fechaHora.length === 16) fechaHora += ":00";
+        await conBoton("btnCrearTurno", async () => {
+            const t = await api("/turnos", { method: "POST", body: { profesionalId, fechaHora } });
+            toast(`Turno #${t.id} creado (${t.estado})`, "ok");
+            if (Number(val("buscarProfId")) === profesionalId) buscarDisponibilidad();
+        });
+    }
+
+    async function buscarDisponibilidad() {
+        const profId = Number(val("buscarProfId"));
+        if (!profId) return toast("Ingresá el ID del profesional", "err");
+        const cont = document.getElementById("dispLista");
+        cont.innerHTML = `<div class="muted">Buscando…</div>`;
+        try {
+            const turnos = await api("/turnos/disponibilidad/" + profId);
+            cont.innerHTML = turnos.length ? `
+                <div class="lista">
+                    <div class="lista-header">Disponibles del profesional #${profId}</div>
+                    ${turnos.map(t => `
+                        <div class="fila">
+                            <div class="fila-info">
+                                <div class="fila-titulo">Turno #${t.id}</div>
+                                <div class="fila-detalle">${fmtFecha(t.fechaHora)}</div>
+                                <span class="badge badge-DISPONIBLE">Disponible</span>
+                            </div>
+                            <div class="fila-acciones">
+                                <button class="btn-primary btn-sm" onclick="reservar(${t.id})">Reservar</button>
+                            </div>
+                        </div>`).join("")}
+                </div>` : `<div class="muted">Ese profesional no tiene turnos disponibles. Creá uno arriba.</div>`;
+        } catch (e) { cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+    }
+
+    async function reservar(turnoId) {
+        try {
+            // Usa la fachada AgendaTurnoFacade: valida paciente + reserva temporal
+            const t = await api("/turnos/agendar", { method: "POST", body: { pacienteId: usuario.id, turnoId } });
+            turnoEnHold = t;
+            toast(`Turno #${t.id} reservado. Confirmalo antes de que venza el hold.`, "info");
+            mostrarHold();
+            buscarDisponibilidad();
+        } catch (e) { toast(e.message, "err"); }
+    }
+
+    function mostrarHold() {
+        const card = document.getElementById("cardHold");
+        const cont = document.getElementById("holdContenido");
+        card.hidden = false;
+        clearInterval(holdTimer);
+
+        function pintar() {
+            const vence = new Date(turnoEnHold.holdExpiraEn);
+            const restante = Math.max(0, Math.floor((vence - Date.now()) / 1000));
+            const mm = String(Math.floor(restante / 60)).padStart(2, "0");
+            const ss = String(restante % 60).padStart(2, "0");
+            cont.innerHTML = `
+                <div class="kv"><span class="kv-label">Turno</span><span class="kv-value">#${turnoEnHold.id}</span></div>
+                <div class="kv"><span class="kv-label">Profesional</span><span class="kv-value">#${turnoEnHold.profesionalId}</span></div>
+                <div class="kv"><span class="kv-label">Fecha</span><span class="kv-value">${fmtFecha(turnoEnHold.fechaHora)}</span></div>
+                <div class="kv"><span class="kv-label">Estado</span><span class="kv-value">${turnoEnHold.estado.replace("_"," ")}</span></div>
+                <div class="hold-box">La reserva vence en <strong>${mm}:${ss}</strong>. Si expira, el turno vuelve a estar disponible.</div>
+                <button class="btn-primary btn-full" style="margin-top:16px;" id="btnConfirmar" ${restante === 0 ? "disabled" : ""} onclick="confirmar()">Confirmar turno</button>`;
+            if (restante === 0) clearInterval(holdTimer);
+        }
+        pintar();
+        holdTimer = setInterval(pintar, 1000);
+    }
+
+    async function confirmar() {
+        if (!turnoEnHold) return;
+        await conBoton("btnConfirmar", async () => {
+            const t = await api("/turnos/" + turnoEnHold.id + "/confirmar", { method: "POST" });
+            clearInterval(holdTimer);
+            turnoEnHold = null;
+            document.getElementById("cardHold").hidden = true;
+            document.getElementById("confirmCard").innerHTML = `
+                <div class="kv"><span class="kv-label">Turno</span><span class="kv-value">#${t.id}</span></div>
+                <div class="kv"><span class="kv-label">Profesional</span><span class="kv-value">#${t.profesionalId}</span></div>
+                <div class="kv"><span class="kv-label">Paciente</span><span class="kv-value">#${t.pacienteId}</span></div>
+                <div class="kv"><span class="kv-label">Fecha</span><span class="kv-value">${fmtFecha(t.fechaHora)}</span></div>
+                <div class="kv"><span class="kv-label">Estado</span><span class="kv-value">${t.estado}</span></div>`;
+            ir("confirmacion");
+            toast("Turno #" + t.id + " confirmado", "ok");
+        });
+    }
+
+    // ======================= HISTORIA CLINICA =======================
+    async function cargarHistoria() {
+        const d = document.getElementById("histDiag"), r = document.getElementById("histRec");
+        d.innerHTML = r.innerHTML = `<div class="muted">Cargando…</div>`;
+        try {
+            const h = await api("/historia-clinica/" + usuario.id);
+            d.innerHTML = (h.diagnosticos && h.diagnosticos.length)
+                ? h.diagnosticos.map(x => `
+                    <div class="fila"><div class="fila-info">
+                        <div class="fila-titulo">${escapar(x.descripcion)}</div>
+                        <div class="fila-detalle">${fmtFecha(x.fecha)}</div>
+                    </div></div>`).join("")
+                : `<div class="muted">Sin diagnósticos.</div>`;
+            r.innerHTML = (h.recetas && h.recetas.length)
+                ? h.recetas.map(x => `
+                    <div class="fila"><div class="fila-info">
+                        <div class="fila-titulo">${escapar(x.medicamento)}</div>
+                        <div class="fila-detalle">${escapar(x.indicaciones || "")}<br>${fmtFecha(x.fecha)}</div>
+                    </div></div>`).join("")
+                : `<div class="muted">Sin recetas.</div>`;
+        } catch (e) {
+            d.innerHTML = r.innerHTML = `<div class="muted">${escapar(e.message)}</div>`;
+        }
+    }
+
+    async function agregarDiagnostico() {
+        const descripcion = val("diagDesc");
+        if (!descripcion) return toast("Escribí la descripción", "err");
+        await conBoton("btnDiag", async () => {
+            await api("/historia-clinica/" + usuario.id + "/diagnosticos", { method: "POST", body: { descripcion } });
+            document.getElementById("diagDesc").value = "";
+            toast("Diagnóstico registrado", "ok");
+            cargarHistoria();
+        });
+    }
+
+    async function agregarReceta() {
+        const medicamento = val("recMed"), indicaciones = val("recInd");
+        if (!medicamento) return toast("Escribí el medicamento", "err");
+        await conBoton("btnRec", async () => {
+            await api("/historia-clinica/" + usuario.id + "/recetas", { method: "POST", body: { medicamento, indicaciones } });
+            document.getElementById("recMed").value = "";
+            document.getElementById("recInd").value = "";
+            toast("Receta registrada", "ok");
+            cargarHistoria();
+        });
+    }
+
+    // ======================= PERFIL =======================
+    function pintarPerfil() {
+        document.getElementById("perfId").textContent = usuario?.id ?? "—";
+        document.getElementById("perfNombre").textContent = usuario?.nombre ?? "—";
+        document.getElementById("perfEmail").textContent = usuario?.email ?? "—";
+    }
+
+    // ======================= HELPERS =======================
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function escapar(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+    function fmtFecha(iso) {
+        if (!iso) return "—";
+        const d = new Date(iso);
+        if (isNaN(d)) return iso;
+        return d.toLocaleString("es-AR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    }
+    async function conBoton(id, fn) {
+        const b = document.getElementById(id);
+        const txt = b.textContent;
+        b.disabled = true; b.textContent = "…";
+        try { await fn(); }
+        catch (e) { toast(e.message, "err"); }
+        finally { b.disabled = false; b.textContent = txt; }
+    }
+
+    // ======================= INIT =======================
+    pintarDatalist();
+    aplicarSesion();
+    if (usuario) ir("dashboard");
+    </script>
+</body>
+</html>
