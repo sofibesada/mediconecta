@@ -36,6 +36,11 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    public List<Turno> listarTurnosDePaciente(Long pacienteId) {
+        return turnoRepository.listarPorPaciente(pacienteId);
+    }
+
+    @Override
     public Turno reservarTemporalmente(Long pacienteId, Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() != EstadoTurno.DISPONIBLE) {
