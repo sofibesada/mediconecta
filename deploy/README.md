@@ -16,7 +16,35 @@ CREATE DATABASE mediconecta;
 ```
 
 Las tablas las crea Hibernate al desplegar (`hibernate.hbm2ddl.auto=update` en
-`src/main/resources/META-INF/persistence.xml`).
+`src/main/resources/META-INF/persistence.xml`). En una base **vacía** se crean
+todas con el esquema completo; no hay que correr ningún script.
+
+### Reiniciar la base (esquema desactualizado o datos de prueba)
+
+`hbm2ddl.auto=update` agrega columnas nuevas, pero **no** puede agregar una
+columna `NOT NULL` a una tabla que ya tiene filas. Si venís de una versión
+anterior, la forma más limpia es borrar las tablas y dejar que Hibernate las
+recree en el próximo despliegue:
+
+```sql
+DROP TABLE IF EXISTS turnos, diagnosticos, recetas, usuarios CASCADE;
+```
+
+Después `mvn clean package wildfly:deploy`. Hibernate recrea todo y el bean
+`SeedAdmin` vuelve a crear la cuenta ADMIN.
+
+> No cambiar `hbm2ddl.auto` a `create`: eso borraría los datos en **cada**
+> redeploy.
+
+### Cuenta ADMIN
+
+Se siembra sola al desplegar (clase `ar.com.mediconecta.config.SeedAdmin`):
+
+- **Email:** `admin@mediconecta.com`
+- **Contraseña:** `MediConecta.Admin.2026`
+
+Es la única forma de tener un ADMIN (el registro público solo crea PACIENTE).
+Los profesionales los da de alta el ADMIN desde la pantalla de Administración.
 
 ## 3. Driver de PostgreSQL en WildFly
 
