@@ -34,17 +34,72 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @PermitAll
     public Usuario registrarUsuario(Usuario usuario) {
-        RolUsuario rol = usuario.getRol();
-        if (rol == null) {
-            rol = RolUsuario.PACIENTE;
-        }
-        if (rol == RolUsuario.ADMIN) {
-            throw new IllegalArgumentException("No se puede registrar un usuario con rol ADMIN");
-        }
-        usuario.setRol(rol);
-        String hash = BCrypt.hashpw(usuario.getPassword(), BCrypt.gensalt());
-        usuario.setPassword(hash);
+        // El registro publico solo crea PACIENTE. Profesionales los da de alta
+        // un ADMIN; ADMIN se siembra desde el backend.
+        usuario.setRol(RolUsuario.PACIENTE);
+        usuario.setDebeCambiarPassword(false);
+        usuario.setPassword(BCrypt.hashpw(usuario.getPassword(), BCrypt.gensalt()));
         return usuarioRepository.guardar(usuario);
+    }
+
+    @Override
+    @PermitAll
+    public Usuario crearProfesional(Long adminId, Usuario datos) {
+        if (!esAdmin(adminId)) {
+            throw new IllegalArgumentException("Solo un administrador puede crear profesionales");
+        }
+        if (datos.getNombre() == null || datos.getNombre().isBlank()
+                || datos.getEmail() == null || datos.getEmail().isBlank()
+                || datos.getPassword() == null || datos.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Nombre, email y contrasena temporal son obligatorios");
+        }
+        if (usuarioRepository.buscarPorEmail(datos.getEmail()) != null) {
+            throw new IllegalStateException("Ya existe un usuario con ese email");
+        }
+        Usuario prof = new Usuario();
+        prof.setNombre(datos.getNombre());
+        prof.setEmail(datos.getEmail());
+        prof.setRol(RolUsuario.PROFESIONAL);
+        prof.setDebeCambiarPassword(true);
+        prof.setPassword(BCrypt.hashpw(datos.getPassword(), BCrypt.gensalt()));
+        return usuarioRepository.guardar(prof);
+    }
+
+    @Override
+    @PermitAll
+    public Usuario cambiarPassword(Long usuarioId, String passwordActual, String passwordNueva) {
+        Usuario u = usuarioRepository.buscarPorId(usuarioId);
+        if (u == null) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+        if (passwordActual == null || !BCrypt.checkpw(passwordActual, u.getPassword())) {
+            throw new IllegalArgumentException("La contrasena actual es incorrecta");
+        }
+        if (passwordNueva == null || passwordNueva.length() < 4) {
+            throw new IllegalArgumentException("La contrasena nueva debe tener al menos 4 caracteres");
+        }
+        if (BCrypt.checkpw(passwordNueva, u.getPassword())) {
+            throw new IllegalArgumentException("La contrasena nueva no puede ser igual a la actual");
+        }
+        u.setPassword(BCrypt.hashpw(passwordNueva, BCrypt.gensalt()));
+        u.setDebeCambiarPassword(false);
+        return usuarioRepository.actualizar(u);
+    }
+
+    @Override
+    @PermitAll
+    public void sembrarAdmin(String nombre, String email, String password) {
+        if (usuarioRepository.buscarPorEmail(email) != null) {
+            return;
+        }
+        Usuario admin = new Usuario();
+        admin.setNombre(nombre);
+        admin.setEmail(email);
+        admin.setRol(RolUsuario.ADMIN);
+        admin.setDebeCambiarPassword(false);
+        admin.setPassword(BCrypt.hashpw(password, BCrypt.gensalt()));
+        usuarioRepository.guardar(admin);
+        LOG.info("[Seed] Cuenta ADMIN creada: " + email);
     }
 
     @Override
@@ -68,6 +123,13 @@ public class UsuarioService implements IUsuarioService {
 
     @Override
     @PermitAll
+    public boolean esAdmin(Long id) {
+        Usuario u = id != null ? usuarioRepository.buscarPorId(id) : null;
+        return u != null && u.getRol() == RolUsuario.ADMIN;
+    }
+
+    @Override
+    @PermitAll
     public String nombreDe(Long id) {
         if (id == null) {
             return null;
@@ -84,6 +146,12 @@ public class UsuarioService implements IUsuarioService {
 
     @Override
     @PermitAll
+    public List<Usuario> listarTodos() {
+        return usuarioRepository.listarTodos();
+    }
+
+    @Override
+    @PermitAll
     public Usuario autenticar(String email, String password) {
         Usuario usuario = usuarioRepository.buscarPorEmail(email);
         if (usuario != null && BCrypt.checkpw(password, usuario.getPassword())) {
@@ -91,6 +159,4 @@ public class UsuarioService implements IUsuarioService {
         }
         return null;
     }
-
-
 }

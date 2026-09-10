@@ -7,6 +7,7 @@ public class UsuarioResponse {
     public String nombre;
     public String email;
     public String rol;
+    public boolean debeCambiarPassword;
 
     public static UsuarioResponse from(Usuario usuario) {
         UsuarioResponse response = new UsuarioResponse();
@@ -14,6 +15,7 @@ public class UsuarioResponse {
         response.nombre = usuario.getNombre();
         response.email = usuario.getEmail();
         response.rol = usuario.getRol() != null ? usuario.getRol().name() : null;
+        response.debeCambiarPassword = usuario.isDebeCambiarPassword();
         return response;
     }
 }
