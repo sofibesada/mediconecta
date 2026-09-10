@@ -24,6 +24,13 @@ public class TurnoResource {
         return turnoService.consultarDisponibilidad(profesionalId);
     }
 
+    @GET
+    @Path("/paciente/{pacienteId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Turno> listarPorPaciente(@PathParam("pacienteId") Long pacienteId) {
+        return turnoService.listarTurnosDePaciente(pacienteId);
+    }
+
     @POST
     @Path("/{turnoId}/reservar")
     @Produces(MediaType.APPLICATION_JSON)

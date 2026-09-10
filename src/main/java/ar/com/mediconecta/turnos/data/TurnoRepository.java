@@ -31,6 +31,14 @@ public class TurnoRepository {
                 .getResultList();
     }
 
+    public List<Turno> listarPorPaciente(Long pacienteId) {
+        return em.createQuery(
+                        "SELECT t FROM Turno t WHERE t.pacienteId = :pacienteId ORDER BY t.fechaHora",
+                        Turno.class)
+                .setParameter("pacienteId", pacienteId)
+                .getResultList();
+    }
+
     public Turno actualizar(Turno turno) {
         return em.merge(turno);
     }
