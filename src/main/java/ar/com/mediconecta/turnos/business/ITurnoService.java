@@ -7,6 +7,7 @@ import java.util.List;
 public interface ITurnoService {
     List<Turno> consultarDisponibilidad(Long profesionalId);
     List<Turno> listarTurnosDePaciente(Long pacienteId);
+    List<Turno> listarTurnosDeProfesional(Long profesionalId);
     Turno reservarTemporalmente(Long pacienteId, Long turnoId);
     Turno confirmarTurno(Long turnoId);
     void cancelarTurno(Long turnoId);
