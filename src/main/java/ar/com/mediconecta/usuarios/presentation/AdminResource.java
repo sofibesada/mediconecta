@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -43,5 +44,22 @@ public class AdminResource {
         return usuarioService.listarTodos().stream()
                 .map(UsuarioResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    @POST
+    @Path("/usuarios/{id}/activo")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public UsuarioResponse cambiarEstado(@PathParam("id") Long id, CambiarEstadoRequest req) {
+        return UsuarioResponse.from(usuarioService.cambiarEstadoUsuario(req.adminId, id, req.activo));
+    }
+
+    @POST
+    @Path("/usuarios/{id}/reset-password")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Map<String, String> resetPassword(@PathParam("id") Long id, ResetPasswordRequest req) {
+        String temporal = usuarioService.resetearPassword(req.adminId, id);
+        return Map.of("passwordTemporal", temporal);
     }
 }
