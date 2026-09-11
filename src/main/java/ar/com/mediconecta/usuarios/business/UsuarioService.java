@@ -37,6 +37,9 @@ public class UsuarioService implements IUsuarioService {
     public Usuario registrarUsuario(Usuario usuario) {
         // El registro publico solo crea PACIENTE. Profesionales los da de alta
         // un ADMIN; ADMIN se siembra desde el backend.
+        if (usuarioRepository.buscarPorEmail(usuario.getEmail()) != null) {
+            throw new IllegalStateException("El correo ya está registrado");
+        }
         usuario.setRol(RolUsuario.PACIENTE);
         usuario.setDebeCambiarPassword(false);
         usuario.setPassword(BCrypt.hashpw(usuario.getPassword(), BCrypt.gensalt()));
