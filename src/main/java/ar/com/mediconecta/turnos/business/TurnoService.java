@@ -53,7 +53,7 @@ public class TurnoService implements ITurnoService {
     public Turno reservarTemporalmente(Long pacienteId, Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() != EstadoTurno.DISPONIBLE) {
-            throw new IllegalStateException("El turno no está disponible");
+            throw new ConflictoTurnoException("El turno no está disponible");
         }
         turno.setPacienteId(pacienteId);
         turno.setEstado(EstadoTurno.RESERVADO_TEMPORAL);
@@ -65,13 +65,13 @@ public class TurnoService implements ITurnoService {
     public Turno confirmarTurno(Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() != EstadoTurno.RESERVADO_TEMPORAL) {
-            throw new IllegalStateException("El turno no tiene una reserva temporal activa");
+            throw new ConflictoTurnoException("El turno no tiene una reserva temporal activa");
         }
         if (turno.getHoldExpiraEn().isBefore(LocalDateTime.now())) {
             turno.setEstado(EstadoTurno.DISPONIBLE);
             turno.setPacienteId(null);
             turnoRepository.actualizar(turno);
-            throw new IllegalStateException("El hold del turno expiró, volvé a reservarlo");
+            throw new ConflictoTurnoException("El hold del turno expiró, volvé a reservarlo");
         }
         turno.setEstado(EstadoTurno.CONFIRMADO);
         return turnoRepository.actualizar(turno);
@@ -88,7 +88,7 @@ public class TurnoService implements ITurnoService {
                 : new PoliticaCancelacionEstandar();
 
         if (!politica.puedeCancelarse(turno)) {
-            throw new IllegalStateException("No se puede cancelar: faltan menos de 24hs para el turno");
+            throw new ConflictoTurnoException("No se puede cancelar: faltan menos de 24hs para el turno");
         }
         turno.setEstado(EstadoTurno.CANCELADO);
         turnoRepository.actualizar(turno);
@@ -98,7 +98,7 @@ public class TurnoService implements ITurnoService {
     public Turno reprogramarTurno(Long turnoId, LocalDateTime nuevaFecha) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null) {
-            throw new IllegalStateException("Turno no encontrado");
+            throw new ConflictoTurnoException("Turno no encontrado");
         }
         turno.setFechaHora(nuevaFecha);
         return turnoRepository.actualizar(turno);
@@ -107,7 +107,7 @@ public class TurnoService implements ITurnoService {
     @Override
     public Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora) {
         if (!usuarioService.esProfesional(profesionalId)) {
-            throw new IllegalArgumentException("El usuario indicado no existe o no es un profesional");
+            throw new DatosTurnoInvalidosException("El usuario indicado no existe o no es un profesional");
         }
         Turno turno = new Turno();
         turno.setProfesionalId(profesionalId);
