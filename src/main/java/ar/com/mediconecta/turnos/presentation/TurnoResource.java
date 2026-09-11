@@ -7,7 +7,10 @@ import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Path("/turnos")
@@ -29,7 +32,19 @@ public class TurnoResource {
     }
 
     private List<TurnoResponse> aResponse(List<Turno> turnos) {
-        return turnos.stream().map(this::aResponse).collect(Collectors.toList());
+        // Una sola consulta para todos los nombres de la lista, en vez de
+        // 1-2 por turno (evita N+1 al listar disponibilidad/mis turnos).
+        Set<Long> ids = new HashSet<>();
+        for (Turno t : turnos) {
+            ids.add(t.getProfesionalId());
+            if (t.getPacienteId() != null) {
+                ids.add(t.getPacienteId());
+            }
+        }
+        Map<Long, String> nombres = usuarioService.nombresDe(ids);
+        return turnos.stream()
+                .map(t -> TurnoResponse.from(t, nombres.get(t.getProfesionalId()), nombres.get(t.getPacienteId())))
+                .collect(Collectors.toList());
     }
 
     @GET

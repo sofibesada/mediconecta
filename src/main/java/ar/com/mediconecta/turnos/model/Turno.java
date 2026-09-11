@@ -30,6 +30,9 @@ public class Turno {
     @Column(nullable = false)
     private boolean urgente = false;
 
+    @Version
+    private Long version;
+
     public Turno() {}
 
     public Long getId() { return id; }

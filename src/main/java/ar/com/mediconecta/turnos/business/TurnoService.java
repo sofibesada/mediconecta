@@ -51,6 +51,9 @@ public class TurnoService implements ITurnoService {
 
     @Override
     public Turno reservarTemporalmente(Long pacienteId, Long turnoId) {
+        if (!usuarioService.existeUsuario(pacienteId)) {
+            throw new DatosTurnoInvalidosException("El paciente indicado no existe o está desactivado");
+        }
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() != EstadoTurno.DISPONIBLE) {
             throw new ConflictoTurnoException("El turno no está disponible");
@@ -66,6 +69,9 @@ public class TurnoService implements ITurnoService {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() != EstadoTurno.RESERVADO_TEMPORAL) {
             throw new ConflictoTurnoException("El turno no tiene una reserva temporal activa");
+        }
+        if (turno.getPacienteId() != null && !usuarioService.existeUsuario(turno.getPacienteId())) {
+            throw new ConflictoTurnoException("El paciente de este turno ya no está activo");
         }
         if (turno.getHoldExpiraEn().isBefore(LocalDateTime.now())) {
             turno.setEstado(EstadoTurno.DISPONIBLE);

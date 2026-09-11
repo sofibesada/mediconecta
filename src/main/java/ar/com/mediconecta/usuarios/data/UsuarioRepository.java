@@ -41,6 +41,15 @@ public class UsuarioRepository {
                 .getResultList();
     }
 
+    public List<Usuario> listarPorIds(java.util.Collection<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return em.createQuery("SELECT u FROM Usuario u WHERE u.id IN :ids", Usuario.class)
+                .setParameter("ids", ids)
+                .getResultList();
+    }
+
     public Usuario actualizar(Usuario usuario) {
         return em.merge(usuario);
     }
