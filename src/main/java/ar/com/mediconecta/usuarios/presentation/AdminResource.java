@@ -38,9 +38,7 @@ public class AdminResource {
     @Path("/usuarios")
     @Produces(MediaType.APPLICATION_JSON)
     public List<UsuarioResponse> listarUsuarios(@QueryParam("adminId") Long adminId) {
-        if (!usuarioService.esAdmin(adminId)) {
-            throw new IllegalArgumentException("Solo un administrador puede ver el listado de usuarios");
-        }
+        usuarioService.exigirAdmin(adminId, "Solo un administrador puede ver el listado de usuarios");
         return usuarioService.listarTodos().stream()
                 .map(UsuarioResponse::from)
                 .collect(Collectors.toList());

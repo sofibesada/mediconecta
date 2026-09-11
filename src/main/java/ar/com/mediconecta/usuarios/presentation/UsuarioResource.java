@@ -24,7 +24,11 @@ public class UsuarioResource {
     @Path("/{id}")
     @Produces(MediaType.APPLICATION_JSON)
     public UsuarioResponse buscar(@PathParam("id") Long id) {
-        return UsuarioResponse.from(usuarioService.buscarUsuario(id));
+        Usuario usuario = usuarioService.buscarUsuario(id);
+        if (usuario == null) {
+            throw new NotFoundException("Usuario no encontrado");
+        }
+        return UsuarioResponse.from(usuario);
     }
 
     @POST

@@ -2,6 +2,8 @@ package ar.com.mediconecta.usuarios.business;
 
 import ar.com.mediconecta.usuarios.model.Usuario;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public interface IUsuarioService {
 
@@ -27,7 +29,11 @@ public interface IUsuarioService {
     boolean existeUsuario(Long id);
     boolean esProfesional(Long id);
     boolean esAdmin(Long id);
+    /** Tira IllegalArgumentException(mensaje) si adminId no es de un ADMIN. */
+    void exigirAdmin(Long adminId, String mensaje);
     String nombreDe(Long id);
+    /** Nombres de varios usuarios en una sola consulta (evita N+1). */
+    Map<Long, String> nombresDe(Set<Long> ids);
     List<Usuario> listarProfesionales();
     List<Usuario> listarTodos();
     Usuario autenticar(String email, String password);

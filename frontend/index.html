@@ -381,6 +381,8 @@
     let holdTimer = null;
     let profesionalesCache = [];
     let historiaCtx = { id: null, nombre: null, propia: true };
+    let historiaReqId = 0;
+    let dispReqId = 0;
 
     function leerLS(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
     function guardarLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -417,6 +419,7 @@
     const TITULOS = { dashboard: "Inicio", agendar: "Agendar turno", misCitas: "Mis Citas", miAgenda: "Mi Agenda", pacientes: "Mis Pacientes", historia: "Historia Clínica", admin: "Administración", perfil: "Mi Perfil", confirmacion: "Confirmación", login: "MediConecta", cambiarPassword: "Cambio de contraseña" };
 
     function ir(pantalla) {
+        if (pantalla !== "agendar") clearInterval(holdTimer);
         document.querySelectorAll(".pantalla").forEach(p => p.classList.remove("activa"));
         document.getElementById(pantalla).classList.add("activa");
         document.querySelectorAll(".nav-item[data-pantalla]").forEach(n =>
@@ -572,9 +575,11 @@
         const profId = Number(document.getElementById("agSelectProf").value);
         const cont = document.getElementById("agDispLista");
         if (!profId) { cont.innerHTML = ""; return; }
+        const reqId = ++dispReqId;
         cont.innerHTML = `<div class="muted">Buscando horarios…</div>`;
         try {
             const turnos = await api("/turnos/disponibilidad/" + profId);
+            if (reqId !== dispReqId) return; // el usuario ya eligió otro profesional
             cont.innerHTML = turnos.length ? `
                 <div class="lista"><div class="lista-header">Horarios disponibles</div>
                 ${turnos.map(t => `
@@ -584,7 +589,7 @@
                         <span class="badge badge-DISPONIBLE">Disponible</span>
                     </div><div class="fila-acciones"><button class="btn-primary btn-sm" onclick="reservar(${t.id})">Reservar</button></div></div>`).join("")}
                 </div>` : `<div class="muted">Este profesional no tiene horarios disponibles por ahora.</div>`;
-        } catch (e) { cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+        } catch (e) { if (reqId === dispReqId) cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
     }
 
     async function reservar(turnoId) {
@@ -639,7 +644,11 @@
         if (!val("agnFecha")) {
             const d = new Date(Date.now() + 3 * 864e5);
             d.setMinutes(0, 0, 0);
-            document.getElementById("agnFecha").value = d.toISOString().slice(0, 16);
+            const pad = n => String(n).padStart(2, "0");
+            // Fecha/hora LOCAL, no toISOString() (que es UTC) -- el input
+            // datetime-local se interpreta como hora local del navegador.
+            document.getElementById("agnFecha").value =
+                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
     }
     async function publicarDisponibilidad() {
@@ -695,16 +704,19 @@
         document.getElementById("histTitulo").textContent = historiaCtx.propia ? "Historia Clínica" : "Historia de " + historiaCtx.nombre;
         document.getElementById("histSub").textContent = historiaCtx.propia ? "Tus diagnósticos y recetas" : "Diagnósticos y recetas del paciente";
         const d = document.getElementById("histDiag"), r = document.getElementById("histRec");
+        const reqId = ++historiaReqId;
+        const pacienteId = historiaCtx.id;
         d.innerHTML = r.innerHTML = `<div class="muted">Cargando…</div>`;
         try {
-            const h = await api("/historia-clinica/" + historiaCtx.id);
+            const h = await api("/historia-clinica/" + pacienteId);
+            if (reqId !== historiaReqId) return; // se eligió otro paciente antes de que esto resuelva
             d.innerHTML = (h.diagnosticos && h.diagnosticos.length)
                 ? h.diagnosticos.map(x => `<div class="fila"><div class="fila-info"><div class="fila-titulo">${escapar(x.descripcion)}</div><div class="fila-detalle">${fmtFecha(x.fecha)}</div></div></div>`).join("")
                 : `<div class="muted">Sin diagnósticos.</div>`;
             r.innerHTML = (h.recetas && h.recetas.length)
                 ? h.recetas.map(x => `<div class="fila"><div class="fila-info"><div class="fila-titulo">${escapar(x.medicamento)}</div><div class="fila-detalle">${escapar(x.indicaciones || "")}<br>${fmtFecha(x.fecha)}</div></div></div>`).join("")
                 : `<div class="muted">Sin recetas.</div>`;
-        } catch (e) { d.innerHTML = r.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+        } catch (e) { if (reqId === historiaReqId) d.innerHTML = r.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
     }
     async function agregarDiagnostico() {
         const descripcion = val("diagDesc");

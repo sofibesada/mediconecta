@@ -5,6 +5,7 @@ import ar.com.mediconecta.turnos.model.Turno;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.logging.Logger;
 
@@ -16,8 +17,14 @@ public class AgendaTurnoFacade {
     @Inject
     private IUsuarioService usuarioService;
 
+    // TurnoService es @Stateful; si se inyectara directo aca (Facade es
+    // @ApplicationScoped) CDI le asignaria una unica instancia dependent para
+    // toda la vida de la aplicacion, y el contenedor EJB solo permite una
+    // invocacion a la vez sobre una instancia stateful -- dos reservas
+    // concurrentes se serializarian o fallarian. Instance<> pide una
+    // instancia nueva en cada llamada y se la destruye despues.
     @Inject
-    private ITurnoService turnoService;
+    private Instance<ITurnoService> turnoServiceProvider;
 
     @PostConstruct
     public void init() {
@@ -33,6 +40,11 @@ public class AgendaTurnoFacade {
         if (!usuarioService.existeUsuario(pacienteId)) {
             throw new IllegalArgumentException("El paciente no existe");
         }
-        return turnoService.reservarTemporalmente(pacienteId, turnoId);
+        ITurnoService turnoService = turnoServiceProvider.get();
+        try {
+            return turnoService.reservarTemporalmente(pacienteId, turnoId);
+        } finally {
+            turnoServiceProvider.destroy(turnoService);
+        }
     }
 }

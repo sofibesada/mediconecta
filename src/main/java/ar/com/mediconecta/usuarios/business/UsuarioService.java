@@ -10,9 +10,13 @@ import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 import org.mindrot.jbcrypt.BCrypt;
 import jakarta.annotation.security.RolesAllowed;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @Stateless
 public class UsuarioService implements IUsuarioService {
@@ -37,6 +41,11 @@ public class UsuarioService implements IUsuarioService {
     public Usuario registrarUsuario(Usuario usuario) {
         // El registro publico solo crea PACIENTE. Profesionales los da de alta
         // un ADMIN; ADMIN se siembra desde el backend.
+        if (usuario.getNombre() == null || usuario.getNombre().isBlank()
+                || usuario.getEmail() == null || usuario.getEmail().isBlank()
+                || usuario.getPassword() == null || usuario.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Nombre, email y contraseña son obligatorios");
+        }
         if (usuarioRepository.buscarPorEmail(usuario.getEmail()) != null) {
             throw new IllegalStateException("El correo ya está registrado");
         }
@@ -49,9 +58,7 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @PermitAll
     public Usuario crearProfesional(Long adminId, Usuario datos) {
-        if (!esAdmin(adminId)) {
-            throw new IllegalArgumentException("Solo un administrador puede crear profesionales");
-        }
+        exigirAdmin(adminId, "Solo un administrador puede crear profesionales");
         if (datos.getNombre() == null || datos.getNombre().isBlank()
                 || datos.getEmail() == null || datos.getEmail().isBlank()
                 || datos.getPassword() == null || datos.getPassword().isBlank()) {
@@ -76,6 +83,9 @@ public class UsuarioService implements IUsuarioService {
         if (u == null) {
             throw new IllegalArgumentException("Usuario no encontrado");
         }
+        if (!u.isActivo()) {
+            throw new IllegalStateException("Tu cuenta está desactivada. Contactá al administrador.");
+        }
         if (passwordActual == null || !BCrypt.checkpw(passwordActual, u.getPassword())) {
             throw new IllegalArgumentException("La contrasena actual es incorrecta");
         }
@@ -93,9 +103,7 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @PermitAll
     public Usuario cambiarEstadoUsuario(Long adminId, Long usuarioId, boolean activo) {
-        if (!esAdmin(adminId)) {
-            throw new IllegalArgumentException("Solo un administrador puede activar o desactivar usuarios");
-        }
+        exigirAdmin(adminId, "Solo un administrador puede activar o desactivar usuarios");
         Usuario u = usuarioRepository.buscarPorId(usuarioId);
         if (u == null) {
             throw new IllegalArgumentException("Usuario no encontrado");
@@ -110,9 +118,7 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @PermitAll
     public String resetearPassword(Long adminId, Long usuarioId) {
-        if (!esAdmin(adminId)) {
-            throw new IllegalArgumentException("Solo un administrador puede resetear contrasenas");
-        }
+        exigirAdmin(adminId, "Solo un administrador puede resetear contrasenas");
         Usuario u = usuarioRepository.buscarPorId(usuarioId);
         if (u == null) {
             throw new IllegalArgumentException("Usuario no encontrado");
@@ -152,14 +158,18 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @PermitAll
     public boolean existeUsuario(Long id) {
-        return usuarioRepository.buscarPorId(id) != null;
+        // "Existe" implica activo: una cuenta desactivada no debe poder
+        // seguir agendando/publicando turnos con solo tener el id guardado
+        // en el navegador.
+        Usuario u = id != null ? usuarioRepository.buscarPorId(id) : null;
+        return u != null && u.isActivo();
     }
 
     @Override
     @PermitAll
     public boolean esProfesional(Long id) {
         Usuario u = usuarioRepository.buscarPorId(id);
-        return u != null && u.getRol() == RolUsuario.PROFESIONAL;
+        return u != null && u.getRol() == RolUsuario.PROFESIONAL && u.isActivo();
     }
 
     @Override
@@ -167,6 +177,14 @@ public class UsuarioService implements IUsuarioService {
     public boolean esAdmin(Long id) {
         Usuario u = id != null ? usuarioRepository.buscarPorId(id) : null;
         return u != null && u.getRol() == RolUsuario.ADMIN;
+    }
+
+    @Override
+    @PermitAll
+    public void exigirAdmin(Long adminId, String mensaje) {
+        if (!esAdmin(adminId)) {
+            throw new IllegalArgumentException(mensaje);
+        }
     }
 
     @Override
@@ -191,6 +209,22 @@ public class UsuarioService implements IUsuarioService {
     @PermitAll
     public List<Usuario> listarTodos() {
         return usuarioRepository.listarTodos();
+    }
+
+    @Override
+    @PermitAll
+    public Map<Long, String> nombresDe(Set<Long> ids) {
+        Set<Long> idsLimpios = new HashSet<>();
+        for (Long id : ids) {
+            if (id != null) {
+                idsLimpios.add(id);
+            }
+        }
+        if (idsLimpios.isEmpty()) {
+            return Map.of();
+        }
+        return usuarioRepository.listarPorIds(idsLimpios).stream()
+                .collect(Collectors.toMap(Usuario::getId, Usuario::getNombre));
     }
 
     @Override
