@@ -782,12 +782,43 @@
         cont.innerHTML = `<div class="muted">Cargando…</div>`;
         try {
             const us = await api("/admin/usuarios?adminId=" + usuario.id);
-            cont.innerHTML = us.map(u => `
-                <div class="fila"><div class="fila-info">
+            cont.innerHTML = us.map(u => {
+                const flags = [
+                    `<span class="badge badge-rol">${rolLindo(u.rol)}</span>`,
+                    u.activo ? "" : ' · <strong style="color:var(--red-600)">inactivo</strong>',
+                    u.debeCambiarPassword ? ' · <em>contraseña sin cambiar</em>' : ''
+                ].join("");
+                const acciones = u.rol === "ADMIN" ? "" : `
+                    <div class="fila-acciones">
+                        <button class="btn-secondary btn-sm" onclick="resetearPass(${u.id}, '${escapar(u.nombre).replace(/'/g,"\\'")}')">Resetear contraseña</button>
+                        <button class="${u.activo ? 'btn-danger' : 'btn-secondary'} btn-sm" onclick="cambiarEstado(${u.id}, ${!u.activo})">${u.activo ? 'Desactivar' : 'Activar'}</button>
+                    </div>`;
+                return `<div class="fila"><div class="fila-info">
                     <div class="fila-titulo">${escapar(u.nombre)}</div>
-                    <div class="fila-detalle">${escapar(u.email)} · <span class="badge badge-rol">${rolLindo(u.rol)}</span>${u.debeCambiarPassword ? ' · <em>contraseña sin cambiar</em>' : ''}</div>
-                </div></div>`).join("");
+                    <div class="fila-detalle">${escapar(u.email)} · ${flags}</div>
+                    <div id="resetBox-${u.id}"></div>
+                </div>${acciones}</div>`;
+            }).join("");
         } catch (e) { cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+    }
+
+    async function cambiarEstado(id, activo) {
+        if (!activo && !confirm("¿Desactivar este usuario? No va a poder ingresar.")) return;
+        try {
+            await api("/admin/usuarios/" + id + "/activo", { method: "POST", body: { adminId: usuario.id, activo } });
+            toast(activo ? "Usuario activado" : "Usuario desactivado", "ok");
+            cargarUsuariosAdmin();
+        } catch (e) { toast(e.message, "err"); }
+    }
+
+    async function resetearPass(id, nombre) {
+        if (!confirm("¿Generar una contraseña temporal nueva para " + nombre + "? La actual dejará de funcionar.")) return;
+        try {
+            const r = await api("/admin/usuarios/" + id + "/reset-password", { method: "POST", body: { adminId: usuario.id } });
+            const box = document.getElementById("resetBox-" + id);
+            if (box) box.innerHTML = `<div class="cred-box">Contraseña temporal para <strong>${escapar(nombre)}</strong>: <strong>${escapar(r.passwordTemporal)}</strong><br>Al ingresar, el sistema le va a pedir que la cambie.</div>`;
+            toast("Contraseña temporal generada", "ok");
+        } catch (e) { toast(e.message, "err"); }
     }
 
     // ---------- perfil ----------

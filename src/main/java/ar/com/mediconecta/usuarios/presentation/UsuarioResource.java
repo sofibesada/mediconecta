@@ -38,6 +38,11 @@ public class UsuarioResource {
                     .entity("{\"error\":\"Email o contraseña incorrectos\"}")
                     .build();
         }
+        if (!usuario.isActivo()) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("{\"error\":\"Tu cuenta está desactivada. Contactá al administrador.\"}")
+                    .build();
+        }
         return Response.ok(UsuarioResponse.from(usuario)).build();
     }
 

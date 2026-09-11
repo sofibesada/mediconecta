@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 import org.mindrot.jbcrypt.BCrypt;
 import jakarta.annotation.security.RolesAllowed;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 @Stateless
@@ -88,6 +89,43 @@ public class UsuarioService implements IUsuarioService {
 
     @Override
     @PermitAll
+    public Usuario cambiarEstadoUsuario(Long adminId, Long usuarioId, boolean activo) {
+        if (!esAdmin(adminId)) {
+            throw new IllegalArgumentException("Solo un administrador puede activar o desactivar usuarios");
+        }
+        Usuario u = usuarioRepository.buscarPorId(usuarioId);
+        if (u == null) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+        if (u.getRol() == RolUsuario.ADMIN) {
+            throw new IllegalStateException("No se puede desactivar una cuenta de administrador");
+        }
+        u.setActivo(activo);
+        return usuarioRepository.actualizar(u);
+    }
+
+    @Override
+    @PermitAll
+    public String resetearPassword(Long adminId, Long usuarioId) {
+        if (!esAdmin(adminId)) {
+            throw new IllegalArgumentException("Solo un administrador puede resetear contrasenas");
+        }
+        Usuario u = usuarioRepository.buscarPorId(usuarioId);
+        if (u == null) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+        if (u.getRol() == RolUsuario.ADMIN) {
+            throw new IllegalStateException("La cuenta de administrador se administra desde el backend");
+        }
+        String temporal = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        u.setPassword(BCrypt.hashpw(temporal, BCrypt.gensalt()));
+        u.setDebeCambiarPassword(true);
+        usuarioRepository.actualizar(u);
+        return temporal;
+    }
+
+    @Override
+    @PermitAll
     public void sembrarAdmin(String nombre, String email, String password) {
         if (usuarioRepository.buscarPorEmail(email) != null) {
             return;
@@ -141,7 +179,9 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @PermitAll
     public List<Usuario> listarProfesionales() {
-        return usuarioRepository.listarPorRol(RolUsuario.PROFESIONAL);
+        return usuarioRepository.listarPorRol(RolUsuario.PROFESIONAL).stream()
+                .filter(Usuario::isActivo)
+                .toList();
     }
 
     @Override

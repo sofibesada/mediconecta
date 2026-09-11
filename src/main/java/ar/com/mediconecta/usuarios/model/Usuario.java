@@ -26,6 +26,9 @@ public class Usuario {
     @Column(name = "debe_cambiar_password", nullable = false)
     private boolean debeCambiarPassword = false;
 
+    @Column(nullable = false)
+    private boolean activo = true;
+
     public Usuario() {}
 
     public Long getId() { return id; }
@@ -40,4 +43,6 @@ public class Usuario {
     public void setRol(RolUsuario rol) { this.rol = rol; }
     public boolean isDebeCambiarPassword() { return debeCambiarPassword; }
     public void setDebeCambiarPassword(boolean debeCambiarPassword) { this.debeCambiarPassword = debeCambiarPassword; }
+    public boolean isActivo() { return activo; }
+    public void setActivo(boolean activo) { this.activo = activo; }
 }
