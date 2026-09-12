@@ -7,12 +7,15 @@ import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.ejb.Stateful;
+import jakarta.ejb.StatefulTimeout;
 import jakarta.inject.Inject;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @Stateful
+@StatefulTimeout(value = 5, unit = TimeUnit.MINUTES)
 public class TurnoService implements ITurnoService {
 
     private static final int MINUTOS_HOLD = 5;
