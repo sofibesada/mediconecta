@@ -703,6 +703,9 @@
         document.getElementById("histVolver").hidden = historiaCtx.propia;
         document.getElementById("histTitulo").textContent = historiaCtx.propia ? "Historia Clínica" : "Historia de " + historiaCtx.nombre;
         document.getElementById("histSub").textContent = historiaCtx.propia ? "Tus diagnósticos y recetas" : "Diagnósticos y recetas del paciente";
+        // Cargar diagnóstico/receta es una acción del profesional; un paciente
+        // viendo su propia historia solo puede consultarla, no escribirla.
+        document.getElementById("histForms").hidden = historiaCtx.propia;
         const d = document.getElementById("histDiag"), r = document.getElementById("histRec");
         const reqId = ++historiaReqId;
         const pacienteId = historiaCtx.id;
