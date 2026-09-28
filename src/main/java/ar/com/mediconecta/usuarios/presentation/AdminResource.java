@@ -9,13 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Operaciones de administracion. Cada endpoint recibe el adminId del solicitante
- * y el servicio valida que ese usuario tenga rol ADMIN.
- *
- * (Sin autenticacion real el backend no puede verificar quien llama; valida el
- * rol del id que se le pasa. La verificacion fuerte seria con JWT.)
- */
 @Path("/admin")
 public class AdminResource {
 

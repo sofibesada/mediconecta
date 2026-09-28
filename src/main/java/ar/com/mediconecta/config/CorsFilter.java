@@ -8,16 +8,6 @@ import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 
-/**
- * Habilita CORS para que el frontend (abierto como archivo local o servido en
- * otro puerto/origen) pueda consumir la API desde el navegador.
- *
- * - Responde el preflight OPTIONS con las cabeceras Access-Control-*.
- * - Agrega esas cabeceras a todas las respuestas de la API.
- *
- * Se usa "*" como origen permitido porque la API no usa cookies ni sesiones
- * (la autenticacion sensible va por Basic Auth explicito en cada request).
- */
 @Provider
 @PreMatching
 public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilter {

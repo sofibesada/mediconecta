@@ -17,12 +17,6 @@ public class AgendaTurnoFacade {
     @Inject
     private IUsuarioService usuarioService;
 
-    // TurnoService es @Stateful; si se inyectara directo aca (Facade es
-    // @ApplicationScoped) CDI le asignaria una unica instancia dependent para
-    // toda la vida de la aplicacion, y el contenedor EJB solo permite una
-    // invocacion a la vez sobre una instancia stateful -- dos reservas
-    // concurrentes se serializarian o fallarian. Instance<> pide una
-    // instancia nueva en cada llamada y se la destruye despues.
     @Inject
     private Instance<ITurnoService> turnoServiceProvider;
 
