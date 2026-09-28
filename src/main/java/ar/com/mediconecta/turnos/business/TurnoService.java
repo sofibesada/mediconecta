@@ -114,10 +114,28 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
-    public Turno reprogramarTurno(Long turnoId, LocalDateTime nuevaFecha) {
+    public Turno reprogramarTurno(Long profesionalId, Long turnoId, LocalDateTime nuevaFecha) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null) {
             throw new ConflictoTurnoException("Turno no encontrado");
+        }
+        if (!turno.getProfesionalId().equals(profesionalId)) {
+            throw new DatosTurnoInvalidosException("Solo el profesional del turno puede reprogramarlo");
+        }
+        if (turno.getEstado() == EstadoTurno.CANCELADO) {
+            throw new ConflictoTurnoException("No se puede reprogramar un turno cancelado");
+        }
+        if (turno.getEstado() == EstadoTurno.RESERVADO_TEMPORAL) {
+            throw new ConflictoTurnoException("El paciente está confirmando este turno; esperá a que lo confirme o se libere");
+        }
+        if (nuevaFecha == null || !nuevaFecha.isAfter(LocalDateTime.now())) {
+            throw new DatosTurnoInvalidosException("La nueva fecha tiene que ser futura");
+        }
+        if (nuevaFecha.equals(turno.getFechaHora())) {
+            throw new DatosTurnoInvalidosException("La nueva fecha es igual a la actual");
+        }
+        if (turnoRepository.existeTurnoEnHorario(profesionalId, nuevaFecha, turnoId)) {
+            throw new ConflictoTurnoException("Ya tenés otro turno en ese horario");
         }
         LocalDateTime fechaAnterior = turno.getFechaHora();
         turno.setFechaHora(nuevaFecha);
