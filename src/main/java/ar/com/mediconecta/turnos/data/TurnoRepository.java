@@ -5,6 +5,7 @@ import ar.com.mediconecta.turnos.model.Turno;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @ApplicationScoped
@@ -45,6 +46,19 @@ public class TurnoRepository {
                         Turno.class)
                 .setParameter("profesionalId", profesionalId)
                 .getResultList();
+    }
+
+    /** Si el profesional ya tiene otro turno (no cancelado) en ese horario, sin contar excluirId. */
+    public boolean existeTurnoEnHorario(Long profesionalId, LocalDateTime fechaHora, Long excluirId) {
+        return em.createQuery(
+                        "SELECT COUNT(t) FROM Turno t WHERE t.profesionalId = :profesionalId AND t.fechaHora = :fechaHora"
+                                + " AND t.estado <> :cancelado AND t.id <> :excluirId",
+                        Long.class)
+                .setParameter("profesionalId", profesionalId)
+                .setParameter("fechaHora", fechaHora)
+                .setParameter("cancelado", EstadoTurno.CANCELADO)
+                .setParameter("excluirId", excluirId)
+                .getSingleResult() > 0;
     }
 
     public Turno actualizar(Turno turno) {

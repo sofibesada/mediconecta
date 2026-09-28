@@ -11,6 +11,6 @@ public interface ITurnoService {
     Turno reservarTemporalmente(Long pacienteId, Long turnoId);
     Turno confirmarTurno(Long turnoId);
     void cancelarTurno(Long turnoId);
-    Turno reprogramarTurno(Long turnoId, LocalDateTime nuevaFecha);
+    Turno reprogramarTurno(Long profesionalId, Long turnoId, LocalDateTime nuevaFecha);
     Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora);
 }

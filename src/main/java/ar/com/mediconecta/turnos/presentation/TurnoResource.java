@@ -82,6 +82,14 @@ public class TurnoResource {
         return aResponse(turnoService.confirmarTurno(turnoId));
     }
 
+    @PUT
+    @Path("/{turnoId}/reprogramar")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public TurnoResponse reprogramar(@PathParam("turnoId") Long turnoId, ReprogramarTurnoRequest request) {
+        return aResponse(turnoService.reprogramarTurno(request.profesionalId, turnoId, request.fechaHora));
+    }
+
     @DELETE
     @Path("/{turnoId}")
     public void cancelar(@PathParam("turnoId") Long turnoId) {
