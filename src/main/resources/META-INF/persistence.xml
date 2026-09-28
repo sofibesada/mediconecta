@@ -10,6 +10,7 @@
         <class>ar.com.mediconecta.turnos.model.Turno</class>
         <class>ar.com.mediconecta.historiaclinica.model.Diagnostico</class>
         <class>ar.com.mediconecta.historiaclinica.model.Receta</class>
+        <class>ar.com.mediconecta.notificaciones.model.Notificacion</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <properties>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
