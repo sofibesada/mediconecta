@@ -1,0 +1,7 @@
+jms-topic add --topic-address=TurnosEventosTopic --entries=java:/jms/topic/TurnosEventos
+
+
+/subsystem=messaging-activemq/server=default/address-setting=jms.topic.TurnosEventosTopic:add( \
+  max-delivery-attempts=3, \
+  redelivery-delay=2000, \
+  dead-letter-address=jms.queue.DLQ)
