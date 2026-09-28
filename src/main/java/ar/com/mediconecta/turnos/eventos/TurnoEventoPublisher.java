@@ -39,6 +39,7 @@ public class TurnoEventoPublisher {
         evento.setFechaHoraAnterior(fechaHoraAnterior);
         evento.setOcurridoEn(LocalDateTime.now());
 
+
         jmsContext.createProducer()
                 .setProperty("tipo", tipo.name())
                 .send(topic, JSONB.toJson(evento));
