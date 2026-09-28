@@ -6,13 +6,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
-/**
- * Red de seguridad: cualquier excepcion que ningun mapper especifico
- * (IllegalArgumentException, IllegalStateException, EJBException) resuelva
- * cae aca en vez de filtrarse como una pagina de error no-JSON. Los
- * WebApplicationException (NotFoundException, etc.) conservan su propia
- * respuesta.
- */
 @Provider
 public class GenericExceptionMapper implements ExceptionMapper<Exception> {
 

@@ -9,13 +9,6 @@ import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Listado publico de profesionales (usuarios con rol PROFESIONAL), para que el
- * frontend ofrezca un desplegable por nombre en vez de pedir un id.
- *
- * Va en su propio path (/profesionales) y no bajo /usuarios/* para no quedar
- * detras del security-constraint de admin del web.xml.
- */
 @Path("/profesionales")
 public class ProfesionalResource {
 

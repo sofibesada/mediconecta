@@ -3,10 +3,6 @@ package ar.com.mediconecta.turnos.presentation;
 import ar.com.mediconecta.turnos.model.Turno;
 import java.time.LocalDateTime;
 
-/**
- * Respuesta de la API para un turno. Ademas de los ids, incluye los nombres
- * del profesional y del paciente para que el frontend no tenga que resolverlos.
- */
 public class TurnoResponse {
     public Long id;
     public Long profesionalId;

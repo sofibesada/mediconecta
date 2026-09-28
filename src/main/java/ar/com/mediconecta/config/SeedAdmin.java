@@ -6,12 +6,6 @@ import jakarta.ejb.Singleton;
 import jakarta.ejb.Startup;
 import jakarta.inject.Inject;
 
-/**
- * Siembra la cuenta ADMIN al desplegar la aplicacion, si todavia no existe.
- * Es la unica forma de tener un ADMIN: no se puede crear por el registro.
- *
- * Las credenciales viven aca, en el backend. Cambiarlas aca si hace falta.
- */
 @Singleton
 @Startup
 public class SeedAdmin {
