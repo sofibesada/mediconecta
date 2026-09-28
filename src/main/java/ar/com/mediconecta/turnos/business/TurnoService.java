@@ -1,6 +1,8 @@
 package ar.com.mediconecta.turnos.business;
 
 import ar.com.mediconecta.turnos.data.TurnoRepository;
+import ar.com.mediconecta.turnos.eventos.TipoEventoTurno;
+import ar.com.mediconecta.turnos.eventos.TurnoEventoPublisher;
 import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Turno;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
@@ -26,6 +28,9 @@ public class TurnoService implements ITurnoService {
 
     @Inject
     private IUsuarioService usuarioService;
+
+    @Inject
+    private TurnoEventoPublisher eventoPublisher;
 
     @PostConstruct
     public void init() {
@@ -83,13 +88,15 @@ public class TurnoService implements ITurnoService {
             throw new ConflictoTurnoException("El hold del turno expiró, volvé a reservarlo");
         }
         turno.setEstado(EstadoTurno.CONFIRMADO);
-        return turnoRepository.actualizar(turno);
+        Turno confirmado = turnoRepository.actualizar(turno);
+        eventoPublisher.publicar(TipoEventoTurno.TURNO_CONFIRMADO, confirmado, null);
+        return confirmado;
     }
 
     @Override
     public void cancelarTurno(Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
-        if (turno == null) {
+        if (turno == null || turno.getEstado() == EstadoTurno.CANCELADO) {
             return;
         }
         PoliticaCancelacion politica = turno.isUrgente()
@@ -101,6 +108,9 @@ public class TurnoService implements ITurnoService {
         }
         turno.setEstado(EstadoTurno.CANCELADO);
         turnoRepository.actualizar(turno);
+        if (turno.getPacienteId() != null) {
+            eventoPublisher.publicar(TipoEventoTurno.TURNO_CANCELADO, turno, null);
+        }
     }
 
     @Override
@@ -109,8 +119,13 @@ public class TurnoService implements ITurnoService {
         if (turno == null) {
             throw new ConflictoTurnoException("Turno no encontrado");
         }
+        LocalDateTime fechaAnterior = turno.getFechaHora();
         turno.setFechaHora(nuevaFecha);
-        return turnoRepository.actualizar(turno);
+        Turno reprogramado = turnoRepository.actualizar(turno);
+        if (reprogramado.getPacienteId() != null) {
+            eventoPublisher.publicar(TipoEventoTurno.TURNO_REPROGRAMADO, reprogramado, fechaAnterior);
+        }
+        return reprogramado;
     }
 
     @Override
