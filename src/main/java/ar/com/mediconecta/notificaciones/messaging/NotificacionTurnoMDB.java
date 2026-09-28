@@ -10,6 +10,8 @@ import jakarta.jms.TextMessage;
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
 import java.util.logging.Logger;
+import ar.com.mediconecta.notificaciones.business.INotificacionService;
+import jakarta.inject.Inject;
 
 /**
  * Consumidor asincronico de los eventos de turnos. Nadie lo llama: WildFly
@@ -32,6 +34,8 @@ public class NotificacionTurnoMDB implements MessageListener {
 
     private static final Logger LOG = Logger.getLogger(NotificacionTurnoMDB.class.getName());
     private static final Jsonb JSONB = JsonbBuilder.create();
+    @Inject
+    private INotificacionService notificacionService;
 
     @Override
     public void onMessage(Message message) {
@@ -44,7 +48,7 @@ public class NotificacionTurnoMDB implements MessageListener {
                     + " evento=" + evento.getEventoId()
                     + " intento=" + message.getIntProperty("JMSXDeliveryCount"));
 
-            // Paso 6: aca se llama a NotificacionService para guardar y avisar.
+            notificacionService.procesarEventoTurno(evento);
 
         } catch (JMSException e) {
             // Excepcion de sistema: el contenedor hace rollback de la transaccion
