@@ -37,6 +37,7 @@ public class TurnoEventoPublisher {
         evento.setProfesionalId(turno.getProfesionalId());
         evento.setFechaHora(turno.getFechaHora());
         evento.setFechaHoraAnterior(fechaHoraAnterior);
+        evento.setModalidad(turno.getModalidad().name());
         evento.setOcurridoEn(LocalDateTime.now());
 
 

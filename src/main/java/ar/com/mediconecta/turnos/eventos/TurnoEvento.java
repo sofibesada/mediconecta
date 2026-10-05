@@ -13,8 +13,14 @@ public class TurnoEvento {
 
     private LocalDateTime fechaHoraAnterior;
     private LocalDateTime ocurridoEn;
+    /** PRESENCIAL o VIRTUAL. String (no el enum) para que el contrato JSON no dependa de la clase. */
+    private String modalidad;
 
     public TurnoEvento() {}
+
+    public String getModalidad() { return modalidad; }
+    public void setModalidad(String modalidad) { this.modalidad = modalidad; }
+    public boolean esVirtual() { return "VIRTUAL".equals(modalidad); }
 
     public String getEventoId() { return eventoId; }
     public void setEventoId(String eventoId) { this.eventoId = eventoId; }

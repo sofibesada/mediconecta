@@ -33,7 +33,8 @@ public class NotificacionService implements INotificacionService {
         switch (e.getTipo()) {
             case TURNO_CONFIRMADO -> {
                 crear(e, e.getPacienteId(), "Turno confirmado",
-                        "Tu turno con " + profesional + " el " + fecha + " quedó confirmado.");
+                        "Tu turno con " + profesional + " el " + fecha + " quedó confirmado."
+                                + (e.esVirtual() ? " Es una teleconsulta: el link para entrar va a estar en Mis Citas." : ""));
                 crear(e, e.getProfesionalId(), "Nuevo turno",
                         paciente + " confirmó un turno para el " + fecha + ".");
             }
