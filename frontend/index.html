@@ -798,7 +798,7 @@
             <div class="fila-titulo">${fmtFecha(t.fechaHora)}</div>
             <div class="fila-detalle">${otro}${t.urgente ? " · <strong>Urgente</strong>" : ""}</div>
             <span class="badge badge-${t.estado}">${t.estado.replace("_", " ")}</span>
-            <div id="repro-${t.id}"></div>
+            ${permitirReprogramar ? `<div id="repro-${t.id}"></div>` : ""}
         </div>${acciones}</div>`;
     }
 
