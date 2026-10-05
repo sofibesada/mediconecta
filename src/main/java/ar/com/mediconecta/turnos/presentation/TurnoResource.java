@@ -100,7 +100,7 @@ public class TurnoResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public TurnoResponse crear(CrearTurnoRequest request) {
-        return aResponse(turnoService.crearTurnoDisponible(request.profesionalId, request.fechaHora));
+        return aResponse(turnoService.crearTurnoDisponible(request.profesionalId, request.fechaHora, request.modalidad));
     }
 
     @POST

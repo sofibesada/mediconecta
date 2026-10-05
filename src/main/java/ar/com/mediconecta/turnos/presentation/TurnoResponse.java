@@ -13,6 +13,7 @@ public class TurnoResponse {
     public String estado;
     public LocalDateTime holdExpiraEn;
     public boolean urgente;
+    public String modalidad;
 
     public static TurnoResponse from(Turno t, String profesionalNombre, String pacienteNombre) {
         TurnoResponse r = new TurnoResponse();
@@ -22,9 +23,10 @@ public class TurnoResponse {
         r.pacienteId = t.getPacienteId();
         r.pacienteNombre = pacienteNombre;
         r.fechaHora = t.getFechaHora();
-        r.estado = t.getEstado() != null ? t.getEstado().name() : null;
+        r.estado = t.isFinalizado() ? "FINALIZADO" : (t.getEstado() != null ? t.getEstado().name() : null);
         r.holdExpiraEn = t.getHoldExpiraEn();
         r.urgente = t.isUrgente();
+        r.modalidad = t.getModalidad().name();
         return r;
     }
 }

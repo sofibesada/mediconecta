@@ -25,10 +25,12 @@ public class TurnoRepository {
 
     public List<Turno> listarDisponiblesPorProfesional(Long profesionalId) {
         return em.createQuery(
-                        "SELECT t FROM Turno t WHERE t.profesionalId = :profesionalId AND t.estado = :estado",
+                        "SELECT t FROM Turno t WHERE t.profesionalId = :profesionalId AND t.estado = :estado"
+                                + " AND t.fechaHora > :ahora ORDER BY t.fechaHora",
                         Turno.class)
                 .setParameter("profesionalId", profesionalId)
                 .setParameter("estado", EstadoTurno.DISPONIBLE)
+                .setParameter("ahora", LocalDateTime.now())
                 .getResultList();
     }
 

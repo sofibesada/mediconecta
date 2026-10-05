@@ -1,5 +1,6 @@
 package ar.com.mediconecta.turnos.business;
 
+import ar.com.mediconecta.turnos.model.Modalidad;
 import ar.com.mediconecta.turnos.model.Turno;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,5 +13,5 @@ public interface ITurnoService {
     Turno confirmarTurno(Long turnoId);
     void cancelarTurno(Long turnoId);
     Turno reprogramarTurno(Long profesionalId, Long turnoId, LocalDateTime nuevaFecha);
-    Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora);
+    Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora, Modalidad modalidad);
 }

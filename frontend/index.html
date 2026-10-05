@@ -91,6 +91,7 @@
         .badge-RESERVADO_TEMPORAL { background: var(--amber-100); color: var(--amber-700); }
         .badge-CONFIRMADO { background: rgba(22,163,74,0.12); color: var(--green-600); }
         .badge-CANCELADO { background: #fee2e2; color: var(--red-600); }
+        .badge-FINALIZADO { background: var(--slate-100); color: var(--slate-600); }
         .badge-rol { background: var(--slate-100); color: var(--slate-600); margin: 0; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -311,6 +312,9 @@
                         <div class="card-titulo">Publicar un horario disponible</div>
                         <div class="row-inline">
                             <div class="form-group"><label>Fecha y hora</label><input type="datetime-local" id="agnFecha"></div>
+                            <div class="form-group"><label>Modalidad</label>
+                                <select id="agnModalidad"><option value="PRESENCIAL">Presencial</option><option value="VIRTUAL">Virtual (teleconsulta)</option></select>
+                            </div>
                             <button class="btn-primary" id="btnPublicar" onclick="publicarDisponibilidad()">Publicar</button>
                         </div>
                     </div>
@@ -580,7 +584,7 @@
         cont.innerHTML = `<div class="muted">Cargando…</div>`;
         try {
             const url = esProf ? "/turnos/profesional/" + usuario.id : "/turnos/paciente/" + usuario.id;
-            const turnos = (await api(url)).filter(t => t.estado !== "CANCELADO").slice(0, 5);
+            const turnos = (await api(url)).filter(t => t.estado !== "CANCELADO" && t.estado !== "FINALIZADO").slice(0, 5);
             cont.innerHTML = turnos.length ? turnos.map(t => filaTurno(t)).join("") : `<div class="muted">No hay turnos por ahora.</div>`;
         } catch (e) { cont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
     }
@@ -615,7 +619,7 @@
                 ${turnos.map(t => `
                     <div class="fila"><div class="fila-info">
                         <div class="fila-titulo">${fmtFecha(t.fechaHora)}</div>
-                        <div class="fila-detalle">con ${escapar(t.profesionalNombre || ("Profesional #" + t.profesionalId))}</div>
+                        <div class="fila-detalle">con ${escapar(t.profesionalNombre || ("Profesional #" + t.profesionalId))} · ${modalidadLinda(t.modalidad)}</div>
                         <span class="badge badge-DISPONIBLE">Disponible</span>
                     </div><div class="fila-acciones"><button class="btn-primary btn-sm" onclick="reservar(${t.id})">Reservar</button></div></div>`).join("")}
                 </div>` : `<div class="muted">Este profesional no tiene horarios disponibles por ahora.</div>`;
@@ -663,7 +667,9 @@
                 <div class="kv"><span class="kv-label">Profesional</span><span class="kv-value">${escapar(t.profesionalNombre || "—")}</span></div>
                 <div class="kv"><span class="kv-label">Paciente</span><span class="kv-value">${escapar(t.pacienteNombre || "—")}</span></div>
                 <div class="kv"><span class="kv-label">Fecha</span><span class="kv-value">${fmtFecha(t.fechaHora)}</span></div>
-                <div class="kv"><span class="kv-label">Estado</span><span class="kv-value">${t.estado}</span></div>`;
+                <div class="kv"><span class="kv-label">Modalidad</span><span class="kv-value">${modalidadLinda(t.modalidad)}</span></div>
+                <div class="kv"><span class="kv-label">Estado</span><span class="kv-value">${t.estado}</span></div>
+                ${t.modalidad === "VIRTUAL" ? `<p class="inline-hint" style="margin-top:10px;">Es una teleconsulta: en unos segundos vas a tener el botón "Unirse a la videollamada" en Mis Citas.</p>` : ""}`;
             ir("confirmacion");
             toast("Turno confirmado", "ok");
             revisarPronto();
@@ -671,23 +677,30 @@
     }
 
     // ---------- mi agenda (profesional) ----------
+    // Fecha/hora LOCAL en el formato del input datetime-local (no toISOString(), que es UTC).
+    function fechaParaInput(d) {
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function esFutura(fechaInput) {
+        return new Date(fechaInput) > new Date();
+    }
     function prepararFechaAgenda() {
-        if (!val("agnFecha")) {
+        const input = document.getElementById("agnFecha");
+        input.min = fechaParaInput(new Date()); // el selector no deja elegir fechas pasadas
+        if (!input.value) {
             const d = new Date(Date.now() + 3 * 864e5);
             d.setMinutes(0, 0, 0);
-            const pad = n => String(n).padStart(2, "0");
-            // Fecha/hora LOCAL, no toISOString() (que es UTC) -- el input
-            // datetime-local se interpreta como hora local del navegador.
-            document.getElementById("agnFecha").value =
-                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            input.value = fechaParaInput(d);
         }
     }
     async function publicarDisponibilidad() {
         let fechaHora = val("agnFecha");
         if (!fechaHora) return toast("Elegí fecha y hora", "err");
+        if (!esFutura(fechaHora)) return toast("Elegí una fecha y hora futuras", "err");
         if (fechaHora.length === 16) fechaHora += ":00";
         await conBoton("btnPublicar", async () => {
-            await api("/turnos", { method: "POST", body: { profesionalId: usuario.id, fechaHora } });
+            await api("/turnos", { method: "POST", body: { profesionalId: usuario.id, fechaHora, modalidad: val("agnModalidad") } });
             toast("Horario publicado", "ok");
             cargarMiAgenda();
         });
@@ -789,17 +802,43 @@
             ? (t.pacienteNombre ? "Paciente: " + escapar(t.pacienteNombre) : "Sin paciente aún")
             : "con " + escapar(t.profesionalNombre || ("Profesional #" + t.profesionalId));
         const botones = [];
+        if (t.modalidad === "VIRTUAL" && t.estado === "CONFIRMADO")
+            botones.push(`<button class="btn-primary btn-sm" onclick="unirseVideollamada(${t.id})">Unirse a la videollamada</button>`);
         if (permitirReprogramar && (t.estado === "CONFIRMADO" || t.estado === "DISPONIBLE"))
             botones.push(`<button class="btn-secondary btn-sm" onclick="abrirReprogramar(${t.id}, '${t.fechaHora}')">Reprogramar</button>`);
-        if (permitirCancelar && t.estado !== "CANCELADO")
+        if (permitirCancelar && t.estado !== "CANCELADO" && t.estado !== "FINALIZADO")
             botones.push(`<button class="btn-danger btn-sm" onclick="cancelarTurno(${t.id})">Cancelar</button>`);
         const acciones = botones.length ? `<div class="fila-acciones">${botones.join("")}</div>` : "";
         return `<div class="fila"><div class="fila-info">
             <div class="fila-titulo">${fmtFecha(t.fechaHora)}</div>
-            <div class="fila-detalle">${otro}${t.urgente ? " · <strong>Urgente</strong>" : ""}</div>
+            <div class="fila-detalle">${otro} · ${modalidadLinda(t.modalidad)}${t.urgente ? " · <strong>Urgente</strong>" : ""}</div>
             <span class="badge badge-${t.estado}">${t.estado.replace("_", " ")}</span>
             ${permitirReprogramar ? `<div id="repro-${t.id}"></div>` : ""}
         </div>${acciones}</div>`;
+    }
+
+    // ---------- telemedicina ----------
+    function modalidadLinda(m) {
+        return m === "VIRTUAL" ? "🎥 Teleconsulta" : "Presencial";
+    }
+    async function unirseVideollamada(turnoId) {
+        // Se abre la pestaña ya (dentro del clic) para que el navegador no la bloquee como popup.
+        const pestana = window.open("", "_blank");
+        try {
+            const sala = await api("/turnos/" + turnoId + "/sala?usuarioId=" + usuario.id);
+            // Jitsi abre con el nombre ya cargado (parámetro userInfo.displayName, en JSON).
+            const nombre = "userInfo.displayName=" + encodeURIComponent(JSON.stringify(usuario.nombre || ""));
+            const url = sala.url + (sala.url.includes("#") ? "&" : "#") + nombre;
+            if (pestana) pestana.location = url;
+            else window.location.href = url; // el navegador bloqueó la pestaña nueva
+            toast(sala.rol === "ANFITRION"
+                ? "Sos el anfitrión: si Jitsi te lo pide, iniciá sesión para abrir la reunión."
+                : "Entrás como paciente: no hace falta iniciar sesión. Si el profesional todavía no llegó, vas a esperar unos segundos.", "info");
+        } catch (e) {
+            if (pestana) pestana.close();
+            // La sala la crea un consumidor JMS de forma asincrónica: puede tardar unos segundos.
+            toast("La sala todavía se está preparando. Probá de nuevo en unos segundos.", "info");
+        }
     }
 
     // ---------- reprogramar (profesional) ----------
@@ -808,7 +847,7 @@
         if (cont.innerHTML) { cont.innerHTML = ""; return; } // segundo clic: cierra el editor
         cont.innerHTML = `
             <div class="row-inline" style="margin-top:12px;">
-                <div class="form-group"><label>Nueva fecha y hora</label><input type="datetime-local" id="reproFecha-${id}" value="${String(fechaActual).slice(0, 16)}"></div>
+                <div class="form-group"><label>Nueva fecha y hora</label><input type="datetime-local" id="reproFecha-${id}" min="${fechaParaInput(new Date())}" value="${String(fechaActual).slice(0, 16)}"></div>
                 <button class="btn-primary btn-sm" id="btnRepro-${id}" onclick="guardarReprogramacion(${id})">Guardar</button>
                 <button class="btn-secondary btn-sm" onclick="document.getElementById('repro-${id}').innerHTML = ''">Cancelar</button>
             </div>
@@ -818,6 +857,7 @@
     async function guardarReprogramacion(id) {
         let fechaHora = val("reproFecha-" + id);
         if (!fechaHora) return toast("Elegí la nueva fecha y hora", "err");
+        if (!esFutura(fechaHora)) return toast("Elegí una fecha y hora futuras", "err");
         if (fechaHora.length === 16) fechaHora += ":00";
         await conBoton("btnRepro-" + id, async () => {
             await api("/turnos/" + id + "/reprogramar", { method: "PUT", body: { profesionalId: usuario.id, fechaHora } });
@@ -993,7 +1033,9 @@
         if (!iso) return "—";
         const dt = new Date(iso);
         if (isNaN(dt)) return iso;
-        return dt.toLocaleString("es-AR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+        const opciones = { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" };
+        if (dt.getFullYear() !== new Date().getFullYear()) opciones.year = "numeric"; // otro año: mostrarlo
+        return dt.toLocaleString("es-AR", opciones);
     }
     async function conBoton(id, fn) {
         const b = document.getElementById(id);
