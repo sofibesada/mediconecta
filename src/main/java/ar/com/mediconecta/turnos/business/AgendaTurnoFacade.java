@@ -5,7 +5,6 @@ import ar.com.mediconecta.turnos.model.Turno;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.logging.Logger;
 
@@ -17,8 +16,10 @@ public class AgendaTurnoFacade {
     @Inject
     private IUsuarioService usuarioService;
 
+    // TurnoService es @Stateless: se puede inyectar directo en un bean @ApplicationScoped,
+    // porque cada llamada la atiende cualquier instancia libre del pool.
     @Inject
-    private Instance<ITurnoService> turnoServiceProvider;
+    private ITurnoService turnoService;
 
     @PostConstruct
     public void init() {
@@ -34,11 +35,6 @@ public class AgendaTurnoFacade {
         if (!usuarioService.existeUsuario(pacienteId)) {
             throw new IllegalArgumentException("El paciente no existe");
         }
-        ITurnoService turnoService = turnoServiceProvider.get();
-        try {
-            return turnoService.reservarTemporalmente(pacienteId, turnoId);
-        } finally {
-            turnoServiceProvider.destroy(turnoService);
-        }
+        return turnoService.reservarTemporalmente(pacienteId, turnoId);
     }
 }
