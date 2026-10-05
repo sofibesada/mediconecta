@@ -1,0 +1,47 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <!--
+        Simulador de la plataforma EXTERNA de videollamadas que consume MediConecta.
+        Es una aplicacion separada (otro WAR, otro contexto) para que la integracion
+        sea REST de verdad, por HTTP, como con un proveedor real.
+
+        Deploy:  cd videollamadas-mock  &&  mvn clean package wildfly:deploy
+        API:     http://localhost:8080/videollamadas-mock/api/v1/rooms
+    -->
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>ar.com.videollamadas</groupId>
+    <artifactId>videollamadas-mock</artifactId>
+    <version>1.0</version>
+    <packaging>war</packaging>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <failOnMissingWebXml>false</failOnMissingWebXml>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>10.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>videollamadas-mock</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <version>5.1.2.Final</version>
+                <configuration>
+                    <hostname>localhost</hostname>
+                    <port>9990</port>
+                    <id>wildfly-admin</id>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

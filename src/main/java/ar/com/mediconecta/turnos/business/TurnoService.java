@@ -9,16 +9,19 @@ import ar.com.mediconecta.turnos.model.Turno;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import jakarta.ejb.Stateful;
-import jakarta.ejb.StatefulTimeout;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-@Stateful
-@StatefulTimeout(value = 5, unit = TimeUnit.MINUTES)
+/**
+ * Reglas de negocio de los turnos. Es @Stateless: cada operacion es independiente y
+ * no guarda nada de un cliente entre llamadas (el estado del turno vive en la base).
+ * La conversacion de "agendar un turno" paso a paso la lleva AsistenteAgendamiento,
+ * que si es @Stateful.
+ */
+@Stateless
 public class TurnoService implements ITurnoService {
 
     private static final int MINUTOS_HOLD = 5;
@@ -35,12 +38,31 @@ public class TurnoService implements ITurnoService {
 
     @PostConstruct
     public void init() {
-        LOG.info("[Ciclo de vida] TurnoService @Stateful CREADO por WildFly - instancia #" + System.identityHashCode(this));
+        LOG.info("[Ciclo de vida] TurnoService @Stateless CREADO por WildFly (entra al pool) - instancia #" + System.identityHashCode(this));
     }
 
     @PreDestroy
     public void destroy() {
-        LOG.info("[Ciclo de vida] TurnoService @Stateful DESTRUIDO por WildFly - instancia #" + System.identityHashCode(this));
+        LOG.info("[Ciclo de vida] TurnoService @Stateless DESTRUIDO por WildFly (sale del pool) - instancia #" + System.identityHashCode(this));
+    }
+
+    @Override
+    public Turno buscarTurno(Long turnoId) {
+        return turnoRepository.buscarPorId(turnoId);
+    }
+
+    @Override
+    public void liberarReservaTemporal(Long pacienteId, Long turnoId) {
+        Turno turno = turnoRepository.buscarPorId(turnoId);
+        // Solo libera su propia reserva temporal: si ya se confirmo, vencio o es de otro, no hace nada.
+        if (turno == null || turno.getEstado() != EstadoTurno.RESERVADO_TEMPORAL
+                || !pacienteId.equals(turno.getPacienteId())) {
+            return;
+        }
+        turno.setEstado(EstadoTurno.DISPONIBLE);
+        turno.setPacienteId(null);
+        turno.setHoldExpiraEn(null);
+        turnoRepository.actualizar(turno);
     }
 
     @Override
@@ -64,7 +86,10 @@ public class TurnoService implements ITurnoService {
             throw new DatosTurnoInvalidosException("El paciente indicado no existe o está desactivado");
         }
         Turno turno = turnoRepository.buscarPorId(turnoId);
-        if (turno == null || turno.getEstado() != EstadoTurno.DISPONIBLE) {
+        // Una reserva temporal vencida (el paciente la abandono) cuenta como disponible.
+        boolean holdVencido = turno != null && turno.getEstado() == EstadoTurno.RESERVADO_TEMPORAL
+                && turno.getHoldExpiraEn() != null && turno.getHoldExpiraEn().isBefore(LocalDateTime.now());
+        if (turno == null || (turno.getEstado() != EstadoTurno.DISPONIBLE && !holdVencido)) {
             throw new ConflictoTurnoException("El turno no está disponible");
         }
         if (turno.yaPaso()) {

@@ -283,6 +283,7 @@
                         <div class="card-titulo">2 · Reserva temporal activa</div>
                         <div id="agHoldContenido"></div>
                     </div>
+                    <p class="inline-hint" id="agAsistenteInfo"></p>
                 </div>
 
                 <!-- MIS CITAS (paciente) -->
@@ -416,11 +417,14 @@
     function leerLS(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
     function guardarLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-    async function api(path, { method = "GET", body } = {}) {
+    // sesion: true -> el navegador manda la cookie de sesión (JSESSIONID). La usa el
+    // asistente de agendamiento (@Stateful) para que cada pedido llegue a SU instancia.
+    async function api(path, { method = "GET", body, sesion = false } = {}) {
         let res;
         try {
             res = await fetch(API + path, {
                 method,
+                credentials: sesion ? "include" : "same-origin",
                 headers: body !== undefined ? { "Content-Type": "application/json" } : {},
                 body: body !== undefined ? JSON.stringify(body) : undefined
             });
@@ -488,6 +492,8 @@
     }
 
     function logout() {
+        // Si dejó un turno retenido sin confirmar, se libera (termina la conversación del asistente).
+        if (turnoEnHold && usuario) api("/asistente-agendamiento?pacienteId=" + usuario.id, { method: "DELETE", sesion: true }).catch(() => {});
         usuario = null;
         localStorage.removeItem("mc_user");
         clearInterval(holdTimer);
@@ -594,15 +600,42 @@
     }
 
     // ---------- agendar (paciente) ----------
+    // La reserva en curso la recuerda el SERVIDOR: un AsistenteAgendamiento (@Stateful)
+    // por navegador, atado a la sesión HTTP. Si el paciente se va de la pantalla y vuelve,
+    // el asistente le devuelve el profesional elegido y el turno que tenía retenido.
+    const ASISTENTE = "/asistente-agendamiento";
+
     async function prepararAgendar() {
         const sel = document.getElementById("agSelectProf");
         sel.innerHTML = `<option value="">Cargando…</option>`;
+        document.getElementById("agCardHold").hidden = true;
         try { profesionalesCache = await api("/profesionales"); }
         catch (e) { toast(e.message, "err"); profesionalesCache = []; }
         sel.innerHTML = `<option value="">— Seleccioná —</option>` +
             profesionalesCache.map(p => `<option value="${p.id}">${escapar(p.nombre)}</option>`).join("");
         document.getElementById("agDispLista").innerHTML = profesionalesCache.length
             ? "" : `<div class="muted">Todavía no hay profesionales cargados.</div>`;
+        try {
+            const est = await api(ASISTENTE + "?pacienteId=" + usuario.id, { sesion: true });
+            pintarAsistente(est);
+            if (est.profesionalId) {
+                sel.value = est.profesionalId;
+                await alElegirProfesional();
+            }
+            if (est.turnoRetenido) {
+                turnoEnHold = est.turnoRetenido;
+                mostrarHold();
+                toast("Retomamos tu reserva en curso", "info");
+            } else {
+                turnoEnHold = null;
+            }
+        } catch (e) { toast(e.message, "err"); }
+    }
+
+    function pintarAsistente(est) {
+        document.getElementById("agAsistenteInfo").textContent = est
+            ? `Tu reserva en curso la guarda el servidor (asistente #${est.asistenteId} · ${est.pedidosAtendidos} ${est.pedidosAtendidos === 1 ? "paso" : "pasos"}).`
+            : "";
     }
 
     async function alElegirProfesional() {
@@ -612,8 +645,10 @@
         const reqId = ++dispReqId;
         cont.innerHTML = `<div class="muted">Buscando horarios…</div>`;
         try {
-            const turnos = await api("/turnos/disponibilidad/" + profId);
+            const est = await api(ASISTENTE + "/profesional", { method: "PUT", body: { pacienteId: usuario.id, profesionalId: profId }, sesion: true });
             if (reqId !== dispReqId) return; // el usuario ya eligió otro profesional
+            pintarAsistente(est);
+            const turnos = est.horarios || [];
             cont.innerHTML = turnos.length ? `
                 <div class="lista"><div class="lista-header">Horarios disponibles</div>
                 ${turnos.map(t => `
@@ -628,10 +663,24 @@
 
     async function reservar(turnoId) {
         try {
-            const t = await api("/turnos/agendar", { method: "POST", body: { pacienteId: usuario.id, turnoId } });
-            turnoEnHold = t;
-            toast("Turno reservado. Confirmalo antes de que venza el hold.", "info");
+            const est = await api(ASISTENTE + "/reserva", { method: "POST", body: { pacienteId: usuario.id, turnoId }, sesion: true });
+            pintarAsistente(est);
+            turnoEnHold = est.turnoRetenido;
+            toast("Turno reservado. Confirmalo antes de que venza la reserva.", "info");
             mostrarHold();
+            alElegirProfesional();
+        } catch (e) { toast(e.message, "err"); }
+    }
+
+    async function abandonarReserva() {
+        if (!confirm("¿Soltar este horario? Va a quedar disponible para otros pacientes.")) return;
+        try {
+            await api(ASISTENTE + "?pacienteId=" + usuario.id, { method: "DELETE", sesion: true });
+            clearInterval(holdTimer);
+            turnoEnHold = null;
+            document.getElementById("agCardHold").hidden = true;
+            pintarAsistente(null);
+            toast("Reserva cancelada", "ok");
             alElegirProfesional();
         } catch (e) { toast(e.message, "err"); }
     }
@@ -649,7 +698,8 @@
                 <div class="kv"><span class="kv-label">Profesional</span><span class="kv-value">${escapar(turnoEnHold.profesionalNombre || "—")}</span></div>
                 <div class="kv"><span class="kv-label">Fecha</span><span class="kv-value">${fmtFecha(turnoEnHold.fechaHora)}</span></div>
                 <div class="hold-box">La reserva vence en <strong>${mm}:${ss}</strong>. Si expira, el turno vuelve a estar disponible.</div>
-                <button class="btn-primary btn-full" style="margin-top:16px;" id="btnConfirmar" ${restante === 0 ? "disabled" : ""} onclick="confirmar()">Confirmar turno</button>`;
+                <button class="btn-primary btn-full" style="margin-top:16px;" id="btnConfirmar" ${restante === 0 ? "disabled" : ""} onclick="confirmar()">Confirmar turno</button>
+                <button class="btn-secondary btn-full" style="margin-top:8px;" onclick="abandonarReserva()">Soltar este horario</button>`;
             if (restante === 0) clearInterval(holdTimer);
         }
         pintar();
@@ -659,10 +709,11 @@
     async function confirmar() {
         if (!turnoEnHold) return;
         await conBoton("btnConfirmar", async () => {
-            const t = await api("/turnos/" + turnoEnHold.id + "/confirmar", { method: "POST" });
+            const t = await api(ASISTENTE + "/confirmacion", { method: "POST", body: { pacienteId: usuario.id }, sesion: true });
             clearInterval(holdTimer);
             turnoEnHold = null;
             document.getElementById("agCardHold").hidden = true;
+            pintarAsistente(null); // @Remove: la conversación terminó
             document.getElementById("confirmCard").innerHTML = `
                 <div class="kv"><span class="kv-label">Profesional</span><span class="kv-value">${escapar(t.profesionalNombre || "—")}</span></div>
                 <div class="kv"><span class="kv-label">Paciente</span><span class="kv-value">${escapar(t.pacienteNombre || "—")}</span></div>
