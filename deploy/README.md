@@ -96,6 +96,10 @@ Al tópico se suscriben dos MDB de MediConecta: `NotificacionTurnoMDB`
 (notificaciones) y `TelemedicinaMDB` (salas de videollamada). Las
 suscripciones son durables y se crean solas al desplegar.
 
+Además, el timer `RecordatorioTurnos` (`@Schedule`, cada minuto) publica en el mismo
+tópico un `TURNO_RECORDATORIO` por cada turno confirmado que empieza en las próximas
+24 horas. No requiere configuración.
+
 ## 6. Seguridad (Jakarta Security con token)
 
 Los usuarios son los de la base de MediConecta (no hace falta `add-user`). Al iniciar
@@ -142,6 +146,7 @@ el `pom.xml`.
 |---|---|---|
 | `mediconecta.jwt.secret` | Clave HMAC con la que se firman los tokens de sesión | aleatoria en cada deploy |
 | `mediconecta.cors.origenes` | Orígenes del frontend que pueden mandar cookies | `http://localhost:5173,http://127.0.0.1:5173` |
+| `mediconecta.recordatorio.horas` | Con cuántas horas de anticipación se avisa un turno | `24` |
 | `mediconecta.videollamadas.url` | URL base del proveedor de videollamadas | `http://localhost:8080/videollamadas-mock/api/v1` |
 | `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor | `***REMOVIDO***` |
 | `videollamadas.mock.fallar` | `true`: el mock responde 503 (para ver los reintentos y la DLQ) | `false` |

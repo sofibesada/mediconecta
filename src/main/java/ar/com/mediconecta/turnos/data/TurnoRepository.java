@@ -65,6 +65,19 @@ public class TurnoRepository {
                 .getSingleResult() > 0;
     }
 
+    /** Turnos confirmados que empiezan entre desde y hasta y todavia no tienen recordatorio para esa fecha. */
+    public List<Turno> listarParaRecordatorio(LocalDateTime desde, LocalDateTime hasta) {
+        return em.createQuery(
+                        "SELECT t FROM Turno t WHERE t.estado = :confirmado AND t.fechaHora > :desde AND t.fechaHora <= :hasta"
+                                + " AND (t.recordatorioEnviadoPara IS NULL OR t.recordatorioEnviadoPara <> t.fechaHora)"
+                                + " ORDER BY t.fechaHora",
+                        Turno.class)
+                .setParameter("confirmado", EstadoTurno.CONFIRMADO)
+                .setParameter("desde", desde)
+                .setParameter("hasta", hasta)
+                .getResultList();
+    }
+
     public Turno actualizar(Turno turno) {
         return em.merge(turno);
     }

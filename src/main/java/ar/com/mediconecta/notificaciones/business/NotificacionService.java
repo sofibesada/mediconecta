@@ -51,6 +51,13 @@ public class NotificacionService implements INotificacionService {
                 crear(e, e.getProfesionalId(), "Turno reprogramado",
                         "El turno de " + paciente + " pasó del " + anterior + " al " + fecha + ".");
             }
+            case TURNO_RECORDATORIO -> {
+                crear(e, e.getPacienteId(), "Recordatorio de turno",
+                        "Te recordamos tu turno con " + profesional + " el " + fecha + "."
+                                + (e.esVirtual() ? " Es una teleconsulta: entrá desde Mis Citas con el botón Unirse a la videollamada." : ""));
+                crear(e, e.getProfesionalId(), "Recordatorio de turno",
+                        "Tenés un turno con " + paciente + " el " + fecha + ".");
+            }
         }
     }
 

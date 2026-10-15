@@ -36,6 +36,13 @@ public class Turno {
     @Column(length = 20)
     private Modalidad modalidad = Modalidad.PRESENCIAL;
 
+    /**
+     * Fecha del turno para la que ya se envio el recordatorio. Si el turno se reprograma,
+     * deja de coincidir con fechaHora y se vuelve a avisar con la fecha nueva.
+     */
+    @Column(name = "recordatorio_enviado_para")
+    private LocalDateTime recordatorioEnviadoPara;
+
     @Version
     private Long version;
 
@@ -55,6 +62,9 @@ public class Turno {
     public void setHoldExpiraEn(LocalDateTime holdExpiraEn) { this.holdExpiraEn = holdExpiraEn; }
     public boolean isUrgente() { return urgente; }
     public void setUrgente(boolean urgente) { this.urgente = urgente; }
+
+    public LocalDateTime getRecordatorioEnviadoPara() { return recordatorioEnviadoPara; }
+    public void setRecordatorioEnviadoPara(LocalDateTime recordatorioEnviadoPara) { this.recordatorioEnviadoPara = recordatorioEnviadoPara; }
 
     public Modalidad getModalidad() { return modalidad != null ? modalidad : Modalidad.PRESENCIAL; }
     public void setModalidad(Modalidad modalidad) { this.modalidad = modalidad; }
