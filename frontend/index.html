@@ -419,13 +419,18 @@
 
     // sesion: true -> el navegador manda la cookie de sesión (JSESSIONID). La usa el
     // asistente de agendamiento (@Stateful) para que cada pedido llegue a SU instancia.
+    // Cada pedido lleva el token del login: el backend sabe quién es el usuario por el
+    // token, no por los ids que manda el navegador.
     async function api(path, { method = "GET", body, sesion = false } = {}) {
         let res;
+        const headers = {};
+        if (body !== undefined) headers["Content-Type"] = "application/json";
+        if (usuario && usuario.token) headers["Authorization"] = "Bearer " + usuario.token;
         try {
             res = await fetch(API + path, {
                 method,
                 credentials: sesion ? "include" : "same-origin",
-                headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+                headers,
                 body: body !== undefined ? JSON.stringify(body) : undefined
             });
         } catch (e) {
@@ -434,6 +439,13 @@
         const txt = await res.text();
         let data = null;
         if (txt) { try { data = JSON.parse(txt); } catch { data = txt; } }
+        if (res.status === 401 && usuario && headers["Authorization"]) {
+            // El token venció o la cuenta fue desactivada: se cierra la sesión.
+            const msg = (data && data.error) || "Tu sesión venció. Volvé a iniciar sesión.";
+            logout();
+            toast(msg, "err");
+            throw new Error(msg);
+        }
         if (!res.ok) {
             const msg = (data && data.error) || (typeof data === "string" && data) || ("Error " + res.status);
             throw new Error(msg);
@@ -493,7 +505,7 @@
 
     function logout() {
         // Si dejó un turno retenido sin confirmar, se libera (termina la conversación del asistente).
-        if (turnoEnHold && usuario) api("/asistente-agendamiento?pacienteId=" + usuario.id, { method: "DELETE", sesion: true }).catch(() => {});
+        if (turnoEnHold && usuario) api("/asistente-agendamiento", { method: "DELETE", sesion: true }).catch(() => {});
         usuario = null;
         localStorage.removeItem("mc_user");
         clearInterval(holdTimer);
@@ -556,7 +568,7 @@
         if (!actual || !nueva) return toast("Completá los campos", "err");
         if (nueva !== nueva2) return toast("Las contraseñas nuevas no coinciden", "err");
         await conBoton("btnCambiarPass", async () => {
-            const u = await api("/usuarios/cambiar-password", { method: "POST", body: { usuarioId: usuario.id, passwordActual: actual, passwordNueva: nueva } });
+            const u = await api("/usuarios/cambiar-password", { method: "POST", body: { passwordActual: actual, passwordNueva: nueva } });
             usuario = u; guardarLS("mc_user", u);
             ["cpActual", "cpNueva", "cpNueva2"].forEach(id => document.getElementById(id).value = "");
             aplicarSesion();
@@ -616,7 +628,7 @@
         document.getElementById("agDispLista").innerHTML = profesionalesCache.length
             ? "" : `<div class="muted">Todavía no hay profesionales cargados.</div>`;
         try {
-            const est = await api(ASISTENTE + "?pacienteId=" + usuario.id, { sesion: true });
+            const est = await api(ASISTENTE, { sesion: true });
             pintarAsistente(est);
             if (est.profesionalId) {
                 sel.value = est.profesionalId;
@@ -645,7 +657,7 @@
         const reqId = ++dispReqId;
         cont.innerHTML = `<div class="muted">Buscando horarios…</div>`;
         try {
-            const est = await api(ASISTENTE + "/profesional", { method: "PUT", body: { pacienteId: usuario.id, profesionalId: profId }, sesion: true });
+            const est = await api(ASISTENTE + "/profesional", { method: "PUT", body: { profesionalId: profId }, sesion: true });
             if (reqId !== dispReqId) return; // el usuario ya eligió otro profesional
             pintarAsistente(est);
             const turnos = est.horarios || [];
@@ -663,7 +675,7 @@
 
     async function reservar(turnoId) {
         try {
-            const est = await api(ASISTENTE + "/reserva", { method: "POST", body: { pacienteId: usuario.id, turnoId }, sesion: true });
+            const est = await api(ASISTENTE + "/reserva", { method: "POST", body: { turnoId }, sesion: true });
             pintarAsistente(est);
             turnoEnHold = est.turnoRetenido;
             toast("Turno reservado. Confirmalo antes de que venza la reserva.", "info");
@@ -675,7 +687,7 @@
     async function abandonarReserva() {
         if (!confirm("¿Soltar este horario? Va a quedar disponible para otros pacientes.")) return;
         try {
-            await api(ASISTENTE + "?pacienteId=" + usuario.id, { method: "DELETE", sesion: true });
+            await api(ASISTENTE, { method: "DELETE", sesion: true });
             clearInterval(holdTimer);
             turnoEnHold = null;
             document.getElementById("agCardHold").hidden = true;
@@ -709,7 +721,7 @@
     async function confirmar() {
         if (!turnoEnHold) return;
         await conBoton("btnConfirmar", async () => {
-            const t = await api(ASISTENTE + "/confirmacion", { method: "POST", body: { pacienteId: usuario.id }, sesion: true });
+            const t = await api(ASISTENTE + "/confirmacion", { method: "POST", sesion: true });
             clearInterval(holdTimer);
             turnoEnHold = null;
             document.getElementById("agCardHold").hidden = true;
@@ -751,7 +763,7 @@
         if (!esFutura(fechaHora)) return toast("Elegí una fecha y hora futuras", "err");
         if (fechaHora.length === 16) fechaHora += ":00";
         await conBoton("btnPublicar", async () => {
-            await api("/turnos", { method: "POST", body: { profesionalId: usuario.id, fechaHora, modalidad: val("agnModalidad") } });
+            await api("/turnos", { method: "POST", body: { fechaHora, modalidad: val("agnModalidad") } });
             toast("Horario publicado", "ok");
             cargarMiAgenda();
         });
@@ -876,7 +888,7 @@
         // Se abre la pestaña ya (dentro del clic) para que el navegador no la bloquee como popup.
         const pestana = window.open("", "_blank");
         try {
-            const sala = await api("/turnos/" + turnoId + "/sala?usuarioId=" + usuario.id);
+            const sala = await api("/turnos/" + turnoId + "/sala");
             // Jitsi abre con el nombre ya cargado (parámetro userInfo.displayName, en JSON).
             const nombre = "userInfo.displayName=" + encodeURIComponent(JSON.stringify(usuario.nombre || ""));
             const url = sala.url + (sala.url.includes("#") ? "&" : "#") + nombre;
@@ -911,7 +923,7 @@
         if (!esFutura(fechaHora)) return toast("Elegí una fecha y hora futuras", "err");
         if (fechaHora.length === 16) fechaHora += ":00";
         await conBoton("btnRepro-" + id, async () => {
-            await api("/turnos/" + id + "/reprogramar", { method: "PUT", body: { profesionalId: usuario.id, fechaHora } });
+            await api("/turnos/" + id + "/reprogramar", { method: "PUT", body: { fechaHora } });
             toast("Turno reprogramado", "ok");
             cargarMiAgenda();
             revisarPronto();
@@ -949,7 +961,7 @@
         if (!usuario || !notifTimer) return;
         const usuarioId = usuario.id;
         let lista;
-        try { lista = await api("/notificaciones?usuarioId=" + usuarioId); }
+        try { lista = await api("/notificaciones"); }
         catch { return; } // si el backend no responde, se reintenta en el próximo ciclo
         if (!usuario || usuario.id !== usuarioId) return; // cambió la sesión mientras esperaba
 
@@ -975,7 +987,7 @@
         const cont = document.getElementById("notifLista");
         cont.innerHTML = `<div class="muted">Cargando…</div>`;
         try {
-            const lista = await api("/notificaciones?usuarioId=" + usuario.id);
+            const lista = await api("/notificaciones");
             notifConocidas = new Set(lista.map(n => n.id));
             pintarContador(lista.filter(n => !n.leida).length);
             pintarNotificaciones(lista);
@@ -994,14 +1006,14 @@
 
     async function marcarLeida(id) {
         try {
-            await api("/notificaciones/" + id + "/leida?usuarioId=" + usuario.id, { method: "POST" });
+            await api("/notificaciones/" + id + "/leida", { method: "POST" });
             cargarNotificaciones();
         } catch (e) { toast(e.message, "err"); }
     }
 
     async function marcarTodasLeidas() {
         await conBoton("btnLeerTodas", async () => {
-            await api("/notificaciones/leer-todas?usuarioId=" + usuario.id, { method: "POST" });
+            await api("/notificaciones/leer-todas", { method: "POST" });
             toast("Notificaciones marcadas como leídas", "ok");
             await cargarNotificaciones();
         });
@@ -1012,7 +1024,7 @@
         const nombre = val("npNombre"), email = val("npEmail"), passwordTemporal = val("npPass");
         if (!nombre || !email || !passwordTemporal) return toast("Completá nombre, email y contraseña temporal", "err");
         await conBoton("btnCrearProf", async () => {
-            const p = await api("/admin/profesionales", { method: "POST", body: { adminId: usuario.id, nombre, email, passwordTemporal } });
+            const p = await api("/admin/profesionales", { method: "POST", body: { nombre, email, passwordTemporal } });
             document.getElementById("npResultado").innerHTML = `
                 <div class="cred-box">
                     Profesional creado. Entregale estos datos para su primer ingreso:<br>
@@ -1029,7 +1041,7 @@
         const cont = document.getElementById("adminUsuarios");
         cont.innerHTML = `<div class="muted">Cargando…</div>`;
         try {
-            const us = await api("/admin/usuarios?adminId=" + usuario.id);
+            const us = await api("/admin/usuarios");
             cont.innerHTML = us.map(u => {
                 const flags = [
                     `<span class="badge badge-rol">${rolLindo(u.rol)}</span>`,
@@ -1053,7 +1065,7 @@
     async function cambiarEstado(id, activo) {
         if (!activo && !confirm("¿Desactivar este usuario? No va a poder ingresar.")) return;
         try {
-            await api("/admin/usuarios/" + id + "/activo", { method: "POST", body: { adminId: usuario.id, activo } });
+            await api("/admin/usuarios/" + id + "/activo", { method: "POST", body: { activo } });
             toast(activo ? "Usuario activado" : "Usuario desactivado", "ok");
             cargarUsuariosAdmin();
         } catch (e) { toast(e.message, "err"); }
@@ -1062,7 +1074,7 @@
     async function resetearPass(id, nombre) {
         if (!confirm("¿Generar una contraseña temporal nueva para " + nombre + "? La actual dejará de funcionar.")) return;
         try {
-            const r = await api("/admin/usuarios/" + id + "/reset-password", { method: "POST", body: { adminId: usuario.id } });
+            const r = await api("/admin/usuarios/" + id + "/reset-password", { method: "POST" });
             const box = document.getElementById("resetBox-" + id);
             if (box) box.innerHTML = `<div class="cred-box">Contraseña temporal para <strong>${escapar(nombre)}</strong>: <strong>${escapar(r.passwordTemporal)}</strong><br>Al ingresar, el sistema le va a pedir que la cambie.</div>`;
             toast("Contraseña temporal generada", "ok");
@@ -1096,6 +1108,7 @@
     }
 
     // ---------- init ----------
+    if (usuario && !usuario.token) { usuario = null; localStorage.removeItem("mc_user"); } // sesión vieja, sin token
     aplicarSesion();
     if (usuario) { usuario.debeCambiarPassword ? ir("cambiarPassword") : ir("dashboard"); }
     </script>

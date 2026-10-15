@@ -1,5 +1,6 @@
 package ar.com.mediconecta.config;
 
+import jakarta.ejb.EJBAccessException;
 import jakarta.ejb.EJBException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -11,6 +12,13 @@ public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
 
     @Override
     public Response toResponse(EJBException ex) {
+        if (ex instanceof EJBAccessException) {
+            // Lo lanza el contenedor cuando el rol del usuario no esta en el @RolesAllowed del EJB.
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(new ApiError("No tenés permiso para hacer esta operación"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
         Throwable causa = ex.getCause() != null ? ex.getCause() : ex;
 
         Response.Status estado;

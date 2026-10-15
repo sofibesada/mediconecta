@@ -1,5 +1,6 @@
 package ar.com.mediconecta.usuarios.presentation;
 
+import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import ar.com.mediconecta.usuarios.model.Usuario;
 import jakarta.inject.Inject;
@@ -9,11 +10,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Operaciones de administracion. Todo /api/admin/* exige rol ADMIN en web.xml, y cada
+ * operacion de UsuarioService lo vuelve a exigir con @RolesAllowed. El id del admin
+ * sale del token, no del cuerpo del pedido.
+ */
 @Path("/admin")
 public class AdminResource {
 
     @Inject
     private IUsuarioService usuarioService;
+
+    @Inject
+    private UsuarioActual usuarioActual;
 
     @POST
     @Path("/profesionales")
@@ -24,14 +33,13 @@ public class AdminResource {
         datos.setNombre(req.nombre);
         datos.setEmail(req.email);
         datos.setPassword(req.passwordTemporal);
-        return UsuarioResponse.from(usuarioService.crearProfesional(req.adminId, datos));
+        return UsuarioResponse.from(usuarioService.crearProfesional(usuarioActual.id(), datos));
     }
 
     @GET
     @Path("/usuarios")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<UsuarioResponse> listarUsuarios(@QueryParam("adminId") Long adminId) {
-        usuarioService.exigirAdmin(adminId, "Solo un administrador puede ver el listado de usuarios");
+    public List<UsuarioResponse> listarUsuarios() {
         return usuarioService.listarTodos().stream()
                 .map(UsuarioResponse::from)
                 .collect(Collectors.toList());
@@ -42,15 +50,14 @@ public class AdminResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public UsuarioResponse cambiarEstado(@PathParam("id") Long id, CambiarEstadoRequest req) {
-        return UsuarioResponse.from(usuarioService.cambiarEstadoUsuario(req.adminId, id, req.activo));
+        return UsuarioResponse.from(usuarioService.cambiarEstadoUsuario(usuarioActual.id(), id, req.activo));
     }
 
     @POST
     @Path("/usuarios/{id}/reset-password")
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, String> resetPassword(@PathParam("id") Long id, ResetPasswordRequest req) {
-        String temporal = usuarioService.resetearPassword(req.adminId, id);
+    public Map<String, String> resetPassword(@PathParam("id") Long id) {
+        String temporal = usuarioService.resetearPassword(usuarioActual.id(), id);
         return Map.of("passwordTemporal", temporal);
     }
 }

@@ -9,6 +9,8 @@ public class UsuarioResponse {
     public String rol;
     public boolean debeCambiarPassword;
     public boolean activo;
+    /** Solo viene al iniciar sesion (login, registro, cambio de contrasena). */
+    public String token;
 
     public static UsuarioResponse from(Usuario usuario) {
         UsuarioResponse response = new UsuarioResponse();

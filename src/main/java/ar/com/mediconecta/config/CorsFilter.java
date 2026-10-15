@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -42,19 +43,27 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
     public void filter(ContainerRequestContext request, ContainerResponseContext response) {
         // putSingle (no add): un Access-Control-Allow-Origin repetido hace fallar CORS.
         MultivaluedMap<String, Object> h = response.getHeaders();
-        String origen = request.getHeaderString("Origin");
-        if (origen != null && origenesPermitidos().contains(origen)) {
-            h.putSingle("Access-Control-Allow-Origin", origen);
-            h.putSingle("Access-Control-Allow-Credentials", "true");
-            h.putSingle("Vary", "Origin");
-        } else {
-            h.putSingle("Access-Control-Allow-Origin", "*");
-        }
-        h.putSingle("Access-Control-Allow-Methods", ALLOW_METHODS);
-        h.putSingle("Access-Control-Allow-Headers", ALLOW_HEADERS);
+        aplicar(request.getHeaderString("Origin"), h::putSingle);
     }
 
-    private Set<String> origenesPermitidos() {
+    /**
+     * Pone los encabezados CORS con el setter recibido. Lo usa tambien el mecanismo de
+     * autenticacion: un 401 que corta el pedido antes de JAX-RS tambien tiene que llevar
+     * CORS, si no el navegador lo ve como "error de red" y el frontend no se entera.
+     */
+    public static void aplicar(String origen, BiConsumer<String, String> setter) {
+        if (origen != null && origenesPermitidos().contains(origen)) {
+            setter.accept("Access-Control-Allow-Origin", origen);
+            setter.accept("Access-Control-Allow-Credentials", "true");
+            setter.accept("Vary", "Origin");
+        } else {
+            setter.accept("Access-Control-Allow-Origin", "*");
+        }
+        setter.accept("Access-Control-Allow-Methods", ALLOW_METHODS);
+        setter.accept("Access-Control-Allow-Headers", ALLOW_HEADERS);
+    }
+
+    private static Set<String> origenesPermitidos() {
         return Arrays.stream(System.getProperty("mediconecta.cors.origenes", ORIGENES_POR_DEFECTO).split(","))
                 .map(String::trim)
                 .collect(Collectors.toSet());

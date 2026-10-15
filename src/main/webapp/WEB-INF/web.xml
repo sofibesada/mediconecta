@@ -4,24 +4,73 @@
          xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
          version="6.0">
 
+    <!--
+        Seguridad declarativa. Quien es el usuario lo resuelve JwtAuthenticationMechanism
+        (Jakarta Security) a partir del token "Authorization: Bearer ...". Aca se declara
+        QUE puede hacer cada rol; gana el url-pattern mas especifico.
+
+        OPTIONS queda afuera de todas las restricciones: es el preflight CORS del
+        navegador, que nunca lleva el token.
+    -->
+
+    <!-- 1. Publico: registrarse, iniciar sesion y ver el listado de profesionales -->
     <security-constraint>
         <web-resource-collection>
-            <web-resource-name>ConsultaUsuarios</web-resource-name>
-            <url-pattern>/api/usuarios/*</url-pattern>
-            <http-method>GET</http-method>
+            <web-resource-name>Publico</web-resource-name>
+            <url-pattern>/api/usuarios</url-pattern>
+            <url-pattern>/api/usuarios/login</url-pattern>
+            <url-pattern>/api/profesionales</url-pattern>
+        </web-resource-collection>
+    </security-constraint>
+
+    <!-- 2. Cualquier usuario autenticado, aunque todavia tenga la contrasena temporal (sin rol) -->
+    <security-constraint>
+        <web-resource-collection>
+            <web-resource-name>CambioDePassword</web-resource-name>
+            <url-pattern>/api/usuarios/cambiar-password</url-pattern>
+            <http-method-omission>OPTIONS</http-method-omission>
         </web-resource-collection>
         <auth-constraint>
-            <role-name>admin</role-name>
+            <role-name>**</role-name>
         </auth-constraint>
     </security-constraint>
 
-    <login-config>
-        <auth-method>BASIC</auth-method>
-        <realm-name>MediConectaRealm</realm-name>
-    </login-config>
+    <!-- 3. Solo administradores -->
+    <security-constraint>
+        <web-resource-collection>
+            <web-resource-name>Administracion</web-resource-name>
+            <url-pattern>/api/admin/*</url-pattern>
+            <url-pattern>/api/usuarios/*</url-pattern>
+            <http-method-omission>OPTIONS</http-method-omission>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>ADMIN</role-name>
+        </auth-constraint>
+    </security-constraint>
+
+    <!-- 4. El resto de la API: cualquier rol. Que rol puede cada operacion lo dicen los
+            @RolesAllowed de los EJB, y que datos son de quien, los recursos REST. -->
+    <security-constraint>
+        <web-resource-collection>
+            <web-resource-name>Api</web-resource-name>
+            <url-pattern>/api/*</url-pattern>
+            <http-method-omission>OPTIONS</http-method-omission>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>PACIENTE</role-name>
+            <role-name>PROFESIONAL</role-name>
+            <role-name>ADMIN</role-name>
+        </auth-constraint>
+    </security-constraint>
 
     <security-role>
-        <role-name>admin</role-name>
+        <role-name>PACIENTE</role-name>
+    </security-role>
+    <security-role>
+        <role-name>PROFESIONAL</role-name>
+    </security-role>
+    <security-role>
+        <role-name>ADMIN</role-name>
     </security-role>
 
 </web-app>

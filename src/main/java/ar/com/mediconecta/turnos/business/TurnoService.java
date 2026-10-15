@@ -6,6 +6,9 @@ import ar.com.mediconecta.turnos.eventos.TurnoEventoPublisher;
 import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Modalidad;
 import ar.com.mediconecta.turnos.model.Turno;
+import ar.com.mediconecta.seguridad.Roles;
+import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -20,8 +23,13 @@ import java.util.logging.Logger;
  * no guarda nada de un cliente entre llamadas (el estado del turno vive en la base).
  * La conversacion de "agendar un turno" paso a paso la lleva AsistenteAgendamiento,
  * que si es @Stateful.
+ *
+ * Seguridad declarativa: @PermitAll en la clase (consultas) y @RolesAllowed en cada
+ * operacion que cambia un turno. Ojo: WildFly niega por defecto los metodos sin anotar
+ * de un EJB que tiene alguna anotacion de seguridad, por eso el @PermitAll de la clase.
  */
 @Stateless
+@PermitAll
 public class TurnoService implements ITurnoService {
 
     private static final int MINUTOS_HOLD = 5;
@@ -52,6 +60,7 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    @RolesAllowed(Roles.PACIENTE)
     public void liberarReservaTemporal(Long pacienteId, Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         // Solo libera su propia reserva temporal: si ya se confirmo, vencio o es de otro, no hace nada.
@@ -81,6 +90,7 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    @RolesAllowed(Roles.PACIENTE)
     public Turno reservarTemporalmente(Long pacienteId, Long turnoId) {
         if (!usuarioService.existeUsuario(pacienteId)) {
             throw new DatosTurnoInvalidosException("El paciente indicado no existe o está desactivado");
@@ -102,6 +112,7 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    @RolesAllowed(Roles.PACIENTE)
     public Turno confirmarTurno(Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() != EstadoTurno.RESERVADO_TEMPORAL) {
@@ -123,6 +134,7 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL, Roles.ADMIN})
     public void cancelarTurno(Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null || turno.getEstado() == EstadoTurno.CANCELADO) {
@@ -146,6 +158,7 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    @RolesAllowed(Roles.PROFESIONAL)
     public Turno reprogramarTurno(Long profesionalId, Long turnoId, LocalDateTime nuevaFecha) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         if (turno == null) {
@@ -182,6 +195,7 @@ public class TurnoService implements ITurnoService {
     }
 
     @Override
+    @RolesAllowed(Roles.PROFESIONAL)
     public Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora, Modalidad modalidad) {
         if (!usuarioService.esProfesional(profesionalId)) {
             throw new DatosTurnoInvalidosException("El usuario indicado no existe o no es un profesional");

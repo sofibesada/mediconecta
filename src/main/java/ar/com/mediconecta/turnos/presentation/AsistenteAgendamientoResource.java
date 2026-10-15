@@ -1,5 +1,6 @@
 package ar.com.mediconecta.turnos.presentation;
 
+import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.turnos.business.AsistenteAgendamiento;
 import ar.com.mediconecta.turnos.business.EstadoAsistente;
 import ar.com.mediconecta.turnos.model.Turno;
@@ -26,11 +27,13 @@ import javax.naming.NamingException;
  * navegador hablan con LA MISMA instancia hasta que confirma o abandona (@Remove) o
  * hasta que vence el @StatefulTimeout.
  *
- *   GET    /asistente-agendamiento?pacienteId=   que recuerda el asistente
+ *   GET    /asistente-agendamiento               que recuerda el asistente
  *   PUT    /asistente-agendamiento/profesional   paso 1: elegir profesional (devuelve horarios)
  *   POST   /asistente-agendamiento/reserva       paso 2: retener un horario
  *   POST   /asistente-agendamiento/confirmacion  paso 3: confirmar (termina la conversacion)
- *   DELETE /asistente-agendamiento?pacienteId=   abandonar (libera el horario, termina)
+ *   DELETE /asistente-agendamiento               abandonar (libera el horario, termina)
+ *
+ * El paciente es siempre el usuario del token (rol PACIENTE, lo exige TurnoService).
  */
 @Path("/asistente-agendamiento")
 @Produces(MediaType.APPLICATION_JSON)
@@ -44,8 +47,12 @@ public class AsistenteAgendamientoResource {
     @Inject
     private IUsuarioService usuarioService;
 
+    @Inject
+    private UsuarioActual usuarioActual;
+
     @GET
-    public EstadoAsistenteResponse estado(@QueryParam("pacienteId") Long pacienteId) {
+    public EstadoAsistenteResponse estado() {
+        Long pacienteId = usuarioActual.id();
         return aResponse(conAsistente(a -> a.estado(pacienteId)), null);
     }
 
@@ -53,7 +60,8 @@ public class AsistenteAgendamientoResource {
     @Path("/profesional")
     @Consumes(MediaType.APPLICATION_JSON)
     public EstadoAsistenteResponse elegirProfesional(AsistenteRequest req) {
-        EstadoAsistente e = conAsistente(a -> a.elegirProfesional(req.pacienteId, req.profesionalId));
+        Long pacienteId = usuarioActual.id();
+        EstadoAsistente e = conAsistente(a -> a.elegirProfesional(pacienteId, req.profesionalId));
         return aResponse(e, e.horarios);
     }
 
@@ -61,20 +69,22 @@ public class AsistenteAgendamientoResource {
     @Path("/reserva")
     @Consumes(MediaType.APPLICATION_JSON)
     public EstadoAsistenteResponse reservar(AsistenteRequest req) {
-        return aResponse(conAsistente(a -> a.reservar(req.pacienteId, req.turnoId)), null);
+        Long pacienteId = usuarioActual.id();
+        return aResponse(conAsistente(a -> a.reservar(pacienteId, req.turnoId)), null);
     }
 
     @POST
     @Path("/confirmacion")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public TurnoResponse confirmar(AsistenteRequest req) {
-        Turno confirmado = conAsistente(a -> a.confirmar(req.pacienteId));
+    public TurnoResponse confirmar() {
+        Long pacienteId = usuarioActual.id();
+        Turno confirmado = conAsistente(a -> a.confirmar(pacienteId));
         olvidarAsistente(); // @Remove: la instancia ya no existe
         return turnoResponse(confirmado);
     }
 
     @DELETE
-    public void abandonar(@QueryParam("pacienteId") Long pacienteId) {
+    public void abandonar() {
+        Long pacienteId = usuarioActual.id();
         conAsistente(a -> {
             a.abandonar(pacienteId);
             return null;

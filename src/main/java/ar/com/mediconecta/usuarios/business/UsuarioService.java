@@ -1,5 +1,6 @@
 package ar.com.mediconecta.usuarios.business;
 
+import ar.com.mediconecta.seguridad.Roles;
 import ar.com.mediconecta.usuarios.data.UsuarioRepository;
 import ar.com.mediconecta.usuarios.model.RolUsuario;
 import ar.com.mediconecta.usuarios.model.Usuario;
@@ -56,7 +57,7 @@ public class UsuarioService implements IUsuarioService {
     }
 
     @Override
-    @PermitAll
+    @RolesAllowed(Roles.ADMIN)
     public Usuario crearProfesional(Long adminId, Usuario datos) {
         exigirAdmin(adminId, "Solo un administrador puede crear profesionales");
         if (datos.getNombre() == null || datos.getNombre().isBlank()
@@ -101,7 +102,7 @@ public class UsuarioService implements IUsuarioService {
     }
 
     @Override
-    @PermitAll
+    @RolesAllowed(Roles.ADMIN)
     public Usuario cambiarEstadoUsuario(Long adminId, Long usuarioId, boolean activo) {
         exigirAdmin(adminId, "Solo un administrador puede activar o desactivar usuarios");
         Usuario u = usuarioRepository.buscarPorId(usuarioId);
@@ -116,7 +117,7 @@ public class UsuarioService implements IUsuarioService {
     }
 
     @Override
-    @PermitAll
+    @RolesAllowed(Roles.ADMIN)
     public String resetearPassword(Long adminId, Long usuarioId) {
         exigirAdmin(adminId, "Solo un administrador puede resetear contrasenas");
         Usuario u = usuarioRepository.buscarPorId(usuarioId);
@@ -150,9 +151,16 @@ public class UsuarioService implements IUsuarioService {
     }
 
     @Override
-    @RolesAllowed("admin")
+    @RolesAllowed(Roles.ADMIN)
     public Usuario buscarUsuario(Long id) {
         return usuarioRepository.buscarPorId(id);
+    }
+
+    @Override
+    @PermitAll
+    public Usuario buscarParaSesion(Long id) {
+        Usuario u = id != null ? usuarioRepository.buscarPorId(id) : null;
+        return u != null && u.isActivo() ? u : null;
     }
 
     @Override
@@ -206,7 +214,7 @@ public class UsuarioService implements IUsuarioService {
     }
 
     @Override
-    @PermitAll
+    @RolesAllowed(Roles.ADMIN)
     public List<Usuario> listarTodos() {
         return usuarioRepository.listarTodos();
     }

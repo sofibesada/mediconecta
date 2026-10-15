@@ -96,18 +96,25 @@ Al tópico se suscriben dos MDB de MediConecta: `NotificacionTurnoMDB`
 (notificaciones) y `TelemedicinaMDB` (salas de videollamada). Las
 suscripciones son durables y se crean solas al desplegar.
 
-## 6. Usuarios de seguridad (rol admin)
+## 6. Seguridad (Jakarta Security con token)
 
-La operación `GET /api/usuarios/{id}` está protegida con rol `admin`
-(`web.xml` + `@RolesAllowed`). Crear un usuario de aplicación:
+Los usuarios son los de la base de MediConecta (no hace falta `add-user`). Al iniciar
+sesión, `POST /api/usuarios/login` devuelve un `token` que hay que mandar en cada
+pedido como `Authorization: Bearer <token>`. `JwtAuthenticationMechanism` lo valida y
+le informa al contenedor el usuario y su rol (`PACIENTE`, `PROFESIONAL` o `ADMIN`);
+`web.xml` y los `@RolesAllowed` de los EJB hacen el resto.
+
+Una sola vez, con WildFly levantado:
 
 ```bash
-$WILDFLY_HOME/bin/add-user.bat
-# Tipo: b (Application User)
-# Realm: ApplicationRealm
-# Username: admin1
-# Password: (a elección)
-# Grupos: admin
+jboss-cli.bat --connect --file=deploy/setup-seguridad.cli
+```
+
+Clave de firma de los tokens (recomendado; sin ella se genera una al azar y los
+tokens dejan de valer en cada redeploy). Mínimo 32 caracteres, **no versionarla**:
+
+```bash
+/system-property=mediconecta.jwt.secret:add(value=UNA_CLAVE_LARGA_Y_SECRETA)
 ```
 
 ## 7. Build y deploy
@@ -133,6 +140,8 @@ el `pom.xml`.
 
 | Propiedad | Para qué | Valor por defecto |
 |---|---|---|
+| `mediconecta.jwt.secret` | Clave HMAC con la que se firman los tokens de sesión | aleatoria en cada deploy |
+| `mediconecta.cors.origenes` | Orígenes del frontend que pueden mandar cookies | `http://localhost:5173,http://127.0.0.1:5173` |
 | `mediconecta.videollamadas.url` | URL base del proveedor de videollamadas | `http://localhost:8080/videollamadas-mock/api/v1` |
 | `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor | `***REMOVIDO***` |
 | `videollamadas.mock.fallar` | `true`: el mock responde 503 (para ver los reintentos y la DLQ) | `false` |
@@ -157,5 +166,8 @@ curl -s -X POST http://localhost:8080/mediconecta/api/usuarios \
   -H "Content-Type: application/json" \
   -d '{"nombre":"Test","email":"test@test.com","password":"1234"}'
 
-curl -s http://localhost:8080/mediconecta/api/usuarios/1
+# Login como admin (la respuesta trae "token") y consulta protegida con rol ADMIN
+curl -s -X POST http://localhost:8080/mediconecta/api/usuarios/login   -H "Content-Type: application/json"   -d '{"email":"admin@mediconecta.com","password":"***REMOVIDO***"}'
+
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/mediconecta/api/usuarios/1
 ```

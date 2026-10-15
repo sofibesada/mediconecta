@@ -1,0 +1,12 @@
+# Seguridad de MediConecta: Jakarta Security con token (JwtAuthenticationMechanism).
+#
+# Con integrated-jaspi=true (el valor por defecto), Elytron solo acepta usuarios que
+# existan en sus propios realms (ApplicationRealm). Nuestros usuarios estan en la base
+# de la aplicacion, asi que hay que dejar que el mecanismo de Jakarta Security cree la
+# identidad ("ad-hoc identity") con el id y el rol que lee de la base.
+#
+# Uso: jboss-cli.bat --connect --file=deploy/setup-seguridad.cli
+
+/subsystem=undertow/application-security-domain=other:write-attribute(name=integrated-jaspi, value=false)
+
+reload

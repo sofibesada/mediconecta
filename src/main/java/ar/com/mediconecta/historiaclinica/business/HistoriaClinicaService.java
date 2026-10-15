@@ -1,5 +1,7 @@
 package ar.com.mediconecta.historiaclinica.business;
 
+import ar.com.mediconecta.seguridad.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import ar.com.mediconecta.historiaclinica.data.HistoriaClinicaRepository;
 import ar.com.mediconecta.historiaclinica.model.Diagnostico;
 import ar.com.mediconecta.historiaclinica.model.HistoriaClinica;
@@ -34,6 +36,7 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
     }
 
     @Override
+    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL})
     public HistoriaClinica consultarHistoria(Long pacienteId) {
         exigirPacienteExistente(pacienteId);
         return new HistoriaClinica(
@@ -44,6 +47,7 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
     }
 
     @Override
+    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL})
     public void registrarDiagnostico(Long pacienteId, Diagnostico diagnostico) {
         exigirPacienteExistente(pacienteId);
         if (diagnostico.getDescripcion() == null || diagnostico.getDescripcion().isBlank()) {
@@ -55,6 +59,7 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
     }
 
     @Override
+    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL})
     public void registrarReceta(Long pacienteId, Receta receta) {
         exigirPacienteExistente(pacienteId);
         if (receta.getMedicamento() == null || receta.getMedicamento().isBlank()) {

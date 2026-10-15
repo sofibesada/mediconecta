@@ -1,5 +1,7 @@
 package ar.com.mediconecta.turnos.presentation;
 
+import ar.com.mediconecta.seguridad.Roles;
+import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.turnos.business.AgendaTurnoFacade;
 import ar.com.mediconecta.turnos.business.ITurnoService;
 import ar.com.mediconecta.turnos.model.Turno;
@@ -13,8 +15,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Turnos. El rol lo exige TurnoService con @RolesAllowed; aca se controla que el turno
+ * sea DEL usuario del token (un paciente no puede ver ni tocar turnos de otro).
+ */
 @Path("/turnos")
 public class TurnoResource {
+
+    @Inject
+    private UsuarioActual usuarioActual;
 
     @Inject
     private ITurnoService turnoService;
@@ -58,6 +67,8 @@ public class TurnoResource {
     @Path("/paciente/{pacienteId}")
     @Produces(MediaType.APPLICATION_JSON)
     public List<TurnoResponse> listarPorPaciente(@PathParam("pacienteId") Long pacienteId) {
+        usuarioActual.exigir(usuarioActual.esElMismo(pacienteId) || usuarioActual.es(Roles.ADMIN),
+                "Solo podés ver tus propios turnos");
         return aResponse(turnoService.listarTurnosDePaciente(pacienteId));
     }
 
@@ -65,20 +76,25 @@ public class TurnoResource {
     @Path("/profesional/{profesionalId}")
     @Produces(MediaType.APPLICATION_JSON)
     public List<TurnoResponse> listarPorProfesional(@PathParam("profesionalId") Long profesionalId) {
+        usuarioActual.exigir(usuarioActual.esElMismo(profesionalId) || usuarioActual.es(Roles.ADMIN),
+                "Solo podés ver tu propia agenda");
         return aResponse(turnoService.listarTurnosDeProfesional(profesionalId));
     }
 
     @POST
     @Path("/{turnoId}/reservar")
     @Produces(MediaType.APPLICATION_JSON)
-    public TurnoResponse reservar(@PathParam("turnoId") Long turnoId, @QueryParam("pacienteId") Long pacienteId) {
-        return aResponse(turnoService.reservarTemporalmente(pacienteId, turnoId));
+    public TurnoResponse reservar(@PathParam("turnoId") Long turnoId) {
+        return aResponse(turnoService.reservarTemporalmente(usuarioActual.id(), turnoId));
     }
 
     @POST
     @Path("/{turnoId}/confirmar")
     @Produces(MediaType.APPLICATION_JSON)
     public TurnoResponse confirmar(@PathParam("turnoId") Long turnoId) {
+        Turno turno = turnoService.buscarTurno(turnoId);
+        usuarioActual.exigir(turno == null || usuarioActual.esElMismo(turno.getPacienteId()),
+                "Solo podés confirmar un turno que reservaste vos");
         return aResponse(turnoService.confirmarTurno(turnoId));
     }
 
@@ -87,12 +103,16 @@ public class TurnoResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public TurnoResponse reprogramar(@PathParam("turnoId") Long turnoId, ReprogramarTurnoRequest request) {
-        return aResponse(turnoService.reprogramarTurno(request.profesionalId, turnoId, request.fechaHora));
+        return aResponse(turnoService.reprogramarTurno(usuarioActual.id(), turnoId, request.fechaHora));
     }
 
     @DELETE
     @Path("/{turnoId}")
     public void cancelar(@PathParam("turnoId") Long turnoId) {
+        Turno turno = turnoService.buscarTurno(turnoId);
+        usuarioActual.exigir(turno == null || usuarioActual.esElMismo(turno.getPacienteId())
+                        || usuarioActual.esElMismo(turno.getProfesionalId()) || usuarioActual.es(Roles.ADMIN),
+                "Solo podés cancelar tus propios turnos");
         turnoService.cancelarTurno(turnoId);
     }
 
@@ -100,7 +120,7 @@ public class TurnoResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public TurnoResponse crear(CrearTurnoRequest request) {
-        return aResponse(turnoService.crearTurnoDisponible(request.profesionalId, request.fechaHora, request.modalidad));
+        return aResponse(turnoService.crearTurnoDisponible(usuarioActual.id(), request.fechaHora, request.modalidad));
     }
 
     @POST
@@ -108,7 +128,7 @@ public class TurnoResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public TurnoResponse agendar(AgendarTurnoRequest request) {
-        return aResponse(agendaTurnoFacade.agendarTurno(request.pacienteId, request.turnoId));
+        return aResponse(agendaTurnoFacade.agendarTurno(usuarioActual.id(), request.turnoId));
     }
 
 }

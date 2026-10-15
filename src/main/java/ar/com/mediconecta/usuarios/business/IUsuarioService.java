@@ -20,6 +20,8 @@ public interface IUsuarioService {
     void sembrarAdmin(String nombre, String email, String password);
 
     Usuario buscarUsuario(Long id);
+    /** Usuario activo con ese id, o null. Lo usa el mecanismo de autenticacion en cada pedido. */
+    Usuario buscarParaSesion(Long id);
     boolean existeUsuario(Long id);
     boolean esProfesional(Long id);
     boolean esAdmin(Long id);
