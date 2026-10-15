@@ -63,6 +63,17 @@
         </auth-constraint>
     </security-constraint>
 
+    <!-- Errores de seguridad del contenedor en JSON, como el resto de la API (el frontend
+         lee el campo "error"). Quedan fuera de /api/*, asi que no piden token. -->
+    <error-page>
+        <error-code>401</error-code>
+        <location>/errores/401.json</location>
+    </error-page>
+    <error-page>
+        <error-code>403</error-code>
+        <location>/errores/403.json</location>
+    </error-page>
+
     <security-role>
         <role-name>PACIENTE</role-name>
     </security-role>

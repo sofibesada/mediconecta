@@ -11,7 +11,6 @@ import jakarta.security.enterprise.authentication.mechanism.http.HttpAuthenticat
 import jakarta.security.enterprise.authentication.mechanism.http.HttpMessageContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.Set;
 
 /**
@@ -43,30 +42,24 @@ public class JwtAuthenticationMechanism implements HttpAuthenticationMechanism {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith(PREFIJO)) {
             // Sin token: anonimo. Si el recurso es protegido, el contenedor responde 401/403.
-            return contexto.isProtected() ? rechazar(request, response, "Tenés que iniciar sesión") : contexto.doNothing();
+            return contexto.isProtected() ? rechazar(request, response, contexto) : contexto.doNothing();
         }
         Long usuarioId = tokenService.validar(header.substring(PREFIJO.length()));
         Usuario usuario = usuarioId != null ? usuarioService.buscarParaSesion(usuarioId) : null;
         if (usuario == null) {
-            return contexto.isProtected()
-                    ? rechazar(request, response, "Tu sesión venció o tu cuenta fue desactivada. Volvé a iniciar sesión.")
-                    : contexto.doNothing();
+            return contexto.isProtected() ? rechazar(request, response, contexto) : contexto.doNothing();
         }
         Set<String> grupos = usuario.isDebeCambiarPassword() ? Set.of() : Set.of(usuario.getRol().name());
         return contexto.notifyContainerAboutLogin(new CallerPrincipal(String.valueOf(usuario.getId())), grupos);
     }
 
-    private AuthenticationStatus rechazar(HttpServletRequest request, HttpServletResponse response, String mensaje) {
+    /**
+     * 401. El cuerpo JSON lo pone la pagina de error declarada en web.xml
+     * (/errores/401.json); aca solo se agregan los encabezados CORS, que el contenedor
+     * conserva, para que el navegador le deje leer la respuesta al frontend.
+     */
+    private AuthenticationStatus rechazar(HttpServletRequest request, HttpServletResponse response, HttpMessageContext contexto) {
         CorsFilter.aplicar(request.getHeader("Origin"), response::setHeader);
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json;charset=UTF-8");
-        try {
-            response.getWriter().write("{\"error\":\"" + mensaje + "\"}");
-            // Se envia ya: si no, WildFly reemplaza el cuerpo por su pagina de error HTML.
-            response.flushBuffer();
-        } catch (IOException ignored) {
-            // el cliente corto la conexion; el 401 ya esta puesto
-        }
-        return AuthenticationStatus.SEND_FAILURE;
+        return contexto.responseUnauthorized();
     }
 }
