@@ -14,6 +14,8 @@ public interface ITurnoService {
     /** Devuelve a DISPONIBLE la reserva temporal del paciente (si sigue siendo suya y no se confirmo). */
     void liberarReservaTemporal(Long pacienteId, Long turnoId);
     Turno confirmarTurno(Long turnoId);
+    /** particular = true: no usa la obra social del paciente. */
+    Turno confirmarTurno(Long turnoId, boolean particular);
     void cancelarTurno(Long turnoId);
     Turno reprogramarTurno(Long profesionalId, Long turnoId, LocalDateTime nuevaFecha);
     Turno crearTurnoDisponible(Long profesionalId, LocalDateTime fechaHora, Modalidad modalidad);

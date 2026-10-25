@@ -22,6 +22,9 @@ public interface IUsuarioService {
     Usuario buscarUsuario(Long id);
     /** Usuario activo con ese id, o null. Lo usa el mecanismo de autenticacion en cada pedido. */
     Usuario buscarParaSesion(Long id);
+    /** Guarda la cobertura ya verificada con la obra social. */
+    Usuario guardarCobertura(Long pacienteId, String obraSocial, String numeroAfiliado, String plan, int copagoPorcentaje);
+    Usuario quitarCobertura(Long pacienteId);
     boolean existeUsuario(Long id);
     boolean esProfesional(Long id);
     boolean esAdmin(Long id);

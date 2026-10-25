@@ -1,5 +1,7 @@
 package ar.com.mediconecta.usuarios.presentation;
 
+import ar.com.mediconecta.facturacion.business.IFacturacionService;
+import ar.com.mediconecta.obrassociales.business.AuditoriaAutorizacionService;
 import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import ar.com.mediconecta.usuarios.model.Usuario;
@@ -23,6 +25,22 @@ public class AdminResource {
 
     @Inject
     private UsuarioActual usuarioActual;
+
+    @Inject
+    private AuditoriaAutorizacionService auditoria;
+
+    @Inject
+    private IFacturacionService facturacionService;
+
+    /** Autorizaciones pedidas a las obras sociales (auditadas) y reclamos de facturacion. */
+    @GET
+    @Path("/facturacion")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Map<String, Object> facturacion() {
+        return Map.of(
+                "autorizaciones", auditoria.listarRecientes(),
+                "reclamos", facturacionService.listarRecientes());
+    }
 
     @POST
     @Path("/profesionales")

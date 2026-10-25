@@ -1,0 +1,47 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <!--
+        Simulador del sistema LEGADO de obras sociales y prepagas que consume MediConecta.
+        Es una aplicacion separada (otro WAR, otro contexto) que expone un servicio SOAP
+        con su contrato WSDL, como un sistema legado real.
+
+        Deploy:  cd obras-sociales-mock  &&  mvn clean package wildfly:deploy
+        WSDL:    http://localhost:8080/obras-sociales-mock/ObrasSociales?wsdl
+    -->
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>ar.com.obrassociales</groupId>
+    <artifactId>obras-sociales-mock</artifactId>
+    <version>1.0</version>
+    <packaging>war</packaging>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <failOnMissingWebXml>false</failOnMissingWebXml>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>10.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>obras-sociales-mock</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <version>5.1.2.Final</version>
+                <configuration>
+                    <hostname>localhost</hostname>
+                    <port>9990</port>
+                    <id>wildfly-admin</id>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -9,6 +9,10 @@ public class UsuarioResponse {
     public String rol;
     public boolean debeCambiarPassword;
     public boolean activo;
+    public String obraSocial;
+    public String numeroAfiliado;
+    public String planObraSocial;
+    public Integer copagoPorcentaje;
     /** Solo viene al iniciar sesion (login, registro, cambio de contrasena). */
     public String token;
 
@@ -20,6 +24,10 @@ public class UsuarioResponse {
         response.rol = usuario.getRol() != null ? usuario.getRol().name() : null;
         response.debeCambiarPassword = usuario.isDebeCambiarPassword();
         response.activo = usuario.isActivo();
+        response.obraSocial = usuario.getObraSocial();
+        response.numeroAfiliado = usuario.getNumeroAfiliado();
+        response.planObraSocial = usuario.getPlanObraSocial();
+        response.copagoPorcentaje = usuario.getCopagoPorcentaje();
         return response;
     }
 }

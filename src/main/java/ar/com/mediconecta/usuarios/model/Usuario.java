@@ -29,6 +29,20 @@ public class Usuario {
     @Column(nullable = false)
     private boolean activo = true;
 
+    // Cobertura del paciente (null = se atiende como particular). La verifica el
+    // sistema legado de obras sociales antes de guardarla.
+    @Column(name = "obra_social", length = 30)
+    private String obraSocial;
+
+    @Column(name = "numero_afiliado", length = 20)
+    private String numeroAfiliado;
+
+    @Column(name = "plan_obra_social", length = 60)
+    private String planObraSocial;
+
+    @Column(name = "copago_porcentaje")
+    private Integer copagoPorcentaje;
+
     @Version
     private Long version;
 
@@ -48,4 +62,14 @@ public class Usuario {
     public void setDebeCambiarPassword(boolean debeCambiarPassword) { this.debeCambiarPassword = debeCambiarPassword; }
     public boolean isActivo() { return activo; }
     public void setActivo(boolean activo) { this.activo = activo; }
+    public String getObraSocial() { return obraSocial; }
+    public void setObraSocial(String obraSocial) { this.obraSocial = obraSocial; }
+    public String getNumeroAfiliado() { return numeroAfiliado; }
+    public void setNumeroAfiliado(String numeroAfiliado) { this.numeroAfiliado = numeroAfiliado; }
+    public String getPlanObraSocial() { return planObraSocial; }
+    public void setPlanObraSocial(String planObraSocial) { this.planObraSocial = planObraSocial; }
+    public Integer getCopagoPorcentaje() { return copagoPorcentaje; }
+    public void setCopagoPorcentaje(Integer copagoPorcentaje) { this.copagoPorcentaje = copagoPorcentaje; }
+
+    public boolean tieneObraSocial() { return obraSocial != null; }
 }

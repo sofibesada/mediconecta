@@ -120,6 +120,9 @@
         .badge-CANCELADO { background: var(--red-100); color: var(--red-600); }
         .badge-FINALIZADO { background: var(--slate-100); color: var(--slate-600); }
         .badge-rol { background: var(--slate-100); color: var(--slate-600); margin: 0; }
+        .badge-AUTORIZADA, .badge-ENVIADO { background: rgba(22,163,74,0.12); color: var(--green-600); }
+        .badge-RECHAZADA { background: var(--red-100); color: var(--red-600); }
+        .badge-SIN_RESPUESTA, .badge-PENDIENTE { background: var(--amber-100); color: var(--amber-700); }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
@@ -189,6 +192,7 @@
                 <div class="nav-item" data-pantalla="miAgenda" data-roles="PROFESIONAL" onclick="ir('miAgenda')">Mi Agenda</div>
                 <div class="nav-item" data-pantalla="pacientes" data-roles="PROFESIONAL" onclick="ir('pacientes')">Mis Pacientes</div>
                 <div class="nav-item" data-pantalla="admin" data-roles="ADMIN" onclick="ir('admin')">Administración</div>
+                <div class="nav-item" data-pantalla="facturacion" data-roles="ADMIN" onclick="ir('facturacion')">Facturación</div>
                 <div class="nav-item" data-pantalla="perfil" data-roles="PACIENTE PROFESIONAL ADMIN" onclick="ir('perfil')">Mi Perfil</div>
             </div>
             <div class="nav-section" id="navSalir" hidden style="margin-top: auto; border-top: 1px solid var(--slate-200); padding-top: 16px;">
@@ -404,6 +408,15 @@
                     <div class="lista"><div class="lista-header">Usuarios</div><div id="adminUsuarios"><div class="muted">Cargando…</div></div></div>
                 </div>
 
+                <!-- FACTURACION (admin) -->
+                <div class="pantalla" id="facturacion">
+                    <h1 class="page-title">Facturación</h1>
+                    <p class="page-subtitle">Autorizaciones pedidas a las obras sociales y reclamos enviados por la cola de facturación</p>
+                    <div style="margin-bottom:16px;"><button class="btn-secondary btn-sm" onclick="cargarFacturacion()">Actualizar</button></div>
+                    <div class="lista" style="margin-bottom:24px;"><div class="lista-header">Autorizaciones (auditoría)</div><div id="factAutorizaciones"><div class="muted">Cargando…</div></div></div>
+                    <div class="lista"><div class="lista-header">Reclamos a obras sociales</div><div id="factReclamos"><div class="muted">Cargando…</div></div></div>
+                </div>
+
                 <!-- CONFIRMACION -->
                 <div class="pantalla" id="confirmacion">
                     <div class="confirmation">
@@ -426,6 +439,16 @@
                         <div class="kv"><span class="kv-label">Email</span><span class="kv-value" id="perfEmail">—</span></div>
                         <div class="kv"><span class="kv-label">Rol</span><span class="kv-value" id="perfRol">—</span></div>
                     </div>
+                    <div class="card card-narrow" id="cardCobertura" hidden>
+                        <div class="card-titulo">Cobertura médica</div>
+                        <div id="cobActual"></div>
+                        <div class="form-group" style="margin-top:16px;"><label>Obra social o prepaga</label>
+                            <select id="cobObraSocial"><option value="">— Seleccioná —</option></select>
+                        </div>
+                        <div class="form-group"><label>Número de afiliado</label><input type="text" id="cobAfiliado" placeholder="8 dígitos" inputmode="numeric"></div>
+                        <button class="btn-primary btn-full" id="btnCobertura" onclick="guardarCobertura()">Verificar y guardar</button>
+                        <p class="inline-hint">La verificamos en el momento con el sistema de tu obra social.</p>
+                    </div>
                 </div>
 
             </div>
@@ -437,6 +460,8 @@
 
     let usuario = leerLS("mc_user", null);
     let turnoEnHold = null;
+    let avisoCobertura = null; // la obra social rechazó o no respondió al confirmar
+    let obrasSocialesCache = null;
     let holdTimer = null;
     let profesionalesCache = [];
     let historiaCtx = { id: null, nombre: null, propia: true };
@@ -493,7 +518,7 @@
         setTimeout(() => el.remove(), 4400);
     }
 
-    const TITULOS = { dashboard: "Inicio", agendar: "Agendar turno", misCitas: "Mis Citas", notificaciones: "Notificaciones", miAgenda: "Mi Agenda", pacientes: "Mis Pacientes", historia: "Historia Clínica", admin: "Administración", perfil: "Mi Perfil", confirmacion: "Confirmación", login: "MediConecta", cambiarPassword: "Cambio de contraseña" };
+    const TITULOS = { dashboard: "Inicio", agendar: "Agendar turno", misCitas: "Mis Citas", notificaciones: "Notificaciones", miAgenda: "Mi Agenda", pacientes: "Mis Pacientes", historia: "Historia Clínica", admin: "Administración", facturacion: "Facturación", perfil: "Mi Perfil", confirmacion: "Confirmación", login: "MediConecta", cambiarPassword: "Cambio de contraseña" };
 
     function ir(pantalla) {
         if (pantalla !== "agendar") clearInterval(holdTimer);
@@ -510,6 +535,7 @@
         if (pantalla === "pacientes") cargarPacientes();
         if (pantalla === "historia") cargarHistoria();
         if (pantalla === "admin") cargarUsuariosAdmin();
+        if (pantalla === "facturacion") cargarFacturacion();
         if (pantalla === "perfil") pintarPerfil();
     }
 
@@ -650,6 +676,8 @@
     const ASISTENTE = "/asistente-agendamiento";
 
     async function prepararAgendar() {
+        avisoCobertura = null;
+        if (usuario.obraSocial) cargarObrasSociales().catch(() => {}); // nombres para la reserva
         const sel = document.getElementById("agSelectProf");
         sel.innerHTML = `<option value="">Cargando…</option>`;
         document.getElementById("agCardHold").hidden = true;
@@ -706,6 +734,7 @@
     }
 
     async function reservar(turnoId) {
+        avisoCobertura = null;
         try {
             const est = await api(ASISTENTE + "/reserva", { method: "POST", body: { turnoId }, sesion: true });
             pintarAsistente(est);
@@ -718,6 +747,7 @@
 
     async function abandonarReserva() {
         if (!confirm("¿Soltar este horario? Va a quedar disponible para otros pacientes.")) return;
+        avisoCobertura = null;
         try {
             await api(ASISTENTE, { method: "DELETE", sesion: true });
             clearInterval(holdTimer);
@@ -741,8 +771,12 @@
             cont.innerHTML = `
                 <div class="kv"><span class="kv-label">Profesional</span><span class="kv-value">${escapar(turnoEnHold.profesionalNombre || "—")}</span></div>
                 <div class="kv"><span class="kv-label">Fecha</span><span class="kv-value">${fmtFecha(turnoEnHold.fechaHora)}</span></div>
+                <div class="kv"><span class="kv-label">Cobertura</span><span class="kv-value">${usuario.obraSocial ? escapar(nombreObraSocial(usuario.obraSocial) + " · " + usuario.planObraSocial) : "Particular"}</span></div>
+                ${usuario.obraSocial ? `<p class="inline-hint">Al confirmar pedimos la autorización a tu obra social.</p>` : ""}
                 <div class="hold-box">La reserva vence en <strong>${mm}:${ss}</strong>. Si expira, el turno vuelve a estar disponible.</div>
-                <button class="btn-primary btn-full" style="margin-top:16px;" id="btnConfirmar" ${restante === 0 ? "disabled" : ""} onclick="confirmar()">Confirmar turno</button>
+                ${avisoCobertura ? `<div class="hold-box" style="background:var(--red-50); border-color:var(--red-200);"><strong style="color:var(--red-600);">No se pudo confirmar con tu obra social.</strong><br>${escapar(avisoCobertura)}</div>
+                <button class="btn-primary btn-full" style="margin-top:16px;" id="btnParticular" ${restante === 0 ? "disabled" : ""} onclick="confirmar(true)">Confirmar como particular</button>` : ""}
+                <button class="${avisoCobertura ? "btn-secondary" : "btn-primary"} btn-full" style="margin-top:${avisoCobertura ? 8 : 16}px;" id="btnConfirmar" ${restante === 0 ? "disabled" : ""} onclick="confirmar()">${avisoCobertura ? "Reintentar con la obra social" : "Confirmar turno"}</button>
                 <button class="btn-secondary btn-full" style="margin-top:8px;" onclick="abandonarReserva()">Soltar este horario</button>`;
             if (restante === 0) clearInterval(holdTimer);
         }
@@ -750,10 +784,20 @@
         holdTimer = setInterval(pintar, 1000);
     }
 
-    async function confirmar() {
+    // particular = true: confirma sin usar la obra social (por ejemplo, si la obra social rechazó).
+    async function confirmar(particular = false) {
         if (!turnoEnHold) return;
-        await conBoton("btnConfirmar", async () => {
-            const t = await api(ASISTENTE + "/confirmacion", { method: "POST", sesion: true });
+        await conBoton(particular ? "btnParticular" : "btnConfirmar", async () => {
+            let t;
+            try {
+                t = await api(ASISTENTE + "/confirmacion" + (particular ? "?particular=true" : ""), { method: "POST", sesion: true });
+            } catch (e) {
+                // Rechazo o falta de respuesta de la obra social: el backend revirtió todo y
+                // el turno sigue reservado; se ofrece confirmarlo como particular.
+                if (/obra social|no responde/i.test(e.message)) { avisoCobertura = e.message; mostrarHold(); }
+                throw e;
+            }
+            avisoCobertura = null;
             clearInterval(holdTimer);
             turnoEnHold = null;
             document.getElementById("agCardHold").hidden = true;
@@ -763,6 +807,9 @@
                 <div class="kv"><span class="kv-label">Paciente</span><span class="kv-value">${escapar(t.pacienteNombre || "—")}</span></div>
                 <div class="kv"><span class="kv-label">Fecha</span><span class="kv-value">${fmtFecha(t.fechaHora)}</span></div>
                 <div class="kv"><span class="kv-label">Modalidad</span><span class="kv-value">${modalidadLinda(t.modalidad)}</span></div>
+                <div class="kv"><span class="kv-label">Cobertura</span><span class="kv-value">${t.obraSocial ? escapar(nombreObraSocial(t.obraSocial)) : "Particular"}</span></div>
+                ${t.codigoAutorizacion ? `<div class="kv"><span class="kv-label">Autorización</span><span class="kv-value">${escapar(t.codigoAutorizacion)}</span></div>` : ""}
+                <div class="kv"><span class="kv-label">${t.obraSocial ? "Copago a tu cargo" : "A pagar"}</span><span class="kv-value">${fmtPesos(t.importeCopago)}</span></div>
                 <div class="kv"><span class="kv-label">Estado</span><span class="kv-value">${t.estado}</span></div>
                 ${t.modalidad === "VIRTUAL" ? `<p class="inline-hint" style="margin-top:10px;">Es una teleconsulta: en unos segundos vas a tener el botón "Unirse a la videollamada" en Mis Citas.</p>` : ""}`;
             ir("confirmacion");
@@ -906,7 +953,7 @@
         const acciones = botones.length ? `<div class="fila-acciones">${botones.join("")}</div>` : "";
         return `<div class="fila"><div class="fila-info">
             <div class="fila-titulo">${fmtFecha(t.fechaHora)}</div>
-            <div class="fila-detalle">${otro} · ${modalidadLinda(t.modalidad)}${t.urgente ? " · <strong>Urgente</strong>" : ""}</div>
+            <div class="fila-detalle">${otro} · ${modalidadLinda(t.modalidad)}${t.urgente ? " · <strong>Urgente</strong>" : ""}${t.obraSocial ? " · " + escapar(t.obraSocial) + " (" + escapar(t.codigoAutorizacion || "") + ")" : ""}</div>
             <span class="badge badge-${t.estado}">${t.estado.replace("_", " ")}</span>
             ${permitirReprogramar ? `<div id="repro-${t.id}"></div>` : ""}
         </div>${acciones}</div>`;
@@ -1119,6 +1166,82 @@
         document.getElementById("perfNombre").textContent = usuario?.nombre ?? "—";
         document.getElementById("perfEmail").textContent = usuario?.email ?? "—";
         document.getElementById("perfRol").textContent = rolLindo(usuario?.rol);
+        const esPaciente = usuario?.rol === "PACIENTE";
+        document.getElementById("cardCobertura").hidden = !esPaciente;
+        if (esPaciente) pintarCobertura();
+    }
+
+    // ---------- cobertura (obra social) ----------
+    // La lista viene del sistema legado de obras sociales (SOAP), a través del backend.
+    async function cargarObrasSociales() {
+        if (!obrasSocialesCache) obrasSocialesCache = await api("/cobertura/obras-sociales");
+        return obrasSocialesCache;
+    }
+    function nombreObraSocial(codigo) {
+        const os = (obrasSocialesCache || []).find(o => o.codigo === codigo);
+        return os ? os.nombre : codigo;
+    }
+    async function pintarCobertura() {
+        const actual = document.getElementById("cobActual");
+        try {
+            const lista = await cargarObrasSociales();
+            document.getElementById("cobObraSocial").innerHTML = `<option value="">— Seleccioná —</option>` +
+                lista.map(o => `<option value="${o.codigo}">${escapar(o.nombre)}${o.tipo === "PREPAGA" ? " (prepaga)" : ""}</option>`).join("");
+        } catch (e) { actual.innerHTML = `<div class="muted" style="padding:0;">${escapar(e.message)}</div>`; return; }
+        actual.innerHTML = usuario.obraSocial ? `
+            <div class="kv"><span class="kv-label">Obra social</span><span class="kv-value">${escapar(nombreObraSocial(usuario.obraSocial))}</span></div>
+            <div class="kv"><span class="kv-label">Plan</span><span class="kv-value">${escapar(usuario.planObraSocial || "—")}</span></div>
+            <div class="kv"><span class="kv-label">Afiliado</span><span class="kv-value">${escapar(usuario.numeroAfiliado || "—")}</span></div>
+            <div class="kv"><span class="kv-label">Copago</span><span class="kv-value">${usuario.copagoPorcentaje ?? 0}%</span></div>
+            <button class="btn-secondary btn-sm" style="margin-top:12px;" onclick="quitarCobertura()">Quitar (atenderme como particular)</button>`
+            : `<p class="inline-hint" style="margin-top:0;">No cargaste obra social: te atendés como particular.</p>`;
+    }
+    function actualizarUsuario(u) {
+        usuario = { ...usuario, ...u, token: usuario.token };
+        ["obraSocial", "numeroAfiliado", "planObraSocial", "copagoPorcentaje"].forEach(k => { if (!(k in u)) delete usuario[k]; });
+        guardarLS("mc_user", usuario);
+    }
+    async function guardarCobertura() {
+        const obraSocial = val("cobObraSocial"), numeroAfiliado = val("cobAfiliado");
+        if (!obraSocial || !numeroAfiliado) return toast("Elegí la obra social y completá el número de afiliado", "err");
+        await conBoton("btnCobertura", async () => {
+            const u = await api("/cobertura", { method: "PUT", body: { obraSocial, numeroAfiliado } });
+            actualizarUsuario(u);
+            document.getElementById("cobAfiliado").value = "";
+            pintarCobertura();
+            toast("Cobertura verificada: " + u.planObraSocial, "ok");
+        });
+    }
+    async function quitarCobertura() {
+        if (!confirm("¿Quitar tu obra social? Vas a atenderte como particular.")) return;
+        try {
+            actualizarUsuario(await api("/cobertura", { method: "DELETE" }));
+            pintarCobertura();
+            toast("Obra social quitada", "ok");
+        } catch (e) { toast(e.message, "err"); }
+    }
+
+    // ---------- facturación (admin) ----------
+    async function cargarFacturacion() {
+        const auts = document.getElementById("factAutorizaciones"), recs = document.getElementById("factReclamos");
+        try {
+            const [d] = await Promise.all([api("/admin/facturacion"), cargarObrasSociales().catch(() => [])]);
+            auts.innerHTML = d.autorizaciones.length ? d.autorizaciones.map(a => `
+                <div class="fila"><div class="fila-info">
+                    <div class="fila-titulo">Turno #${a.turnoId} · ${escapar(nombreObraSocial(a.obraSocial))}</div>
+                    <div class="fila-detalle">${a.codigoAutorizacion ? "Autorización " + escapar(a.codigoAutorizacion) : escapar(a.motivo || "")}<br>${fmtFecha(a.fecha)}</div>
+                    <span class="badge badge-${a.resultado}">${a.resultado.replace("_", " ")}</span>
+                </div></div>`).join("") : `<div class="muted">Todavía no se pidieron autorizaciones.</div>`;
+            recs.innerHTML = d.reclamos.length ? d.reclamos.map(r => `
+                <div class="fila"><div class="fila-info">
+                    <div class="fila-titulo">Turno #${r.turnoId} · ${escapar(nombreObraSocial(r.obraSocial))} · ${fmtPesos(r.importe)}</div>
+                    <div class="fila-detalle">Autorización ${escapar(r.codigoAutorizacion)}${r.numeroReclamo ? " · Reclamo " + escapar(r.numeroReclamo) : ""}${r.motivo ? " · " + escapar(r.motivo) : ""}<br>${fmtFecha(r.creadoEn)}</div>
+                    <span class="badge badge-${r.estado}">${r.estado}</span>
+                </div></div>`).join("") : `<div class="muted">Todavía no hay reclamos.</div>`;
+        } catch (e) { auts.innerHTML = recs.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+    }
+    function fmtPesos(n) {
+        return n == null ? "—" : "$ " + Number(n).toLocaleString("es-AR", { maximumFractionDigits: 2 });
     }
 
     // ---------- helpers ----------

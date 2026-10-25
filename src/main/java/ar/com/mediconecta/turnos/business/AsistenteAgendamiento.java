@@ -100,17 +100,18 @@ public class AsistenteAgendamiento implements Serializable {
 
     /**
      * Paso 3: confirma el turno retenido y TERMINA la conversacion (@Remove).
-     * retainIfException: si la confirmacion falla (ej. vencio la reserva), la instancia
-     * sigue viva para que el paciente pueda elegir otro horario.
+     * retainIfException: si la confirmacion falla (ej. vencio la reserva, o la obra social
+     * no autorizo), la instancia sigue viva para que el paciente pueda elegir otro horario
+     * o confirmar el mismo como particular.
      */
     @Remove(retainIfException = true)
-    public Turno confirmar(Long pacienteId) {
-        atender(pacienteId, "confirma su turno");
+    public Turno confirmar(Long pacienteId, boolean particular) {
+        atender(pacienteId, particular ? "confirma su turno como particular" : "confirma su turno");
         if (turnoRetenidoId == null) {
             throw new ConflictoTurnoException("No tenés ningún turno reservado para confirmar");
         }
         try {
-            Turno confirmado = turnoService.confirmarTurno(turnoRetenidoId);
+            Turno confirmado = turnoService.confirmarTurno(turnoRetenidoId, particular);
             LOG.info("[Asistente @Stateful #" + id() + "] conversacion terminada: turno #" + confirmado.getId() + " confirmado");
             return confirmado;
         } catch (ConflictoTurnoException e) {

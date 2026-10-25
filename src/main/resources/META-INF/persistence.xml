@@ -12,6 +12,8 @@
         <class>ar.com.mediconecta.historiaclinica.model.Receta</class>
         <class>ar.com.mediconecta.notificaciones.model.Notificacion</class>
         <class>ar.com.mediconecta.telemedicina.model.SalaVirtual</class>
+        <class>ar.com.mediconecta.obrassociales.model.IntentoAutorizacion</class>
+        <class>ar.com.mediconecta.facturacion.model.Reclamo</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <properties>
             <property name="hibernate.hbm2ddl.auto" value="update"/>

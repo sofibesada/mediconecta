@@ -1,6 +1,7 @@
 package ar.com.mediconecta.turnos.presentation;
 
 import ar.com.mediconecta.turnos.model.Turno;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class TurnoResponse {
@@ -14,6 +15,9 @@ public class TurnoResponse {
     public LocalDateTime holdExpiraEn;
     public boolean urgente;
     public String modalidad;
+    public String obraSocial;
+    public String codigoAutorizacion;
+    public BigDecimal importeCopago;
 
     public static TurnoResponse from(Turno t, String profesionalNombre, String pacienteNombre) {
         TurnoResponse r = new TurnoResponse();
@@ -27,6 +31,9 @@ public class TurnoResponse {
         r.holdExpiraEn = t.getHoldExpiraEn();
         r.urgente = t.isUrgente();
         r.modalidad = t.getModalidad().name();
+        r.obraSocial = t.getObraSocial();
+        r.codigoAutorizacion = t.getCodigoAutorizacion();
+        r.importeCopago = t.getImporteCopago();
         return r;
     }
 }

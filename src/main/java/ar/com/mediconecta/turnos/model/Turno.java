@@ -1,6 +1,7 @@
 package ar.com.mediconecta.turnos.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -43,6 +44,21 @@ public class Turno {
     @Column(name = "recordatorio_enviado_para")
     private LocalDateTime recordatorioEnviadoPara;
 
+    // Cobertura con la que se confirmo el turno (null = particular).
+    @Column(name = "obra_social", length = 30)
+    private String obraSocial;
+
+    @Column(name = "codigo_autorizacion", length = 30)
+    private String codigoAutorizacion;
+
+    /** Lo que paga el paciente. */
+    @Column(name = "importe_copago", precision = 12, scale = 2)
+    private BigDecimal importeCopago;
+
+    /** Lo que se le factura a la obra social. */
+    @Column(name = "importe_obra_social", precision = 12, scale = 2)
+    private BigDecimal importeObraSocial;
+
     @Version
     private Long version;
 
@@ -65,6 +81,15 @@ public class Turno {
 
     public LocalDateTime getRecordatorioEnviadoPara() { return recordatorioEnviadoPara; }
     public void setRecordatorioEnviadoPara(LocalDateTime recordatorioEnviadoPara) { this.recordatorioEnviadoPara = recordatorioEnviadoPara; }
+
+    public String getObraSocial() { return obraSocial; }
+    public void setObraSocial(String obraSocial) { this.obraSocial = obraSocial; }
+    public String getCodigoAutorizacion() { return codigoAutorizacion; }
+    public void setCodigoAutorizacion(String codigoAutorizacion) { this.codigoAutorizacion = codigoAutorizacion; }
+    public BigDecimal getImporteCopago() { return importeCopago; }
+    public void setImporteCopago(BigDecimal importeCopago) { this.importeCopago = importeCopago; }
+    public BigDecimal getImporteObraSocial() { return importeObraSocial; }
+    public void setImporteObraSocial(BigDecimal importeObraSocial) { this.importeObraSocial = importeObraSocial; }
 
     public Modalidad getModalidad() { return modalidad != null ? modalidad : Modalidad.PRESENCIAL; }
     public void setModalidad(Modalidad modalidad) { this.modalidad = modalidad; }

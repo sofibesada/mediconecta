@@ -85,8 +85,9 @@ Luego, una de estas dos opciones:
 
 ## 5. Mensajería (JMS)
 
-Crea el tópico `TurnosEventosTopic` (JNDI `java:/jms/topic/TurnosEventos`) y su
-configuración de reintentos (3 intentos, 2 s entre cada uno, después a la `DLQ`):
+Crea el tópico `TurnosEventosTopic` (JNDI `java:/jms/topic/TurnosEventos`), la cola
+`FacturacionQueue` (JNDI `java:/jms/queue/Facturacion`) y la configuración de
+reintentos de cada una (3 intentos, 2 s entre cada uno, después a la `DLQ`):
 
 ```bash
 jboss-cli.bat --connect --file=deploy/setup-jms.cli
@@ -99,6 +100,10 @@ suscripciones son durables y se crean solas al desplegar.
 Además, el timer `RecordatorioTurnos` (`@Schedule`, cada minuto) publica en el mismo
 tópico un `TURNO_RECORDATORIO` por cada turno confirmado que empieza en las próximas
 24 horas. No requiere configuración.
+
+La cola `FacturacionQueue` (punto a punto) la consume `FacturacionMDB`: cada reclamo a
+una obra social lo procesa un único consumidor. Si ya habían corrido el script antes
+de la Entrega 4, alcanza con correr solo las dos líneas de la cola de `setup-jms.cli`.
 
 ## 6. Seguridad (Jakarta Security con token)
 
@@ -123,11 +128,14 @@ tokens dejan de valer en cada redeploy). Mínimo 32 caracteres, **no versionarla
 
 ## 7. Build y deploy
 
-Son **dos aplicaciones**: MediConecta y el simulador de la plataforma externa
-de videollamadas (telemedicina), que MediConecta consume por REST.
+Son **tres aplicaciones**: MediConecta y dos simuladores de sistemas externos.
+- La plataforma de videollamadas (moderna), que MediConecta consume por **REST**.
+- El sistema **legado** de obras sociales, que MediConecta consume por **SOAP**.
 
 ```bash
 cd videollamadas-mock
+mvn clean package wildfly:deploy
+cd ../obras-sociales-mock
 mvn clean package wildfly:deploy
 cd ..
 mvn clean package wildfly:deploy
@@ -135,6 +143,16 @@ mvn clean package wildfly:deploy
 
 - MediConecta: `http://localhost:8080/mediconecta/api`
 - Videollamadas (mock): `http://localhost:8080/videollamadas-mock/api/v1/rooms`
+- Obras sociales (mock, SOAP): WSDL en `http://localhost:8080/obras-sociales-mock/ObrasSociales?wsdl`
+
+Padrón ficticio del simulador de obras sociales (`OSMED`, `PREVENIR`, `SALUDPLUS`;
+número de afiliado de 8 dígitos):
+
+| Afiliado | Resultado |
+|---|---|
+| Termina en **9** | Dado de baja: no se puede cargar la cobertura |
+| Termina en **7** | Cobertura válida, pero la autorización de la consulta se **rechaza** |
+| Cualquier otro | Cubierto y autorizado (ej. `12345678`) |
 
 Credenciales de administración de WildFly usadas por `wildfly-maven-plugin`:
 están en `~/.m2/settings.xml` bajo `<server><id>wildfly-admin</id>`, **no** en
@@ -151,6 +169,10 @@ el `pom.xml`.
 | `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor | `***REMOVIDO***` |
 | `videollamadas.mock.fallar` | `true`: el mock responde 503 (para ver los reintentos y la DLQ) | `false` |
 | `videollamadas.mock.demoraMs` | El mock tarda N ms (con más de 5000 vence el timeout del cliente) | `0` |
+| `mediconecta.obrassociales.url` | Endpoint SOAP del sistema de obras sociales | `http://localhost:8080/obras-sociales-mock/ObrasSociales` |
+| `mediconecta.consulta.valor` | Valor de la consulta (base del copago y del reclamo) | `20000` |
+| `obrassociales.mock.fallar` | `true`: `registrarReclamo` responde con SOAP Fault (reintentos de la cola y DLQ) | `false` |
+| `obrassociales.mock.demoraMs` | El mock tarda N ms (con más de 5000 la autorización no responde y se revierte la confirmación) | `0` |
 
 Se setean sin reiniciar, por ejemplo:
 `/system-property=videollamadas.mock.fallar:add(value=true)` en `jboss-cli`

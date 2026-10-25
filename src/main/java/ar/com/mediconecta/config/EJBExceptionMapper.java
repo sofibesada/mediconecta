@@ -1,5 +1,6 @@
 package ar.com.mediconecta.config;
 
+import ar.com.mediconecta.obrassociales.integracion.ObrasSocialesNoDisponibleException;
 import jakarta.ejb.EJBAccessException;
 import jakarta.ejb.EJBException;
 import jakarta.ws.rs.core.MediaType;
@@ -22,7 +23,9 @@ public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
         Throwable causa = ex.getCause() != null ? ex.getCause() : ex;
 
         Response.Status estado;
-        if (causa instanceof IllegalArgumentException) {
+        if (causa instanceof ObrasSocialesNoDisponibleException) {
+            estado = Response.Status.SERVICE_UNAVAILABLE;
+        } else if (causa instanceof IllegalArgumentException) {
             estado = Response.Status.BAD_REQUEST;
         } else if (causa instanceof IllegalStateException) {
             estado = Response.Status.CONFLICT;

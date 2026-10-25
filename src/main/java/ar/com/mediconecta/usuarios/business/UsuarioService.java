@@ -164,6 +164,28 @@ public class UsuarioService implements IUsuarioService {
     }
 
     @Override
+    @RolesAllowed(Roles.PACIENTE)
+    public Usuario guardarCobertura(Long pacienteId, String obraSocial, String numeroAfiliado, String plan, int copagoPorcentaje) {
+        Usuario u = usuarioRepository.buscarPorId(pacienteId);
+        u.setObraSocial(obraSocial);
+        u.setNumeroAfiliado(numeroAfiliado);
+        u.setPlanObraSocial(plan);
+        u.setCopagoPorcentaje(copagoPorcentaje);
+        return usuarioRepository.actualizar(u);
+    }
+
+    @Override
+    @RolesAllowed(Roles.PACIENTE)
+    public Usuario quitarCobertura(Long pacienteId) {
+        Usuario u = usuarioRepository.buscarPorId(pacienteId);
+        u.setObraSocial(null);
+        u.setNumeroAfiliado(null);
+        u.setPlanObraSocial(null);
+        u.setCopagoPorcentaje(null);
+        return usuarioRepository.actualizar(u);
+    }
+
+    @Override
     @PermitAll
     public boolean existeUsuario(Long id) {
         // "Existe" implica activo: una cuenta desactivada no debe poder

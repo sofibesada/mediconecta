@@ -30,7 +30,8 @@ import javax.naming.NamingException;
  *   GET    /asistente-agendamiento               que recuerda el asistente
  *   PUT    /asistente-agendamiento/profesional   paso 1: elegir profesional (devuelve horarios)
  *   POST   /asistente-agendamiento/reserva       paso 2: retener un horario
- *   POST   /asistente-agendamiento/confirmacion  paso 3: confirmar (termina la conversacion)
+ *   POST   /asistente-agendamiento/confirmacion  paso 3: confirmar (termina la conversacion);
+ *                                                ?particular=true para no usar la obra social
  *   DELETE /asistente-agendamiento               abandonar (libera el horario, termina)
  *
  * El paciente es siempre el usuario del token (rol PACIENTE, lo exige TurnoService).
@@ -75,9 +76,9 @@ public class AsistenteAgendamientoResource {
 
     @POST
     @Path("/confirmacion")
-    public TurnoResponse confirmar() {
+    public TurnoResponse confirmar(@QueryParam("particular") boolean particular) {
         Long pacienteId = usuarioActual.id();
-        Turno confirmado = conAsistente(a -> a.confirmar(pacienteId));
+        Turno confirmado = conAsistente(a -> a.confirmar(pacienteId, particular));
         olvidarAsistente(); // @Remove: la instancia ya no existe
         return turnoResponse(confirmado);
     }

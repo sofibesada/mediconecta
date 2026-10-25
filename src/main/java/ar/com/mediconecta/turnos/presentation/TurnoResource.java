@@ -91,11 +91,11 @@ public class TurnoResource {
     @POST
     @Path("/{turnoId}/confirmar")
     @Produces(MediaType.APPLICATION_JSON)
-    public TurnoResponse confirmar(@PathParam("turnoId") Long turnoId) {
+    public TurnoResponse confirmar(@PathParam("turnoId") Long turnoId, @QueryParam("particular") boolean particular) {
         Turno turno = turnoService.buscarTurno(turnoId);
         usuarioActual.exigir(turno == null || usuarioActual.esElMismo(turno.getPacienteId()),
                 "Solo podés confirmar un turno que reservaste vos");
-        return aResponse(turnoService.confirmarTurno(turnoId));
+        return aResponse(turnoService.confirmarTurno(turnoId, particular));
     }
 
     @PUT

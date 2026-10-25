@@ -5,3 +5,11 @@ jms-topic add --topic-address=TurnosEventosTopic --entries=java:/jms/topic/Turno
   max-delivery-attempts=3, \
   redelivery-delay=2000, \
   dead-letter-address=jms.queue.DLQ)
+
+# Cola punto a punto de facturacion: cada reclamo lo procesa un unico consumidor (FacturacionMDB).
+jms-queue add --queue-address=FacturacionQueue --entries=java:/jms/queue/Facturacion
+
+/subsystem=messaging-activemq/server=default/address-setting=jms.queue.FacturacionQueue:add( \
+  max-delivery-attempts=3, \
+  redelivery-delay=2000, \
+  dead-letter-address=jms.queue.DLQ)
