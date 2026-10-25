@@ -145,14 +145,28 @@ mvn clean package wildfly:deploy
 - Videollamadas (mock): `http://localhost:8080/videollamadas-mock/api/v1/rooms`
 - Obras sociales (mock, SOAP): WSDL en `http://localhost:8080/obras-sociales-mock/ObrasSociales?wsdl`
 
-Padrón ficticio del simulador de obras sociales (`OSMED`, `PREVENIR`, `SALUDPLUS`;
-número de afiliado de 8 dígitos):
+### Padrón del sistema de obras sociales (panel del legado)
 
-| Afiliado | Resultado |
-|---|---|
-| Termina en **9** | Dado de baja: no se puede cargar la cobertura |
-| Termina en **7** | Cobertura válida, pero la autorización de la consulta se **rechaza** |
-| Cualquier otro | Cubierto y autorizado (ej. `12345678`) |
+Las obras sociales, sus afiliados y el vademécum (medicamentos con descuento) son datos
+del sistema **legado**, no de MediConecta: se administran desde su propio panel,
+`http://localhost:8080/obras-sociales-mock/admin.html` (clave: system property
+`obrassociales.mock.adminKey`, por defecto `***REMOVIDO***`). Se guardan en
+`<WildFly>/standalone/data/obras-sociales-mock/padron.json`, así que sobreviven a los
+redeploys; para volver a los datos de prueba, borrar ese archivo y redesplegar el mock.
+
+Datos de prueba iniciales:
+
+| Obra social | Afiliado | Estado |
+|---|---|---|
+| OSMED | `12345678` | Activo: cubierto y autorizado |
+| OSMED | `12345679` | **Dado de baja**: no se puede cargar la cobertura |
+| PREVENIR | `12345677` | Activo con **tope alcanzado**: la autorización se rechaza |
+| PREVENIR | `22223333` | Activo |
+| SALUDPLUS | `33334444` | Activo |
+
+Vademécum inicial: OSMED (Enalapril 40%, Amoxicilina 50%, Ibuprofeno 30%), PREVENIR
+(Enalapril 70%, Metformina 60%) y SALUDPLUS (Amoxicilina 100%, Omeprazol 40%,
+Atorvastatina 60%).
 
 Credenciales de administración de WildFly usadas por `wildfly-maven-plugin`:
 están en `~/.m2/settings.xml` bajo `<server><id>wildfly-admin</id>`, **no** en
@@ -172,6 +186,7 @@ el `pom.xml`.
 | `mediconecta.obrassociales.url` | Endpoint SOAP del sistema de obras sociales | `http://localhost:8080/obras-sociales-mock/ObrasSociales` |
 | `mediconecta.consulta.valor` | Valor de la consulta (base del copago y del reclamo) | `20000` |
 | `obrassociales.mock.fallar` | `true`: `registrarReclamo` responde con SOAP Fault (reintentos de la cola y DLQ) | `false` |
+| `obrassociales.mock.adminKey` | Clave del panel de administración del legado | `***REMOVIDO***` |
 | `obrassociales.mock.demoraMs` | El mock tarda N ms (con más de 5000 la autorización no responde y se revierte la confirmación) | `0` |
 
 Se setean sin reiniciar, por ejemplo:

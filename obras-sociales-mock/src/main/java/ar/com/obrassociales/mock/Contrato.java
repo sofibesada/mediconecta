@@ -43,6 +43,17 @@ public final class Contrato {
     }
 
     @XmlAccessorType(XmlAccessType.FIELD)
+    @XmlType(name = "coberturaMedicamento", namespace = NS)
+    public static class CoberturaMedicamento {
+        /** El medicamento tal como vino en el pedido. */
+        public String medicamento;
+        public boolean cubierto;
+        public int descuentoPorcentaje;
+        /** Nombre del vademecum con el que coincidio. */
+        public String vademecum;
+    }
+
+    @XmlAccessorType(XmlAccessType.FIELD)
     @XmlType(name = "resultadoAutorizacion", namespace = NS)
     public static class ResultadoAutorizacion {
         public boolean autorizada;

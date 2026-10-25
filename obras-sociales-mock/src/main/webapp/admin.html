@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padrón de Obras Sociales</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --fondo: #eef2f7; --panel: #ffffff; --borde: #c8d2e0; --texto: #1f2937; --suave: #5b6576;
+                --acento: #6d28d9; --acento-osc: #5b21b6; --ok: #15803d; --mal: #b91c1c; --aviso: #b45309; }
+        body { font-family: Tahoma, "Segoe UI", Arial, sans-serif; font-size: 13px; color: var(--texto); background: var(--fondo); }
+        header { background: #312e81; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 17px; letter-spacing: 0.3px; }
+        header span { font-size: 11px; opacity: 0.8; }
+        main { max-width: 1100px; margin: 20px auto; padding: 0 16px; }
+        .panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 4px; margin-bottom: 18px; }
+        .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; background: #e0e7ff; border-bottom: 1px solid var(--borde); padding: 8px 12px; color: #312e81; }
+        .panel .cuerpo { padding: 12px; }
+        .formulario { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+        .formulario label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--suave); }
+        .formulario label.check { flex-direction: row; align-items: center; gap: 4px; padding-bottom: 6px; color: var(--texto); }
+        input, select { font: inherit; padding: 5px 7px; border: 1px solid var(--borde); border-radius: 3px; background: #fff; }
+        button { font: inherit; padding: 6px 12px; border-radius: 3px; border: 1px solid var(--acento); background: var(--acento); color: #fff; cursor: pointer; }
+        button:hover { background: var(--acento-osc); }
+        button.sec { background: #fff; color: var(--mal); border-color: #fca5a5; padding: 3px 8px; font-size: 12px; }
+        button.sec:hover { background: #fef2f2; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e9f0; }
+        th { font-size: 11px; text-transform: uppercase; color: var(--suave); background: #f7f9fc; }
+        tr:hover td { background: #fafbff; }
+        .estado { font-size: 11px; font-weight: bold; }
+        .estado.ok { color: var(--ok); } .estado.mal { color: var(--mal); } .estado.aviso { color: var(--aviso); }
+        #mensaje { position: fixed; top: 14px; right: 14px; padding: 10px 14px; border-radius: 4px; background: #fff; border: 1px solid var(--borde); box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; max-width: 340px; }
+        #mensaje.err { border-left: 4px solid var(--mal); } #mensaje.ok { border-left: 4px solid var(--ok); }
+        .ingreso { max-width: 360px; margin: 80px auto; }
+        .nota { font-size: 11px; color: var(--suave); margin-top: 6px; }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Sistema de Gestión de Afiliaciones · Back office</h1>
+    <span>Sistema legado (simulado) · servicio SOAP: <a href="ObrasSociales?wsdl" style="color:#c7d2fe;">WSDL</a></span>
+</header>
+<div id="mensaje"></div>
+
+<div class="panel ingreso" id="pantallaIngreso">
+    <h2>Ingreso de administrador</h2>
+    <div class="cuerpo">
+        <div class="formulario">
+            <label style="flex:1;">Clave de administrador<input type="password" id="clave" onkeydown="if(event.key==='Enter')ingresar()"></label>
+            <button onclick="ingresar()">Ingresar</button>
+        </div>
+        <p class="nota">La clave se configura con la system property <code>obrassociales.mock.adminKey</code> (por defecto, <code>***REMOVIDO***</code>).</p>
+    </div>
+</div>
+
+<main id="pantallaPadron" hidden>
+    <div class="panel">
+        <h2>Obras sociales y prepagas</h2>
+        <div class="cuerpo">
+            <div class="formulario">
+                <label>Código<input id="osCodigo" size="10" placeholder="OSMED"></label>
+                <label>Nombre<input id="osNombre" size="26"></label>
+                <label>Tipo<select id="osTipo"><option value="OBRA_SOCIAL">Obra social</option><option value="PREPAGA">Prepaga</option></select></label>
+                <label>Plan<input id="osPlan" size="14"></label>
+                <label>Copago %<input id="osCopago" type="number" min="0" max="100" style="width:80px;" value="0"></label>
+                <button onclick="guardarObraSocial()">Guardar</button>
+            </div>
+            <table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Plan</th><th>Copago</th><th></th></tr></thead><tbody id="tablaOS"></tbody></table>
+            <p class="nota">Guardar con un código existente lo modifica. Borrar una obra social borra también sus afiliados y su vademécum.</p>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Afiliados</h2>
+        <div class="cuerpo">
+            <div class="formulario">
+                <label>Obra social<select id="afOS" class="selectOS"></select></label>
+                <label>N.º de afiliado<input id="afNumero" size="10" maxlength="8" placeholder="8 dígitos"></label>
+                <label>Nombre<input id="afNombre" size="24"></label>
+                <label class="check"><input type="checkbox" id="afActivo" checked> Activo</label>
+                <label class="check"><input type="checkbox" id="afTope"> Tope de consultas alcanzado</label>
+                <button onclick="guardarAfiliado()">Guardar</button>
+            </div>
+            <div class="formulario"><label>Filtrar por obra social<select id="filtroAf" onchange="pintar()"><option value="">Todas</option></select></label></div>
+            <table><thead><tr><th>Obra social</th><th>N.º</th><th>Nombre</th><th>Estado</th><th></th></tr></thead><tbody id="tablaAf"></tbody></table>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Vademécum: medicamentos con descuento</h2>
+        <div class="cuerpo">
+            <div class="formulario">
+                <label>Obra social<select id="medOS" class="selectOS"></select></label>
+                <label>Medicamento (genérico)<input id="medNombre" size="22" placeholder="ej. Enalapril"></label>
+                <label>Descuento %<input id="medDesc" type="number" min="1" max="100" style="width:80px;" value="40"></label>
+                <button onclick="guardarMedicamento()">Guardar</button>
+            </div>
+            <table><thead><tr><th>Obra social</th><th>Medicamento</th><th>Descuento</th><th></th></tr></thead><tbody id="tablaMed"></tbody></table>
+            <p class="nota">Una receta tiene descuento si el nombre del medicamento recetado contiene el nombre cargado acá (por ejemplo, "Enalapril 10mg" coincide con "Enalapril").</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    const API = "api/admin";
+    let clave = sessionStorage.getItem("clavePadron") || "";
+    let datos = { obrasSociales: [], afiliados: [], vademecum: [] };
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    function mensaje(texto, tipo = "ok") {
+        const m = $("mensaje"); m.textContent = texto; m.className = tipo; m.style.display = "block";
+        clearTimeout(m._t); m._t = setTimeout(() => m.style.display = "none", 3500);
+    }
+
+    async function api(ruta, metodo = "GET", cuerpo) {
+        const r = await fetch(API + ruta, { method: metodo,
+            headers: { "X-Admin-Key": clave, ...(cuerpo ? { "Content-Type": "application/json" } : {}) },
+            body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || ("Error " + r.status));
+        return d;
+    }
+
+    async function ingresar() {
+        clave = $("clave").value || clave;
+        try { await recargar(); sessionStorage.setItem("clavePadron", clave); $("pantallaIngreso").hidden = true; $("pantallaPadron").hidden = false; }
+        catch (e) { mensaje(e.message, "err"); }
+    }
+
+    async function recargar() { datos = await api(""); pintar(); }
+
+    function nombreOS(c) { return (datos.obrasSociales.find(o => o.codigo === c) || {}).nombre || c; }
+
+    function pintar() {
+        const os = [...datos.obrasSociales].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        $("tablaOS").innerHTML = os.map(o => `<tr><td><b>${esc(o.codigo)}</b></td><td>${esc(o.nombre)}</td><td>${o.tipo === "PREPAGA" ? "Prepaga" : "Obra social"}</td>
+            <td>${esc(o.plan)}</td><td>${o.copagoPorcentaje}%</td>
+            <td><button class="sec" onclick="editarOS('${esc(o.codigo)}')" style="color:var(--acento);border-color:#c4b5fd;">Editar</button>
+                <button class="sec" onclick="borrar('/obras-sociales/${encodeURIComponent(o.codigo)}', '${esc(o.nombre)}')">Borrar</button></td></tr>`).join("");
+        const opciones = os.map(o => `<option value="${esc(o.codigo)}">${esc(o.nombre)}</option>`).join("");
+        document.querySelectorAll(".selectOS").forEach(s => { const v = s.value; s.innerHTML = opciones; if (v) s.value = v; });
+        const f = $("filtroAf"), fv = f.value; f.innerHTML = `<option value="">Todas</option>` + opciones; f.value = fv;
+
+        const afs = datos.afiliados.filter(a => !fv || a.obraSocial === fv).sort((a, b) => (a.obraSocial + a.numero).localeCompare(b.obraSocial + b.numero));
+        $("tablaAf").innerHTML = afs.map(a => `<tr><td>${esc(nombreOS(a.obraSocial))}</td><td>${esc(a.numero)}</td><td>${esc(a.nombre)}</td>
+            <td>${!a.activo ? '<span class="estado mal">DADO DE BAJA</span>' : a.topeAlcanzado ? '<span class="estado aviso">ACTIVO · TOPE ALCANZADO</span>' : '<span class="estado ok">ACTIVO</span>'}</td>
+            <td><button class="sec" onclick="editarAf('${esc(a.obraSocial)}','${esc(a.numero)}')" style="color:var(--acento);border-color:#c4b5fd;">Editar</button>
+                <button class="sec" onclick="borrar('/afiliados/${encodeURIComponent(a.obraSocial)}/${encodeURIComponent(a.numero)}', 'el afiliado ${esc(a.numero)}')">Borrar</button></td></tr>`).join("")
+            || `<tr><td colspan="5" style="color:var(--suave)">Sin afiliados.</td></tr>`;
+
+        const meds = [...datos.vademecum].sort((a, b) => (a.obraSocial + a.nombre).localeCompare(b.obraSocial + b.nombre));
+        $("tablaMed").innerHTML = meds.map(m => `<tr><td>${esc(nombreOS(m.obraSocial))}</td><td>${esc(m.nombre)}</td><td><b>${m.descuentoPorcentaje}%</b></td>
+            <td><button class="sec" onclick="borrar('/medicamentos/${encodeURIComponent(m.obraSocial)}/${encodeURIComponent(m.nombre)}', '${esc(m.nombre)}')">Borrar</button></td></tr>`).join("")
+            || `<tr><td colspan="4" style="color:var(--suave)">Sin medicamentos.</td></tr>`;
+    }
+
+    function editarOS(codigo) {
+        const o = datos.obrasSociales.find(x => x.codigo === codigo);
+        $("osCodigo").value = o.codigo; $("osNombre").value = o.nombre; $("osTipo").value = o.tipo; $("osPlan").value = o.plan; $("osCopago").value = o.copagoPorcentaje;
+    }
+    function editarAf(os, numero) {
+        const a = datos.afiliados.find(x => x.obraSocial === os && x.numero === numero);
+        $("afOS").value = a.obraSocial; $("afNumero").value = a.numero; $("afNombre").value = a.nombre; $("afActivo").checked = a.activo; $("afTope").checked = a.topeAlcanzado;
+    }
+
+    async function guardar(ruta, cuerpo, ok) {
+        try { await api(ruta, "POST", cuerpo); await recargar(); mensaje(ok); } catch (e) { mensaje(e.message, "err"); }
+    }
+    function guardarObraSocial() {
+        guardar("/obras-sociales", { codigo: $("osCodigo").value.trim().toUpperCase(), nombre: $("osNombre").value.trim(), tipo: $("osTipo").value,
+            plan: $("osPlan").value.trim(), copagoPorcentaje: Number($("osCopago").value) }, "Obra social guardada");
+    }
+    function guardarAfiliado() {
+        guardar("/afiliados", { obraSocial: $("afOS").value, numero: $("afNumero").value.trim(), nombre: $("afNombre").value.trim(),
+            activo: $("afActivo").checked, topeAlcanzado: $("afTope").checked }, "Afiliado guardado");
+    }
+    function guardarMedicamento() {
+        guardar("/medicamentos", { obraSocial: $("medOS").value, nombre: $("medNombre").value.trim(), descuentoPorcentaje: Number($("medDesc").value) }, "Medicamento guardado");
+    }
+    async function borrar(ruta, que) {
+        if (!confirm("¿Borrar " + que + "?")) return;
+        try { await api(ruta, "DELETE"); await recargar(); mensaje("Borrado"); } catch (e) { mensaje(e.message, "err"); }
+    }
+
+    if (clave) ingresar();
+</script>
+</body>
+</html>

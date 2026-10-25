@@ -373,6 +373,7 @@
                     <h1 class="page-title" id="histTitulo">Historia Clínica</h1>
                     <p class="page-subtitle" id="histSub">Diagnósticos y recetas</p>
                     <div style="margin-bottom:16px;"><button class="btn-secondary btn-sm" onclick="cargarHistoria()">Actualizar</button></div>
+                    <div class="card" id="histFicha"><div class="muted" style="padding:0;">Cargando…</div></div>
                     <div class="grid-2">
                         <div class="lista"><div class="lista-header">Diagnósticos</div><div id="histDiag"><div class="muted">Cargando…</div></div></div>
                         <div class="lista"><div class="lista-header">Recetas</div><div id="histRec"><div class="muted">Cargando…</div></div></div>
@@ -895,17 +896,53 @@
         const d = document.getElementById("histDiag"), r = document.getElementById("histRec");
         const reqId = ++historiaReqId;
         const pacienteId = historiaCtx.id;
+        const fichaCont = document.getElementById("histFicha");
         d.innerHTML = r.innerHTML = `<div class="muted">Cargando…</div>`;
+        fichaCont.innerHTML = `<div class="muted" style="padding:0;">Cargando…</div>`;
         try {
-            const h = await api("/historia-clinica/" + pacienteId);
+            // La ficha trae los datos del paciente y el descuento de cada receta según su
+            // obra social (lo consulta el backend al sistema legado por SOAP).
+            const [h, ficha] = await Promise.all([
+                api("/historia-clinica/" + pacienteId),
+                api("/historia-clinica/" + pacienteId + "/ficha").catch(e => ({ error: e.message })),
+                cargarObrasSociales().catch(() => [])
+            ]);
             if (reqId !== historiaReqId) return; // se eligió otro paciente antes de que esto resuelva
+            fichaCont.innerHTML = pintarFicha(ficha);
+            const coberturaDe = new Map((ficha.recetas || []).map(c => [c.recetaId, c]));
             d.innerHTML = (h.diagnosticos && h.diagnosticos.length)
                 ? h.diagnosticos.map(x => `<div class="fila"><div class="fila-info"><div class="fila-titulo">${escapar(x.descripcion)}</div><div class="fila-detalle">${fmtFecha(x.fecha)}</div></div></div>`).join("")
                 : `<div class="muted">Sin diagnósticos.</div>`;
             r.innerHTML = (h.recetas && h.recetas.length)
-                ? h.recetas.map(x => `<div class="fila"><div class="fila-info"><div class="fila-titulo">${escapar(x.medicamento)}</div><div class="fila-detalle">${escapar(x.indicaciones || "")}<br>${fmtFecha(x.fecha)}</div></div></div>`).join("")
+                ? h.recetas.map(x => `<div class="fila"><div class="fila-info"><div class="fila-titulo">${escapar(x.medicamento)}</div><div class="fila-detalle">${escapar(x.indicaciones || "")}<br>${fmtFecha(x.fecha)}</div>${etiquetaDescuento(ficha, coberturaDe.get(x.id))}</div></div>`).join("")
                 : `<div class="muted">Sin recetas.</div>`;
-        } catch (e) { if (reqId === historiaReqId) d.innerHTML = r.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+        } catch (e) { if (reqId === historiaReqId) d.innerHTML = r.innerHTML = fichaCont.innerHTML = `<div class="muted">${escapar(e.message)}</div>`; }
+    }
+    function pintarFicha(f) {
+        if (f.error) return `<div class="card-titulo">Datos del paciente</div><div class="muted" style="padding:0;">${escapar(f.error)}</div>`;
+        const cobertura = f.obraSocial
+            ? `${escapar(nombreObraSocial(f.obraSocial))} · ${escapar(f.planObraSocial || "")}`
+            : "Particular (sin obra social)";
+        return `<div class="card-titulo">Datos del paciente</div>
+            <div class="grid-2" style="gap:0 32px;">
+                <div>
+                    <div class="kv"><span class="kv-label">Nombre</span><span class="kv-value">${escapar(f.nombre)}</span></div>
+                    <div class="kv"><span class="kv-label">Email</span><span class="kv-value">${escapar(f.email)}</span></div>
+                </div>
+                <div>
+                    <div class="kv"><span class="kv-label">Cobertura</span><span class="kv-value">${cobertura}</span></div>
+                    ${f.obraSocial ? `<div class="kv"><span class="kv-label">Afiliado</span><span class="kv-value">${escapar(f.numeroAfiliado)} · copago ${f.copagoPorcentaje ?? 0}%</span></div>` : ""}
+                </div>
+            </div>
+            ${f.avisoCobertura ? `<p class="inline-hint" style="color:var(--amber-700);">${escapar(f.avisoCobertura)}</p>` : ""}`;
+    }
+    // Etiqueta de cada receta: descuento según el vademécum de la obra social del paciente.
+    function etiquetaDescuento(ficha, c) {
+        if (!ficha || ficha.error || ficha.avisoCobertura) return "";
+        if (!ficha.obraSocial) return `<span class="badge badge-rol" style="margin-top:6px;">Particular</span>`;
+        return c && c.cubierto
+            ? `<span class="badge badge-AUTORIZADA">${escapar(ficha.obraSocial)}: ${c.descuentoPorcentaje}% de descuento</span>`
+            : `<span class="badge badge-RECHAZADA">Sin descuento en ${escapar(ficha.obraSocial)}</span>`;
     }
     async function agregarDiagnostico() {
         const descripcion = val("diagDesc");

@@ -44,6 +44,17 @@ public class ObraSocialService implements IObraSocialService {
     }
 
     @Override
+    public List<CoberturaMedicamento> coberturaMedicamentos(String obraSocial, String numeroAfiliado, List<String> medicamentos) {
+        if (medicamentos.isEmpty()) {
+            return List.of();
+        }
+        return cliente.llamar("consultarCoberturaMedicamentos",
+                        p -> p.consultarCoberturaMedicamentos(obraSocial, numeroAfiliado, medicamentos)).stream()
+                .map(c -> new CoberturaMedicamento(c.medicamento, c.cubierto, c.descuentoPorcentaje))
+                .toList();
+    }
+
+    @Override
     public ResultadoReclamo registrarReclamo(String obraSocial, String numeroAfiliado, String codigoAutorizacion,
                                              BigDecimal importe, Long turnoId) {
         ContratoLegado.ResultadoReclamo r = cliente.llamar("registrarReclamo",

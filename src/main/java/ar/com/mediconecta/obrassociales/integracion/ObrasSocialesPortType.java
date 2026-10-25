@@ -1,5 +1,6 @@
 package ar.com.mediconecta.obrassociales.integracion;
 
+import ar.com.mediconecta.obrassociales.integracion.ContratoLegado.CoberturaMedicamento;
 import ar.com.mediconecta.obrassociales.integracion.ContratoLegado.ObraSocial;
 import ar.com.mediconecta.obrassociales.integracion.ContratoLegado.ResultadoAutorizacion;
 import ar.com.mediconecta.obrassociales.integracion.ContratoLegado.ResultadoCobertura;
@@ -34,6 +35,12 @@ public interface ObrasSocialesPortType {
                                               @WebParam(name = "codigoPrestacion") String codigoPrestacion,
                                               @WebParam(name = "fechaPrestacion") String fechaPrestacion,
                                               @WebParam(name = "referencia") String referencia);
+
+    @WebMethod
+    @WebResult(name = "cobertura")
+    List<CoberturaMedicamento> consultarCoberturaMedicamentos(@WebParam(name = "obraSocial") String obraSocial,
+                                                              @WebParam(name = "numeroAfiliado") String numeroAfiliado,
+                                                              @WebParam(name = "medicamento") List<String> medicamentos);
 
     @WebMethod
     @WebResult(name = "resultado")

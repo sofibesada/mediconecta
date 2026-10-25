@@ -4,12 +4,15 @@ import ar.com.obrassociales.mock.Contrato.ObraSocial;
 import ar.com.obrassociales.mock.Contrato.ResultadoAutorizacion;
 import ar.com.obrassociales.mock.Contrato.ResultadoCobertura;
 import ar.com.obrassociales.mock.Contrato.ResultadoReclamo;
-import ar.com.obrassociales.mock.Padron.Plan;
+import ar.com.obrassociales.mock.Contrato.CoberturaMedicamento;
+import ar.com.obrassociales.mock.Padron.Afiliado;
+import ar.com.obrassociales.mock.Padron.Entidad;
 import jakarta.jws.WebMethod;
 import jakarta.jws.WebParam;
 import jakarta.jws.WebResult;
 import jakarta.jws.WebService;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -23,6 +26,9 @@ import java.util.logging.Logger;
  *   consultarCobertura    si el afiliado esta cubierto, con que plan y que copago
  *   autorizarPrestacion   autoriza una consulta y devuelve el codigo de autorizacion
  *   registrarReclamo      factura (reclama) una prestacion autorizada
+ *   consultarCoberturaMedicamentos  descuento de cada medicamento segun el vademecum
+ *
+ * Los datos (obras sociales, afiliados, vademecum) se administran desde admin.html.
  *
  * Para simular fallas del legado (system properties de WildFly):
  *   obrassociales.mock.fallar=true    registrarReclamo responde con SOAP Fault
@@ -47,17 +53,18 @@ public class ObrasSocialesWS {
                                                  @WebParam(name = "numeroAfiliado") String numeroAfiliado) {
         demorar();
         ResultadoCobertura r = new ResultadoCobertura();
-        Optional<Plan> plan = Padron.plan(obraSocial);
-        if (plan.isEmpty()) {
+        Optional<Entidad> entidad = Padron.entidad(obraSocial);
+        Optional<Afiliado> afiliado = Padron.afiliado(obraSocial, numeroAfiliado);
+        if (entidad.isEmpty()) {
             r.motivo = "Obra social inexistente";
-        } else if (!Padron.afiliadoValido(numeroAfiliado)) {
-            r.motivo = "Numero de afiliado invalido: deben ser 8 digitos";
-        } else if (Padron.dadoDeBaja(numeroAfiliado)) {
+        } else if (afiliado.isEmpty()) {
+            r.motivo = "El afiliado no figura en el padron";
+        } else if (!afiliado.get().activo) {
             r.motivo = "Afiliado dado de baja";
         } else {
             r.cubierto = true;
-            r.plan = plan.get().plan();
-            r.copagoPorcentaje = plan.get().copagoPorcentaje();
+            r.plan = entidad.get().plan;
+            r.copagoPorcentaje = entidad.get().copagoPorcentaje;
         }
         LOG.info("[Mock obras sociales] consultarCobertura " + obraSocial + " afiliado " + enmascarar(numeroAfiliado)
                 + " -> " + (r.cubierto ? "cubierto, " + r.plan : r.motivo));
@@ -80,7 +87,7 @@ public class ObrasSocialesWS {
             ResultadoCobertura cobertura = consultarCobertura(obraSocial, numeroAfiliado);
             if (!cobertura.cubierto) {
                 nueva.motivo = cobertura.motivo;
-            } else if (Padron.prestacionNoCubierta(numeroAfiliado)) {
+            } else if (Padron.afiliado(obraSocial, numeroAfiliado).map(a -> a.topeAlcanzado).orElse(false)) {
                 nueva.motivo = "La prestacion " + codigoPrestacion + " supera el tope mensual del plan";
             } else {
                 nueva.autorizada = true;
@@ -91,6 +98,31 @@ public class ObrasSocialesWS {
         LOG.info("[Mock obras sociales] autorizarPrestacion ref=" + referencia + " " + obraSocial + " afiliado "
                 + enmascarar(numeroAfiliado) + " -> " + (r.autorizada ? r.codigoAutorizacion : "RECHAZADA: " + r.motivo));
         return r;
+    }
+
+    @WebMethod
+    @WebResult(name = "cobertura")
+    public List<CoberturaMedicamento> consultarCoberturaMedicamentos(@WebParam(name = "obraSocial") String obraSocial,
+                                                                     @WebParam(name = "numeroAfiliado") String numeroAfiliado,
+                                                                     @WebParam(name = "medicamento") List<String> medicamentos) {
+        demorar();
+        boolean vigente = consultarCobertura(obraSocial, numeroAfiliado).cubierto;
+        List<CoberturaMedicamento> resultado = new ArrayList<>();
+        for (String recetado : medicamentos == null ? List.<String>of() : medicamentos) {
+            CoberturaMedicamento c = new CoberturaMedicamento();
+            c.medicamento = recetado;
+            if (vigente) {
+                Padron.medicamento(obraSocial, recetado).ifPresent(m -> {
+                    c.cubierto = true;
+                    c.descuentoPorcentaje = m.descuentoPorcentaje;
+                    c.vademecum = m.nombre;
+                });
+            }
+            resultado.add(c);
+        }
+        LOG.info("[Mock obras sociales] consultarCoberturaMedicamentos " + obraSocial + " afiliado " + enmascarar(numeroAfiliado)
+                + " -> " + resultado.stream().filter(c -> c.cubierto).count() + " de " + resultado.size() + " con descuento");
+        return resultado;
     }
 
     @WebMethod

@@ -19,6 +19,9 @@ public interface IObraSocialService {
 
     record ResultadoAutorizacion(boolean autorizada, String codigo, String motivo) {}
 
+    /** Descuento de un medicamento recetado segun el vademecum de la obra social (0 = sin cobertura). */
+    record CoberturaMedicamento(String medicamento, boolean cubierto, int descuentoPorcentaje) {}
+
     record ResultadoReclamo(boolean aceptado, String numero, BigDecimal importeReconocido, String motivo) {}
 
     List<ObraSocialDisponible> listarObrasSociales();
@@ -26,6 +29,8 @@ public interface IObraSocialService {
     CoberturaVerificada verificarCobertura(String obraSocial, String numeroAfiliado);
 
     ResultadoAutorizacion autorizarConsulta(String obraSocial, String numeroAfiliado, Long turnoId, LocalDateTime fecha);
+
+    List<CoberturaMedicamento> coberturaMedicamentos(String obraSocial, String numeroAfiliado, List<String> medicamentos);
 
     ResultadoReclamo registrarReclamo(String obraSocial, String numeroAfiliado, String codigoAutorizacion,
                                       BigDecimal importe, Long turnoId);

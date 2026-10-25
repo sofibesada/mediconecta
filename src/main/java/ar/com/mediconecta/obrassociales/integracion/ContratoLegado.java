@@ -34,6 +34,15 @@ public final class ContratoLegado {
     }
 
     @XmlAccessorType(XmlAccessType.FIELD)
+    @XmlType(name = "coberturaMedicamento", namespace = NS)
+    public static class CoberturaMedicamento {
+        public String medicamento;
+        public boolean cubierto;
+        public int descuentoPorcentaje;
+        public String vademecum;
+    }
+
+    @XmlAccessorType(XmlAccessType.FIELD)
     @XmlType(name = "resultadoAutorizacion", namespace = NS)
     public static class ResultadoAutorizacion {
         public boolean autorizada;
