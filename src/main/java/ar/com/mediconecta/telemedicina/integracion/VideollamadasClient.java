@@ -1,5 +1,6 @@
 package ar.com.mediconecta.telemedicina.integracion;
 
+import ar.com.mediconecta.config.Config;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,7 +28,6 @@ public class VideollamadasClient {
 
     private static final Logger LOG = Logger.getLogger(VideollamadasClient.class.getName());
     private static final String URL_POR_DEFECTO = "http://localhost:8080/videollamadas-mock/api/v1";
-    private static final String API_KEY_POR_DEFECTO = "***REMOVIDO***";
 
     private Client client;
 
@@ -89,7 +89,12 @@ public class VideollamadasClient {
         return System.getProperty("mediconecta.videollamadas.url", URL_POR_DEFECTO);
     }
 
+    /** La API key no esta en el codigo: system property o variable de entorno VIDEOLLAMADAS_API_KEY. */
     private String apiKey() {
-        return System.getProperty("mediconecta.videollamadas.apiKey", API_KEY_POR_DEFECTO);
+        String clave = Config.valor("mediconecta.videollamadas.apiKey", "VIDEOLLAMADAS_API_KEY");
+        if (clave == null) {
+            throw new VideollamadasNoDisponibleException("Falta configurar la API key de la plataforma de videollamadas", null);
+        }
+        return clave;
     }
 }

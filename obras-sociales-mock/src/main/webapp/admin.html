@@ -51,7 +51,7 @@
             <label style="flex:1;">Clave de administrador<input type="password" id="clave" onkeydown="if(event.key==='Enter')ingresar()"></label>
             <button onclick="ingresar()">Ingresar</button>
         </div>
-        <p class="nota">La clave se configura con la system property <code>obrassociales.mock.adminKey</code> (por defecto, <code>***REMOVIDO***</code>).</p>
+        <p class="nota">La clave se configura con la variable de entorno <code>OBRASSOCIALES_ADMIN_KEY</code> (o la system property <code>obrassociales.mock.adminKey</code>).</p>
     </div>
 </div>
 

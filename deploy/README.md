@@ -51,8 +51,10 @@ Después `mvn clean package wildfly:deploy`. Hibernate recrea todo y el bean
 
 Se siembra sola al desplegar (clase `ar.com.mediconecta.config.SeedAdmin`):
 
-- **Email:** `admin@mediconecta.com`
-- **Contraseña:** `***REMOVIDO***`
+- **Email:** `admin@mediconecta.com` (o `MEDICONECTA_ADMIN_EMAIL`)
+- **Contraseña:** la que se configure en `MEDICONECTA_ADMIN_PASSWORD` (variable de entorno)
+  o en la system property `mediconecta.admin.password`. **No está en el código**: si no se
+  configura, no se crea la cuenta ADMIN.
 
 Es la única forma de tener un ADMIN (el registro público solo crea PACIENTE).
 Los profesionales los da de alta el ADMIN desde la pantalla de Administración.
@@ -149,8 +151,9 @@ mvn clean package wildfly:deploy
 
 Las obras sociales, sus afiliados y el vademécum (medicamentos con descuento) son datos
 del sistema **legado**, no de MediConecta: se administran desde su propio panel,
-`http://localhost:8080/obras-sociales-mock/admin.html` (clave: system property
-`obrassociales.mock.adminKey`, por defecto `***REMOVIDO***`). Se guardan en
+`http://localhost:8080/obras-sociales-mock/admin.html` (clave: variable de entorno
+`OBRASSOCIALES_ADMIN_KEY` o system property `obrassociales.mock.adminKey`; sin clave
+configurada, el panel queda cerrado). Se guardan en
 `<WildFly>/standalone/data/obras-sociales-mock/padron.json`, así que sobreviven a los
 redeploys; para volver a los datos de prueba, borrar ese archivo y redesplegar el mock.
 
@@ -180,13 +183,14 @@ el `pom.xml`.
 | `mediconecta.cors.origenes` | Orígenes del frontend que pueden mandar cookies | `http://localhost:5173,http://127.0.0.1:5173` |
 | `mediconecta.recordatorio.horas` | Con cuántas horas de anticipación se avisa un turno | `24` |
 | `mediconecta.videollamadas.url` | URL base del proveedor de videollamadas | `http://localhost:8080/videollamadas-mock/api/v1` |
-| `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor | `***REMOVIDO***` |
+| `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |
+| `videollamadas.mock.apiKey` | API key que exige el mock (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |
 | `videollamadas.mock.fallar` | `true`: el mock responde 503 (para ver los reintentos y la DLQ) | `false` |
 | `videollamadas.mock.demoraMs` | El mock tarda N ms (con más de 5000 vence el timeout del cliente) | `0` |
 | `mediconecta.obrassociales.url` | Endpoint SOAP del sistema de obras sociales | `http://localhost:8080/obras-sociales-mock/ObrasSociales` |
 | `mediconecta.consulta.valor` | Valor de la consulta (base del copago y del reclamo) | `20000` |
 | `obrassociales.mock.fallar` | `true`: `registrarReclamo` responde con SOAP Fault (reintentos de la cola y DLQ) | `false` |
-| `obrassociales.mock.adminKey` | Clave del panel de administración del legado | `***REMOVIDO***` |
+| `obrassociales.mock.adminKey` | Clave del panel del legado (también `OBRASSOCIALES_ADMIN_KEY`) | sin valor: panel cerrado |
 | `obrassociales.mock.demoraMs` | El mock tarda N ms (con más de 5000 la autorización no responde y se revierte la confirmación) | `0` |
 
 Se setean sin reiniciar, por ejemplo:
@@ -209,7 +213,7 @@ curl -s -X POST http://localhost:8080/mediconecta/api/usuarios \
   -d '{"nombre":"Test","email":"test@test.com","password":"1234"}'
 
 # Login como admin (la respuesta trae "token") y consulta protegida con rol ADMIN
-curl -s -X POST http://localhost:8080/mediconecta/api/usuarios/login   -H "Content-Type: application/json"   -d '{"email":"admin@mediconecta.com","password":"***REMOVIDO***"}'
+curl -s -X POST http://localhost:8080/mediconecta/api/usuarios/login   -H "Content-Type: application/json"   -d '{"email":"admin@mediconecta.com","password":"LA_CLAVE_DEL_ADMIN"}'
 
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/mediconecta/api/usuarios/1
 ```

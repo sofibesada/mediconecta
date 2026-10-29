@@ -23,7 +23,8 @@ import java.util.function.Supplier;
  * de obras sociales, afiliados y medicamentos del vademecum. No es parte del contrato
  * con MediConecta, que solo usa el servicio SOAP.
  *
- * Exige el header X-Admin-Key (system property obrassociales.mock.adminKey).
+ * Exige el header X-Admin-Key (system property obrassociales.mock.adminKey o variable
+ * de entorno OBRASSOCIALES_ADMIN_KEY; sin clave configurada, el panel queda cerrado).
  */
 @Path("/admin")
 @Produces(MediaType.APPLICATION_JSON)
@@ -77,7 +78,9 @@ public class AdminPadronResource {
     }
 
     private static Response conClave(String clave, Supplier<Object> accion) {
-        if (!System.getProperty("obrassociales.mock.adminKey", "***REMOVIDO***").equals(clave)) {
+        // La clave se configura afuera (system property o variable de entorno OBRASSOCIALES_ADMIN_KEY).
+        String esperada = System.getProperty("obrassociales.mock.adminKey", System.getenv("OBRASSOCIALES_ADMIN_KEY"));
+        if (esperada == null || !esperada.equals(clave)) {
             return Response.status(Response.Status.UNAUTHORIZED).entity(Map.of("error", "Clave de administrador incorrecta")).build();
         }
         try {

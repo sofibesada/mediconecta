@@ -1,5 +1,6 @@
 package ar.com.mediconecta.seguridad;
 
+import ar.com.mediconecta.config.Config;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.json.bind.Jsonb;
@@ -39,7 +40,7 @@ public class TokenService {
 
     @PostConstruct
     void init() {
-        String configurada = System.getProperty("mediconecta.jwt.secret");
+        String configurada = Config.valor("mediconecta.jwt.secret", "MEDICONECTA_JWT_SECRET");
         if (configurada != null && configurada.length() >= 32) {
             clave = configurada.getBytes(StandardCharsets.UTF_8);
         } else {

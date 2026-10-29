@@ -93,8 +93,9 @@ public class SalaResource {
     }
 
     private Response validarAutorizacion(String auth) {
-        String esperado = "Bearer " + System.getProperty("videollamadas.mock.apiKey", "***REMOVIDO***");
-        return esperado.equals(auth) ? null : problema(401, "no-autorizado", "API key inválida o ausente");
+        // La API key se configura afuera (system property o variable de entorno VIDEOLLAMADAS_API_KEY).
+        String clave = System.getProperty("videollamadas.mock.apiKey", System.getenv("VIDEOLLAMADAS_API_KEY"));
+        return clave != null && ("Bearer " + clave).equals(auth) ? null : problema(401, "no-autorizado", "API key inválida o ausente");
     }
 
     private Response simularFalla() {
