@@ -9,6 +9,10 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Analisis estatico en SonarCloud (lo corre el pipeline de GitHub Actions) -->
+        <sonar.organization>sofibesada</sonar.organization>
+        <sonar.projectKey>sofibesada_mediconecta</sonar.projectKey>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <dependencies>

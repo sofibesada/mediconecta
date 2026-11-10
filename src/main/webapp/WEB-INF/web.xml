@@ -28,6 +28,7 @@
         <web-resource-collection>
             <web-resource-name>CambioDePassword</web-resource-name>
             <url-pattern>/api/usuarios/cambiar-password</url-pattern>
+            <url-pattern>/api/usuarios/renovar</url-pattern>
             <http-method-omission>OPTIONS</http-method-omission>
         </web-resource-collection>
         <auth-constraint>

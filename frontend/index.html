@@ -508,7 +508,36 @@
             const msg = (data && data.error) || (typeof data === "string" && data) || ("Error " + res.status);
             throw new Error(msg);
         }
+        renovarSiHaceFalta();
         return data;
+    }
+
+    // El token dura 15 minutos. Si el usuario estuvo activo (clic o tecla) en los últimos
+    // 15 minutos y al token le quedan menos de 5, se pide uno nuevo. Si deja la pestaña
+    // abierta sin usarla, el token vence y la sesión se cierra (las consultas automáticas
+    // de notificaciones no cuentan como actividad).
+    let ultimaActividad = Date.now();
+    let renovando = false;
+    ["click", "keydown"].forEach(ev => document.addEventListener(ev, () => { ultimaActividad = Date.now(); }, true));
+
+    function vencimientoDelToken(token) {
+        try { return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp * 1000; }
+        catch { return 0; }
+    }
+
+    async function renovarSiHaceFalta() {
+        if (renovando || !usuario || !usuario.token) return;
+        const ahora = Date.now();
+        if (vencimientoDelToken(usuario.token) - ahora > 5 * 60000) return;
+        if (ahora - ultimaActividad > 15 * 60000) return;
+        renovando = true;
+        try {
+            const r = await fetch(API + "/usuarios/renovar", { method: "POST", headers: { "Authorization": "Bearer " + usuario.token } });
+            if (r.ok && usuario) {
+                usuario = { ...usuario, token: (await r.json()).token };
+                guardarLS("mc_user", usuario);
+            }
+        } catch {} finally { renovando = false; }
     }
 
     function toast(msg, tipo = "info") {

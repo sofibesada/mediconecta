@@ -24,6 +24,9 @@ import javax.crypto.spec.SecretKeySpec;
  * si esta activo y si debe cambiar la contrasena se leen de la base en cada pedido
  * (ver JwtAuthenticationMechanism), asi desactivar una cuenta corta el acceso en el acto.
  *
+ * Vigencia corta (15 min): si el token se filtra, sirve poco tiempo. Mientras el usuario
+ * usa la aplicacion, el frontend lo renueva con POST /usuarios/renovar antes de que venza.
+ *
  * Clave de firma: system property mediconecta.jwt.secret (minimo 32 caracteres). Si no
  * esta configurada se genera una al azar al desplegar: sirve para desarrollo, pero los
  * tokens dejan de valer en cada redeploy y hay que volver a iniciar sesion.
@@ -32,7 +35,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class TokenService {
 
     private static final Logger LOG = Logger.getLogger(TokenService.class.getName());
-    private static final Duration VIGENCIA = Duration.ofHours(8);
+    private static final Duration VIGENCIA = Duration.ofMinutes(15);
     private static final String HEADER = base64("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
     private static final Jsonb JSONB = JsonbBuilder.create();
 

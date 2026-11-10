@@ -4,11 +4,13 @@ import ar.com.mediconecta.config.ApiError;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.security.enterprise.SecurityContext;
-import jakarta.ws.rs.ForbiddenException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.NotAuthorizedException;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
+import java.util.logging.Logger;
 
 /**
  * Quien hace el pedido, segun el token validado por JwtAuthenticationMechanism.
@@ -19,8 +21,13 @@ import java.security.Principal;
 @RequestScoped
 public class UsuarioActual {
 
+    private static final Logger LOG = Logger.getLogger(UsuarioActual.class.getName());
+
     @Inject
     private SecurityContext securityContext;
+
+    @Inject
+    private HttpServletRequest request;
 
     public Long id() {
         Principal p = securityContext.getCallerPrincipal();
@@ -39,15 +46,20 @@ public class UsuarioActual {
         return id().equals(usuarioId);
     }
 
-    /** 403 si el recurso no es del usuario actual (y no es admin, cuando se permite). */
-    public void exigir(boolean permitido, String mensaje) {
+    /**
+     * Si el recurso no es del usuario actual responde 404, igual que si no existiera: asi
+     * no se confirma que el id existe (BOLA). El motivo queda en el log, solo con ids.
+     */
+    public void exigir(boolean permitido, String motivo) {
         if (!permitido) {
-            throw prohibido(mensaje);
+            LOG.warning("[Seguridad] Acceso rechazado: usuario #" + id() + " -> " + request.getMethod() + " "
+                    + request.getRequestURI() + " (" + motivo + ")");
+            throw noEncontrado();
         }
     }
 
-    public static ForbiddenException prohibido(String mensaje) {
-        return new ForbiddenException(Response.status(Response.Status.FORBIDDEN)
-                .entity(new ApiError(mensaje)).type(MediaType.APPLICATION_JSON).build());
+    public static NotFoundException noEncontrado() {
+        return new NotFoundException(Response.status(Response.Status.NOT_FOUND)
+                .entity(new ApiError("No encontrado")).type(MediaType.APPLICATION_JSON).build());
     }
 }

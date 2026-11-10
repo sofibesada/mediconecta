@@ -73,6 +73,19 @@ public class UsuarioResource {
                 usuarioActual.id(), request.passwordActual, request.passwordNueva));
     }
 
+    /**
+     * Devuelve un token nuevo para el usuario del token actual (que todavia tiene que ser
+     * valido). Asi la sesion dura mientras se use, aunque cada token venza a los 15 min.
+     */
+    @POST
+    @Path("/renovar")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RenovacionResponse renovar() {
+        return new RenovacionResponse(tokenService.emitir(usuarioActual.id()));
+    }
+
+    public record RenovacionResponse(String token) {}
+
     private UsuarioResponse conToken(Usuario usuario) {
         UsuarioResponse r = UsuarioResponse.from(usuario);
         r.token = tokenService.emitir(usuario.getId());

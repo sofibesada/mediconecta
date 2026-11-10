@@ -1,0 +1,101 @@
+# Integracion continua: en cada push y pull request a main.
+#   1. secretos   gitleaks revisa TODO el historial (no puede haber claves en el repo)
+#   2. build      compila y corre las pruebas unitarias
+#   3. api        levanta el sistema completo con Docker Compose y corre las pruebas de la API
+#   4. sonar      analisis estatico en SonarCloud (solo si esta cargado el secreto SONAR_TOKEN)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secretos:
+    name: Secretos en el historial (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.21.2 detect --source /repo --no-banner --redact -v
+
+  build:
+    name: Build y pruebas unitarias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: mvn verify
+        run: mvn -B verify
+
+  api:
+    name: Sistema completo + pruebas de la API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Clave de prueba de esta corrida: la usan el servidor y las pruebas (token vencido).
+      MEDICONECTA_JWT_SECRET: ci-${{ github.run_id }}-${{ github.run_attempt }}-clave-de-prueba-del-pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Levantar el sistema (docker compose)
+        run: docker compose up --build -d --wait --wait-timeout 600
+      - name: Pruebas de la API
+        run: |
+          docker compose logs -f --no-log-prefix app > app.log 2>&1 &
+          mvn -B test \
+            -Dapi.base=http://localhost:8080/mediconecta/api \
+            -Dadmin.email=admin@mediconecta.com -Dadmin.password=admin1234 \
+            -Dwildfly.log=app.log
+      - name: Evidencia de las pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-api
+          path: |
+            target/surefire-reports/
+            target/seguridad/
+            app.log
+      - name: Bajar el sistema
+        if: always()
+        run: docker compose down -v
+
+  sonar:
+    name: Analisis estatico (SonarCloud)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Sonar
+        if: env.SONAR_TOKEN != ''
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar -Dsonar.qualitygate.wait=true
+      - name: Sin SONAR_TOKEN
+        if: env.SONAR_TOKEN == ''
+        run: echo "::warning::Falta el secreto SONAR_TOKEN; el analisis lo hace por ahora el Analisis automatico de SonarCloud."
