@@ -1,0 +1,6 @@
+# Archivos que se usan dentro de los contenedores (Linux): siempre con fin de linea LF,
+# aunque se clone en Windows.
+docker/** text eol=lf
+docker-compose.yml text eol=lf
+*.sh text eol=lf
+*.cli text eol=lf

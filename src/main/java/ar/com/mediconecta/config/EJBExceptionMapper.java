@@ -25,6 +25,12 @@ public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
         Response.Status estado;
         if (causa instanceof ObrasSocialesNoDisponibleException) {
             estado = Response.Status.SERVICE_UNAVAILABLE;
+        } else if (esFallaDeMensajeria(ex)) {
+            // Broker caido: la transaccion ya se revirtio (no quedo nada a medias).
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(new ApiError("El servicio de mensajería no está disponible. No se guardó ningún cambio; probá de nuevo en unos minutos."))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
         } else if (causa instanceof IllegalArgumentException) {
             estado = Response.Status.BAD_REQUEST;
         } else if (causa instanceof IllegalStateException) {
@@ -38,5 +44,14 @@ public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
                 .entity(new ApiError(mensaje))
                 .type(MediaType.APPLICATION_JSON)
                 .build();
+    }
+
+    private static boolean esFallaDeMensajeria(Throwable t) {
+        for (Throwable c = t; c != null; c = c.getCause()) {
+            if (c instanceof jakarta.jms.JMSRuntimeException || c instanceof jakarta.jms.JMSException) {
+                return true;
+            }
+        }
+        return false;
     }
 }

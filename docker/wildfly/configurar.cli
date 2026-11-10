@@ -1,0 +1,43 @@
+# Configuracion de WildFly para el entorno de Docker Compose. Se aplica al construir la
+# imagen (servidor embebido, sin levantarlo). Los valores sensibles quedan como
+# expresiones ${env.X}: se resuelven al arrancar con las variables del contenedor.
+
+embed-server --server-config=standalone-full.xml --std-out=discard
+
+# --- PostgreSQL --------------------------------------------------------------------
+module add --name=org.postgresql --resources=/tmp/postgresql.jar --dependencies=jakarta.transaction.api
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql, driver-module-name=org.postgresql, driver-class-name=org.postgresql.Driver)
+data-source add --name=MediconectaDS --jndi-name=java:/MediconectaDS --driver-name=postgresql \
+  --connection-url=jdbc:postgresql://${env.DB_HOST:db}:5432/${env.DB_NAME:mediconecta} \
+  --user-name=${env.DB_USER} --password=${env.DB_PASSWORD} \
+  --validate-on-match=true --background-validation=false \
+  --valid-connection-checker-class-name=org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker \
+  --exception-sorter-class-name=org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter
+
+# --- Mensajeria: ActiveMQ Artemis en su propio contenedor ---------------------------
+# Se saca el broker embebido y WildFly pasa a ser cliente del broker remoto. Asi se
+# puede apagar el broker sin apagar la aplicacion: el adaptador se reconecta solo.
+/subsystem=messaging-activemq/server=default:remove
+/socket-binding-group=standard-sockets/remote-destination-outbound-socket-binding=artemis:add(host=${env.ARTEMIS_HOST:broker}, port=61616)
+/subsystem=messaging-activemq/remote-connector=artemis:add(socket-binding=artemis, params={connect-timeout-millis=3000})
+# Dos fabricas de conexiones con politicas distintas:
+#  - activemq-ra: la usan los MDB (consumidores). Reintenta para siempre cada 2 s: cuando
+#    el broker vuelve, los consumidores se reconectan solos.
+#  - productores: la usa la aplicacion para publicar (JMSContext por defecto). Un solo
+#    intento (conexion con timeout de 3 s en el conector) y llamadas de 5 s como maximo: si el broker esta caido, el envio falla enseguida, la
+#    transaccion se revierte y el usuario recibe un 503 (sin hilos colgados).
+/subsystem=messaging-activemq/pooled-connection-factory=activemq-ra:add(connectors=[artemis], \
+  entries=[java:/jms/ConsumidoresRA], transaction=xa, \
+  user=${env.ARTEMIS_USER}, password=${env.ARTEMIS_PASSWORD}, enable-amq1-prefix=false, \
+  reconnect-attempts=-1, retry-interval=2000, setup-attempts=-1, setup-interval=2000)
+/subsystem=messaging-activemq/pooled-connection-factory=productores:add(connectors=[artemis], \
+  entries=[java:/JmsXA, java:jboss/DefaultJMSConnectionFactory], transaction=xa, \
+  user=${env.ARTEMIS_USER}, password=${env.ARTEMIS_PASSWORD}, enable-amq1-prefix=false, \
+  initial-connect-attempts=1, reconnect-attempts=0, call-timeout=5000)
+/subsystem=messaging-activemq/external-jms-topic=TurnosEventosTopic:add(entries=[java:/jms/topic/TurnosEventos], enable-amq1-prefix=false)
+/subsystem=messaging-activemq/external-jms-queue=FacturacionQueue:add(entries=[java:/jms/queue/Facturacion], enable-amq1-prefix=false)
+
+# --- Seguridad: Jakarta Security con el mecanismo propio (token JWT) ----------------
+/subsystem=undertow/application-security-domain=other:write-attribute(name=integrated-jaspi, value=false)
+
+stop-embedded-server
