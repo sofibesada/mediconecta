@@ -2,6 +2,7 @@ package ar.com.mediconecta.turnos.business;
 
 import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Turno;
+import ar.com.mediconecta.turnos.model.estado.TransicionInvalidaException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.ejb.EJB;
@@ -114,7 +115,7 @@ public class AsistenteAgendamiento implements Serializable {
             Turno confirmado = turnoService.confirmarTurno(turnoRetenidoId, particular);
             LOG.info("[Asistente @Stateful #" + id() + "] conversacion terminada: turno #" + confirmado.getId() + " confirmado");
             return confirmado;
-        } catch (ConflictoTurnoException e) {
+        } catch (ConflictoTurnoException | TransicionInvalidaException e) {
             turnoRetenidoId = null; // la reserva vencio o ya no es valida
             throw e;
         }

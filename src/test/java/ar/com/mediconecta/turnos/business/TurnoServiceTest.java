@@ -28,6 +28,7 @@ import ar.com.mediconecta.turnos.eventos.TurnoEventoPublisher;
 import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Modalidad;
 import ar.com.mediconecta.turnos.model.Turno;
+import ar.com.mediconecta.turnos.model.estado.TransicionInvalidaException;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import ar.com.mediconecta.usuarios.model.Usuario;
 import jakarta.ejb.EJBException;
@@ -132,17 +133,17 @@ class TurnoServiceTest {
             Turno retenido = turno(EstadoTurno.RESERVADO_TEMPORAL, 2);
             retenido.setHoldExpiraEn(LocalDateTime.now().plusMinutes(3));
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(retenido);
-            assertThrows(ConflictoTurnoException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
+            assertThrows(TransicionInvalidaException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
 
             Turno sinHold = turno(EstadoTurno.RESERVADO_TEMPORAL, 2);
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(sinHold);
-            assertThrows(ConflictoTurnoException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
+            assertThrows(TransicionInvalidaException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
 
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CONFIRMADO, 2));
-            assertThrows(ConflictoTurnoException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
+            assertThrows(TransicionInvalidaException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
 
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.DISPONIBLE, -1));
-            ConflictoTurnoException e = assertThrows(ConflictoTurnoException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
+            TransicionInvalidaException e = assertThrows(TransicionInvalidaException.class, () -> service.reservarTemporalmente(PACIENTE, TURNO));
             assertEquals("Ese horario ya pasó", e.getMessage());
         }
 
@@ -284,7 +285,7 @@ class TurnoServiceTest {
             assertThrows(ConflictoTurnoException.class, () -> service.confirmarTurno(TURNO, false));
 
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.DISPONIBLE, 2));
-            assertThrows(ConflictoTurnoException.class, () -> service.confirmarTurno(TURNO, false));
+            assertThrows(TransicionInvalidaException.class, () -> service.confirmarTurno(TURNO, false));
         }
 
         @Test
@@ -342,7 +343,7 @@ class TurnoServiceTest {
         @Test
         void conMenosDe24HorasNoSePuede() {
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CONFIRMADO, 5));
-            ConflictoTurnoException e = assertThrows(ConflictoTurnoException.class, () -> service.cancelarTurno(TURNO));
+            TransicionInvalidaException e = assertThrows(TransicionInvalidaException.class, () -> service.cancelarTurno(TURNO));
             assertTrue(e.getMessage().contains("24hs"));
         }
 
@@ -360,7 +361,7 @@ class TurnoServiceTest {
         @Test
         void unTurnoFinalizadoNoSeCancela() {
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CONFIRMADO, -2));
-            assertThrows(ConflictoTurnoException.class, () -> service.cancelarTurno(TURNO));
+            assertThrows(TransicionInvalidaException.class, () -> service.cancelarTurno(TURNO));
         }
 
         @Test
@@ -409,13 +410,13 @@ class TurnoServiceTest {
             assertThrows(DatosTurnoInvalidosException.class, () -> service.reprogramarTurno(99L, TURNO, nueva));
 
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CANCELADO, 48));
-            assertThrows(ConflictoTurnoException.class, () -> service.reprogramarTurno(PROFESIONAL, TURNO, nueva));
+            assertThrows(TransicionInvalidaException.class, () -> service.reprogramarTurno(PROFESIONAL, TURNO, nueva));
 
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CONFIRMADO, -3));
-            assertThrows(ConflictoTurnoException.class, () -> service.reprogramarTurno(PROFESIONAL, TURNO, nueva));
+            assertThrows(TransicionInvalidaException.class, () -> service.reprogramarTurno(PROFESIONAL, TURNO, nueva));
 
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.RESERVADO_TEMPORAL, 48));
-            assertThrows(ConflictoTurnoException.class, () -> service.reprogramarTurno(PROFESIONAL, TURNO, nueva));
+            assertThrows(TransicionInvalidaException.class, () -> service.reprogramarTurno(PROFESIONAL, TURNO, nueva));
 
             Turno t = turno(EstadoTurno.CONFIRMADO, 48);
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(t);

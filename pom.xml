@@ -16,7 +16,7 @@
         <!-- La cobertura se mide sobre la capa de negocio (reglas del dominio, seguridad y
              traduccion de errores). Entidades, repositorios, recursos REST, MDB y clientes
              externos los ejercitan las pruebas de la API contra el sistema levantado. -->
-        <sonar.coverage.exclusions>**/model/**,**/data/**,**/presentation/**,**/messaging/**,**/integracion/**,**/eventos/**,**/config/ApplicationConfig.java,**/config/CorsFilter.java,**/config/SeedAdmin.java,**/config/ApiError.java</sonar.coverage.exclusions>
+        <sonar.coverage.exclusions>**/model/*.java,**/data/**,**/presentation/**,**/messaging/**,**/integracion/**,**/eventos/**,**/config/ApplicationConfig.java,**/config/CorsFilter.java,**/config/SeedAdmin.java,**/config/ApiError.java</sonar.coverage.exclusions>
     </properties>
 
     <dependencies>
@@ -130,6 +130,7 @@
                             <includes>
                                 <include>ar/com/mediconecta/*/business/*</include>
                                 <include>ar/com/mediconecta/seguridad/*</include>
+                                <include>ar/com/mediconecta/turnos/model/estado/*</include>
                                 <include>ar/com/mediconecta/config/*ExceptionMapper</include>
                                 <include>ar/com/mediconecta/config/Config</include>
                             </includes>

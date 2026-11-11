@@ -1,8 +1,10 @@
 package ar.com.mediconecta.turnos.model;
 
+import ar.com.mediconecta.turnos.model.estado.EstadoDelTurno;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.function.Predicate;
 
 @Entity
 @Table(name = "turnos")
@@ -93,6 +95,38 @@ public class Turno {
 
     public Modalidad getModalidad() { return modalidad != null ? modalidad : Modalidad.PRESENCIAL; }
     public void setModalidad(Modalidad modalidad) { this.modalidad = modalidad; }
+
+    // ---------- transiciones (patron State: ver estado.EstadoDelTurno) ----------
+
+    /** El comportamiento que corresponde al estado actual. */
+    public EstadoDelTurno estadoActual() {
+        return EstadoDelTurno.de(estado);
+    }
+
+    public void reservar(Long pacienteId, LocalDateTime holdHasta) {
+        estadoActual().reservar(this, pacienteId, holdHasta);
+    }
+
+    public void confirmar() {
+        estadoActual().confirmar(this);
+    }
+
+    public void liberar() {
+        estadoActual().liberar(this);
+    }
+
+    public void cancelar(Predicate<Turno> politicaDeCancelacion) {
+        estadoActual().cancelar(this, politicaDeCancelacion);
+    }
+
+    public void reprogramar(LocalDateTime nuevaFecha) {
+        estadoActual().reprogramar(this, nuevaFecha);
+    }
+
+    /** Tiene una reserva temporal cuyo plazo ya vencio. */
+    public boolean holdVencido() {
+        return estado == EstadoTurno.RESERVADO_TEMPORAL && holdExpiraEn != null && holdExpiraEn.isBefore(LocalDateTime.now());
+    }
 
     /** La fecha del turno ya pasó. */
     public boolean yaPaso() {

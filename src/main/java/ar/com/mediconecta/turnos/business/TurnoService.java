@@ -92,9 +92,7 @@ public class TurnoService implements ITurnoService {
                 || !pacienteId.equals(turno.getPacienteId())) {
             return;
         }
-        turno.setEstado(EstadoTurno.DISPONIBLE);
-        turno.setPacienteId(null);
-        turno.setHoldExpiraEn(null);
+        turno.liberar();
         turnoRepository.actualizar(turno);
     }
 
@@ -120,18 +118,12 @@ public class TurnoService implements ITurnoService {
             throw new DatosTurnoInvalidosException("El paciente indicado no existe o está desactivado");
         }
         Turno turno = turnoRepository.buscarPorId(turnoId);
-        // Una reserva temporal vencida (el paciente la abandono) cuenta como disponible.
-        boolean holdVencido = turno != null && turno.getEstado() == EstadoTurno.RESERVADO_TEMPORAL
-                && turno.getHoldExpiraEn() != null && turno.getHoldExpiraEn().isBefore(LocalDateTime.now());
-        if (turno == null || (turno.getEstado() != EstadoTurno.DISPONIBLE && !holdVencido)) {
+        if (turno == null) {
             throw new ConflictoTurnoException("El turno no está disponible");
         }
-        if (turno.yaPaso()) {
-            throw new ConflictoTurnoException("Ese horario ya pasó");
-        }
-        turno.setPacienteId(pacienteId);
-        turno.setEstado(EstadoTurno.RESERVADO_TEMPORAL);
-        turno.setHoldExpiraEn(LocalDateTime.now().plusMinutes(MINUTOS_HOLD));
+        // El estado decide si se puede: DISPONIBLE si, RESERVADO_TEMPORAL solo si la reserva
+        // anterior vencio; cualquier otro, 409.
+        turno.reservar(pacienteId, LocalDateTime.now().plusMinutes(MINUTOS_HOLD));
         return turnoRepository.actualizar(turno);
     }
 
@@ -164,22 +156,22 @@ public class TurnoService implements ITurnoService {
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public Turno confirmarTurno(Long turnoId, boolean particular) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
-        if (turno == null || turno.getEstado() != EstadoTurno.RESERVADO_TEMPORAL) {
+        if (turno == null) {
             throw new ConflictoTurnoException("El turno no tiene una reserva temporal activa");
         }
-        if (turno.getPacienteId() != null && !usuarioService.existeUsuario(turno.getPacienteId())) {
-            throw new ConflictoTurnoException("El paciente de este turno ya no está activo");
-        }
-        if (turno.getHoldExpiraEn().isBefore(LocalDateTime.now())) {
+        if (turno.holdVencido()) {
             // ConflictoTurnoException es rollback = false: la liberacion del horario SI se guarda.
-            turno.setEstado(EstadoTurno.DISPONIBLE);
-            turno.setPacienteId(null);
+            turno.liberar();
             turnoRepository.actualizar(turno);
             throw new ConflictoTurnoException("El hold del turno expiró, volvé a reservarlo");
         }
+        if (turno.getEstado() == EstadoTurno.RESERVADO_TEMPORAL
+                && !usuarioService.existeUsuario(turno.getPacienteId())) {
+            throw new ConflictoTurnoException("El paciente de este turno ya no está activo");
+        }
 
-        // Paso 1
-        turno.setEstado(EstadoTurno.CONFIRMADO);
+        // Paso 1 (el estado rechaza con 409 si el turno no esta reservado)
+        turno.confirmar();
         turnoRepository.actualizar(turno);
 
         Usuario paciente = usuarioService.buscarParaSesion(turno.getPacienteId());
@@ -263,17 +255,12 @@ public class TurnoService implements ITurnoService {
         if (turno == null || turno.getEstado() == EstadoTurno.CANCELADO) {
             return;
         }
-        if (turno.isFinalizado()) {
-            throw new ConflictoTurnoException("No se puede cancelar: el turno ya finalizó");
-        }
         PoliticaCancelacion politica = turno.isUrgente()
                 ? new PoliticaCancelacionUrgencia()
                 : new PoliticaCancelacionEstandar();
-
-        if (!politica.puedeCancelarse(turno)) {
-            throw new ConflictoTurnoException("No se puede cancelar: faltan menos de 24hs para el turno");
-        }
-        turno.setEstado(EstadoTurno.CANCELADO);
+        // State + Strategy: el estado decide si admite la cancelacion (un turno finalizado
+        // no) y la politica, si todavia hay anticipacion suficiente.
+        turno.cancelar(politica::puedeCancelarse);
         turnoRepository.actualizar(turno);
         if (turno.getPacienteId() != null) {
             eventoPublisher.publicar(TipoEventoTurno.TURNO_CANCELADO, turno, null);
@@ -290,15 +277,6 @@ public class TurnoService implements ITurnoService {
         if (!turno.getProfesionalId().equals(profesionalId)) {
             throw new DatosTurnoInvalidosException("Solo el profesional del turno puede reprogramarlo");
         }
-        if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new ConflictoTurnoException("No se puede reprogramar un turno cancelado");
-        }
-        if (turno.isFinalizado()) {
-            throw new ConflictoTurnoException("No se puede reprogramar un turno que ya finalizó");
-        }
-        if (turno.getEstado() == EstadoTurno.RESERVADO_TEMPORAL) {
-            throw new ConflictoTurnoException("El paciente está confirmando este turno; esperá a que lo confirme o se libere");
-        }
         if (nuevaFecha == null || !nuevaFecha.isAfter(LocalDateTime.now())) {
             throw new DatosTurnoInvalidosException("La nueva fecha tiene que ser futura");
         }
@@ -309,7 +287,7 @@ public class TurnoService implements ITurnoService {
             throw new ConflictoTurnoException("Ya tenés otro turno en ese horario");
         }
         LocalDateTime fechaAnterior = turno.getFechaHora();
-        turno.setFechaHora(nuevaFecha);
+        turno.reprogramar(nuevaFecha);
         Turno reprogramado = turnoRepository.actualizar(turno);
         if (reprogramado.getPacienteId() != null) {
             eventoPublisher.publicar(TipoEventoTurno.TURNO_REPROGRAMADO, reprogramado, fechaAnterior);
