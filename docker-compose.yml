@@ -71,9 +71,11 @@ services:
       retries: 60
 
   frontend:
-    image: nginx:1.27-alpine
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
+    # React + TypeScript compilado con Vite y servido por nginx (ver frontend/Dockerfile).
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8080/mediconecta/api
     ports:
       - "5173:80"
     depends_on:

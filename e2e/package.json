@@ -1,0 +1,15 @@
+{
+  "name": "mediconecta-e2e",
+  "private": true,
+  "description": "Pruebas de punta a punta de MediConecta (Playwright) contra el sistema levantado con docker compose",
+  "scripts": {
+    "test": "playwright test",
+    "lighthouse": "node lighthouse.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.1",
+    "@playwright/test": "1.48.2",
+    "chrome-launcher": "1.1.2",
+    "lighthouse": "12.2.1"
+  }
+}

@@ -1,7 +1,9 @@
 # Integracion continua: en cada push y pull request a main.
 #   1. secretos   gitleaks revisa TODO el historial (no puede haber claves en el repo)
-#   2. build      compila y corre las pruebas unitarias
-#   3. api        levanta el sistema completo con Docker Compose y corre las pruebas de la API
+#   2. build      compila y corre las pruebas unitarias del backend
+#      frontend   ESLint, TypeScript, pruebas unitarias (Vitest) y build de la SPA en React
+#   3. api        levanta el sistema completo con Docker Compose y corre las pruebas de la API,
+#                 las de punta a punta (Playwright) y Lighthouse de accesibilidad
 #   4. sonar      analisis estatico en SonarCloud (solo si esta cargado el secreto SONAR_TOKEN)
 name: CI
 
@@ -42,8 +44,38 @@ jobs:
       - name: mvn verify
         run: mvn -B verify
 
+  frontend:
+    name: Frontend (lint, tipos, pruebas y build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Pruebas unitarias (Vitest) con cobertura
+        run: npx vitest run --coverage
+      - name: Build de produccion
+        run: npm run build
+      - name: Cobertura del frontend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-frontend
+          path: frontend/coverage/
+
   api:
-    name: Sistema completo + pruebas de la API
+    name: Sistema completo + API + E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -65,15 +97,31 @@ jobs:
             -Dapi.base=http://localhost:8080/mediconecta/api \
             -Dadmin.email=admin@mediconecta.com -Dadmin.password=admin1234 \
             -Dwildfly.log=app.log
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Pruebas de punta a punta (Playwright)
+        working-directory: e2e
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - name: Accesibilidad (Lighthouse >= 90)
+        working-directory: e2e
+        run: npm run lighthouse
       - name: Evidencia de las pruebas
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: evidencia-api
+          name: evidencia-api-e2e
           path: |
             target/surefire-reports/
             target/seguridad/
             app.log
+            e2e/reporte/
+            e2e/resultados/
       - name: Bajar el sistema
         if: always()
         run: docker compose down -v

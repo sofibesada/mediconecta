@@ -34,7 +34,7 @@ Para apagar: `docker compose down` (agregar `-v` para borrar también la base de
 | `db` | PostgreSQL 16 | Base de datos |
 | `broker` | ActiveMQ Artemis 2.39 | Tópico `TurnosEventosTopic`, cola `FacturacionQueue` y `DLQ` |
 | `app` | WildFly 41 (perfil full) | MediConecta + los simuladores de videollamadas (REST) y obras sociales (SOAP) |
-| `frontend` | nginx | La SPA |
+| `frontend` | nginx 1.27 (build con Node 22) | La SPA en React (ver más abajo) |
 
 ### Credenciales del entorno local de demo
 
@@ -56,6 +56,31 @@ Los pacientes se registran desde la aplicación; los profesionales los crea el a
 | OSMED | `12345678` | Cubierto y autorizado |
 | OSMED | `12345679` | Dado de baja: no se puede cargar la cobertura |
 | PREVENIR | `12345677` | Tope alcanzado: la autorización se rechaza |
+
+## Frontend (React + TypeScript)
+
+La SPA está en `frontend/`: **React 18 + TypeScript**, estado global con **Redux Toolkit**,
+llamadas a la API con **RTK Query** (caché e invalidación por etiquetas), rutas con
+**React Router** y build con **Vite**. En Docker se compila y la sirve nginx.
+
+| Carpeta | Contenido |
+|---|---|
+| `src/api` | Contrato de la API (`tipos.ts`), `baseQuery` (token, 401, renovación) y endpoints |
+| `src/app` | Store de Redux, hooks y rutas del menú por rol |
+| `src/features` | Slices: sesión (persistida), interfaz (avisos y tema) y reserva en curso |
+| `src/components` | Layout, filas de turnos, avisos y componentes comunes |
+| `src/pages` | Una pantalla por archivo |
+
+Para trabajar en el frontend sin Docker (con el backend levantado):
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+npm test           # pruebas unitarias (Vitest)
+npm run lint       # ESLint
+npm run build      # build de producción en dist/
+```
 
 ## Simular fallas de los sistemas externos y del broker
 
