@@ -15,8 +15,9 @@ export default defineConfig({
   outputDir: "resultados/artefactos",
   use: {
     baseURL: process.env.FRONT_URL ?? "http://localhost:5173",
-    // La API corre en UTC (contenedor): el navegador tambien, asi las fechas coinciden.
-    timezoneId: "UTC",
+    // La API corre en hora de Argentina (TZ del contenedor): el navegador tambien, como un
+    // usuario real, asi las fechas coinciden.
+    timezoneId: "America/Argentina/Buenos_Aires",
     locale: "es-AR",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

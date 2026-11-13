@@ -20,6 +20,12 @@ Guía para dejar la aplicación corriendo en WildFly + PostgreSQL desde cero.
 > Los pasos 3 a 5 (driver, datasource, JMS) se hacen una sola vez, con WildFly
 > levantado en ese perfil.
 
+> **Zona horaria:** las fechas de los turnos se guardan sin zona, en hora de la
+> clínica. Si la máquina no está en hora de Argentina, arrancar WildFly con
+> `-Duser.timezone=America/Argentina/Buenos_Aires` (por ejemplo, en `JAVA_OPTS`).
+> Si no, la reserva temporal, la regla de 24 horas y los recordatorios se corren
+> varias horas. En Docker ya está configurado (`TZ` en `docker/wildfly/Dockerfile`).
+
 ## 2. Base de datos
 
 ```sql
@@ -199,11 +205,19 @@ Se setean sin reiniciar, por ejemplo:
 
 ## 8. Frontend
 
+El frontend es React + TypeScript (Vite). Requiere Node 22 o más nuevo.
+
 ```bash
-python -m http.server 5173 --directory frontend
+cd frontend
+npm install
+npm run dev        # desarrollo, con recarga automática
 ```
 
-Abrir `http://localhost:5173`.
+Abrir `http://localhost:5173` (es el origen que el backend acepta por CORS).
+
+Para producción, `npm run build` deja los archivos estáticos en `frontend/dist`,
+listos para cualquier servidor web. Como es una SPA, el servidor tiene que devolver
+`index.html` en todas las rutas (ver `frontend/nginx.conf`).
 
 ## 9. Verificación rápida
 

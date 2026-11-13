@@ -45,11 +45,18 @@ export async function nuevoProfesional(request: APIRequestContext, nombre = "Dra
   return { id: p.id, nombre, email, password: "nueva1234", token: u.token };
 }
 
-/** Fecha local (sin zona) a "horas" horas de ahora, redondeada a la hora y con minutos distintos por llamada. */
+/** Zona horaria de la clinica: la misma del servidor (TZ del contenedor). */
+export const ZONA = "America/Argentina/Buenos_Aires";
+
+/**
+ * Fecha y hora de la clinica (sin zona, como la guarda el backend) a "horas" horas de ahora,
+ * con minutos distintos por llamada para que dos horarios no choquen.
+ */
 export function enHoras(horas: number) {
   const d = new Date(Date.now() + horas * 3_600_000);
   d.setUTCMinutes((++contador * 7) % 60, 0, 0);
-  return d.toISOString().slice(0, 19);
+  // "sv-SE" formatea como "2030-06-14 10:00:00"; se pasa a la zona de la clinica.
+  return d.toLocaleString("sv-SE", { timeZone: ZONA, hour12: false }).replace(" ", "T");
 }
 
 export async function publicarHorario(request: APIRequestContext, prof: Sesion, horas: number, modalidad = "PRESENCIAL") {

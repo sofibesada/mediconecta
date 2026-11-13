@@ -27,5 +27,10 @@ COPY --from=build /src/target/mediconecta.war \
                   /src/obras-sociales-mock/target/obras-sociales-mock.war \
                   /opt/jboss/wildfly/standalone/deployments/
 
+# Zona horaria de la clinica. Las fechas de los turnos se guardan sin zona (hora local), asi
+# que el servidor tiene que estar en la misma zona que los usuarios: si no, el vencimiento de
+# la reserva, la regla de 24 horas y los recordatorios se corren 3 horas (el contenedor viene
+# en UTC). Java toma la zona de la variable TZ.
+ENV TZ=America/Argentina/Buenos_Aires
 EXPOSE 8080
 CMD ["/opt/jboss/wildfly/bin/standalone.sh", "-c", "standalone-full.xml", "-b", "0.0.0.0", "-bmanagement", "127.0.0.1"]
