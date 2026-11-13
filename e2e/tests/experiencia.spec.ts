@@ -65,6 +65,9 @@ async function sinScrollHorizontal(page: import("@playwright/test").Page) {
 }
 
 async function revisarAccesibilidad(page: import("@playwright/test").Page, donde: string) {
+  // Las pantallas entran con una animacion de opacidad: si axe mide en el medio, ve los colores
+  // lavados. Se espera a que terminen todas las animaciones.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const graves = r.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   const detalle = graves.map((v) => `${v.id} (${v.impact}): ${v.nodes.length} elemento(s) — ${v.help}`).join("\n");

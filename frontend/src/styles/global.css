@@ -1,10 +1,11 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-    --sky-600: #0284c7; --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
-    --slate-300: #cbd5e1; --slate-400: #94a3b8; --slate-500: #64748b; --slate-600: #475569;
+    /* Azul y gris de texto oscurecidos para cumplir contraste WCAG AA (4.5:1). */
+    --sky-600: #0369a1; --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1; --slate-400: #5f6b7c; --slate-500: #64748b; --slate-600: #475569;
     --slate-700: #334155; --slate-900: #0f172a; --amber-100: #fef3c7; --amber-700: #b45309;
     --white: #ffffff; --green-600: #16a34a; --red-600: #dc2626;
-    --sky-700: #0369a1; --on-accent: #ffffff; --amber-200: #fde68a;
+    --sky-700: #075985; --on-accent: #ffffff; --amber-200: #fde68a;
     --red-50: #fef2f2; --red-100: #fee2e2; --red-200: #fecaca;
     --fondo: linear-gradient(135deg, var(--slate-50) 0%, rgba(14, 165, 233, 0.08) 50%, var(--slate-100) 100%);
     color-scheme: light;
@@ -159,6 +160,12 @@ a.boton-link:hover { background: var(--slate-50); border-color: var(--slate-300)
 /* Texto solo para lectores de pantalla. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .boton-salir { width: 100%; text-align: left; border: none; background: transparent; font-weight: 400; letter-spacing: 0; }
+
+/* Quien pide menos movimiento en el sistema no ve las animaciones de entrada. */
+@media (prefers-reduced-motion: reduce) {
+    .pantalla, .toast { animation: none; }
+    * { transition: none !important; }
+}
 
 @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
 @media (max-width: 768px) {
