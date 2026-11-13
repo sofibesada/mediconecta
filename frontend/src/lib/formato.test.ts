@@ -1,4 +1,4 @@
-import { conSegundos, cuentaRegresiva, esFutura, estadoLindo, fechaParaInput, fmtFecha, fmtPesos, iniciales, modalidadLinda, rolLindo } from "./formato";
+import { conSegundos, cuentaRegresiva, esFutura, estadoLindo, fechaParaInput, fmtFecha, fmtPesos, iniciales, modalidadLinda, nuevaClave, rolLindo } from "./formato";
 
 describe("formato", () => {
   it("muestra los roles en castellano", () => {
@@ -46,6 +46,14 @@ describe("formato", () => {
     const ahora = new Date(2030, 0, 1, 12, 0);
     expect(esFutura("2030-01-01T12:01", ahora)).toBe(true);
     expect(esFutura("2030-01-01T11:59", ahora)).toBe(false);
+  });
+
+  it("genera claves de idempotencia distintas, también sin crypto.randomUUID", () => {
+    expect(nuevaClave()).not.toBe(nuevaClave());
+    vi.stubGlobal("crypto", {});
+    const a = nuevaClave();
+    expect(a.length).toBeGreaterThan(10);
+    expect(a).not.toBe(nuevaClave());
   });
 
   it("cuenta regresiva de la reserva", () => {

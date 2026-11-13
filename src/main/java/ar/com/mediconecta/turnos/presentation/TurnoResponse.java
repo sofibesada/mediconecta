@@ -18,6 +18,8 @@ public class TurnoResponse {
     public String obraSocial;
     public String codigoAutorizacion;
     public BigDecimal importeCopago;
+    /** Version del turno; el ETag es este numero entre comillas (para If-Match). */
+    public Long version;
 
     public static TurnoResponse from(Turno t, String profesionalNombre, String pacienteNombre) {
         TurnoResponse r = new TurnoResponse();
@@ -34,6 +36,7 @@ public class TurnoResponse {
         r.obraSocial = t.getObraSocial();
         r.codigoAutorizacion = t.getCodigoAutorizacion();
         r.importeCopago = t.getImporteCopago();
+        r.version = t.getVersion();
         return r;
     }
 }

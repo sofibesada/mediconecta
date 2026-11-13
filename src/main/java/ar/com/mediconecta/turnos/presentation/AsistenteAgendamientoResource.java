@@ -1,5 +1,6 @@
 package ar.com.mediconecta.turnos.presentation;
 
+import ar.com.mediconecta.idempotencia.business.IdempotenciaService;
 import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.turnos.business.AsistenteAgendamiento;
 import ar.com.mediconecta.turnos.business.EstadoAsistente;
@@ -13,6 +14,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -51,6 +53,9 @@ public class AsistenteAgendamientoResource {
     @Inject
     private UsuarioActual usuarioActual;
 
+    @Inject
+    private IdempotenciaService idempotencia;
+
     @GET
     public EstadoAsistenteResponse estado() {
         Long pacienteId = usuarioActual.id();
@@ -74,13 +79,26 @@ public class AsistenteAgendamientoResource {
         return aResponse(conAsistente(a -> a.reservar(pacienteId, req.turnoId)), null);
     }
 
+    /**
+     * Con Idempotency-Key, repetir el pedido devuelve la misma respuesta sin confirmar de
+     * nuevo (doble clic, reintento por corte de red). La clave se consulta antes y se guarda
+     * despues: el @Remove del asistente no puede ir dentro de otra transaccion.
+     */
     @POST
     @Path("/confirmacion")
-    public TurnoResponse confirmar(@QueryParam("particular") boolean particular) {
+    public Response confirmar(@QueryParam("particular") boolean particular,
+                              @HeaderParam("Idempotency-Key") String clave) {
         Long pacienteId = usuarioActual.id();
+        String operacion = "POST /asistente-agendamiento/confirmacion?particular=" + particular;
+        String previa = idempotencia.respuestaPrevia(clave, pacienteId, operacion);
+        if (previa != null) {
+            return Response.ok(previa, MediaType.APPLICATION_JSON).header("Idempotent-Replayed", "true").build();
+        }
         Turno confirmado = conAsistente(a -> a.confirmar(pacienteId, particular));
         olvidarAsistente(); // @Remove: la instancia ya no existe
-        return turnoResponse(confirmado);
+        TurnoResponse cuerpo = turnoResponse(confirmado);
+        idempotencia.registrar(clave, pacienteId, operacion, cuerpo);
+        return Response.ok(cuerpo).tag(EtagDeTurno.de(confirmado)).build();
     }
 
     @DELETE

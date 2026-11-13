@@ -17,7 +17,7 @@ export function MisCitas() {
   async function cancelarTurno(t: Turno) {
     if (!window.confirm("¿Cancelar este turno?")) return;
     try {
-      await cancelar(t.id).unwrap();
+      await cancelar({ id: t.id, version: t.version }).unwrap();
       toast("Turno cancelado", "ok");
       revisarPronto();
     } catch (e) {

@@ -18,6 +18,11 @@ import type {
 
 const ASISTENTE = "/asistente-agendamiento";
 
+/** If-Match con la version del turno, si se conoce. */
+function siHayVersion(version?: number | null): Record<string, string> | undefined {
+  return version == null ? undefined : { "If-Match": `"${version}"` };
+}
+
 /**
  * Todos los endpoints del backend en un solo lugar (RTK Query). Las consultas quedan en
  * caché y las etiquetas (tags) indican qué hay que volver a pedir después de cada cambio:
@@ -53,12 +58,13 @@ export const mediconectaApi = createApi({
       query: (body) => ({ url: "/turnos", method: "POST", body }),
       invalidatesTags: ["Turnos"],
     }),
-    reprogramarTurno: b.mutation<Turno, { id: number; fechaHora: string }>({
-      query: ({ id, fechaHora }) => ({ url: `/turnos/${id}/reprogramar`, method: "PUT", body: { fechaHora } }),
+    // If-Match con la version que se esta viendo: si otro cambio el turno, la API responde 412.
+    reprogramarTurno: b.mutation<Turno, { id: number; fechaHora: string; version?: number | null }>({
+      query: ({ id, fechaHora, version }) => ({ url: `/turnos/${id}/reprogramar`, method: "PUT", body: { fechaHora }, headers: siHayVersion(version) }),
       invalidatesTags: ["Turnos"],
     }),
-    cancelarTurno: b.mutation<void, number>({
-      query: (id) => ({ url: "/turnos/" + id, method: "DELETE" }),
+    cancelarTurno: b.mutation<void, { id: number; version?: number | null }>({
+      query: ({ id, version }) => ({ url: "/turnos/" + id, method: "DELETE", headers: siHayVersion(version) }),
       invalidatesTags: ["Turnos"],
     }),
     sala: b.query<Sala, number>({
@@ -80,11 +86,13 @@ export const mediconectaApi = createApi({
     reservar: b.mutation<EstadoAsistente, number>({
       query: (turnoId) => ({ url: ASISTENTE + "/reserva", method: "POST", body: { turnoId }, sesion: true }),
     }),
-    confirmar: b.mutation<Turno, { particular: boolean }>({
-      query: ({ particular }) => ({
+    // Idempotency-Key: si el pedido se repite (doble clic, corte de red), el turno no se confirma dos veces.
+    confirmar: b.mutation<Turno, { particular: boolean; clave: string }>({
+      query: ({ particular, clave }) => ({
         url: ASISTENTE + "/confirmacion" + (particular ? "?particular=true" : ""),
         method: "POST",
         sesion: true,
+        headers: { "Idempotency-Key": clave },
       }),
       invalidatesTags: ["Turnos"],
     }),

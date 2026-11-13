@@ -140,4 +140,7 @@ public class Turno {
     public boolean isFinalizado() {
         return estado == EstadoTurno.CONFIRMADO && yaPaso();
     }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

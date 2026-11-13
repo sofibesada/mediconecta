@@ -33,6 +33,8 @@ export type Turno = {
   obraSocial?: string | null;
   codigoAutorizacion?: string | null;
   importeCopago?: number | null;
+  /** Version del turno: el ETag es este numero entre comillas (se manda en If-Match). */
+  version?: number | null;
 };
 
 /** Lo que recuerda el AsistenteAgendamiento (@Stateful) de la conversación con el paciente. */

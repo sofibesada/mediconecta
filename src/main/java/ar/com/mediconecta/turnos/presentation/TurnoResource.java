@@ -1,5 +1,6 @@
 package ar.com.mediconecta.turnos.presentation;
 
+import ar.com.mediconecta.idempotencia.business.IdempotenciaService;
 import ar.com.mediconecta.seguridad.Roles;
 import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.turnos.business.AgendaTurnoFacade;
@@ -9,6 +10,7 @@ import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +36,18 @@ public class TurnoResource {
     @Inject
     private IUsuarioService usuarioService;
 
+    @Inject
+    private IdempotenciaService idempotencia;
+
     private TurnoResponse aResponse(Turno t) {
         return TurnoResponse.from(t,
                 usuarioService.nombreDe(t.getProfesionalId()),
                 usuarioService.nombreDe(t.getPacienteId()));
+    }
+
+    /** Respuesta con el turno y su ETag (la version actual). */
+    private Response conEtag(Turno t) {
+        return Response.ok(aResponse(t)).tag(EtagDeTurno.de(t)).build();
     }
 
     private List<TurnoResponse> aResponse(List<Turno> turnos) {
@@ -81,46 +91,78 @@ public class TurnoResource {
         return aResponse(turnoService.listarTurnosDeProfesional(profesionalId));
     }
 
+    /**
+     * Un turno con su ETag (version). Con If-None-Match igual a la version actual responde
+     * 304 sin cuerpo: el cliente ya tiene los datos al dia.
+     */
+    @GET
+    @Path("/{turnoId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response obtener(@PathParam("turnoId") Long turnoId, @HeaderParam("If-None-Match") String ifNoneMatch) {
+        Turno turno = turnoService.buscarTurno(turnoId);
+        usuarioActual.exigir(turno != null && (usuarioActual.esElMismo(turno.getPacienteId())
+                        || usuarioActual.esElMismo(turno.getProfesionalId()) || usuarioActual.es(Roles.ADMIN)),
+                "Solo podés ver tus propios turnos");
+        if (EtagDeTurno.noCambio(ifNoneMatch, turno)) {
+            return Response.notModified(EtagDeTurno.de(turno)).build();
+        }
+        return conEtag(turno);
+    }
+
     @POST
     @Path("/{turnoId}/reservar")
     @Produces(MediaType.APPLICATION_JSON)
-    public TurnoResponse reservar(@PathParam("turnoId") Long turnoId) {
-        return aResponse(turnoService.reservarTemporalmente(usuarioActual.id(), turnoId));
+    public Response reservar(@PathParam("turnoId") Long turnoId) {
+        return conEtag(turnoService.reservarTemporalmente(usuarioActual.id(), turnoId));
     }
 
     @POST
     @Path("/{turnoId}/confirmar")
     @Produces(MediaType.APPLICATION_JSON)
-    public TurnoResponse confirmar(@PathParam("turnoId") Long turnoId, @QueryParam("particular") boolean particular) {
+    public Response confirmar(@PathParam("turnoId") Long turnoId, @QueryParam("particular") boolean particular,
+                              @HeaderParam("Idempotency-Key") String clave) {
         Turno turno = turnoService.buscarTurno(turnoId);
         usuarioActual.exigir(turno == null || usuarioActual.esElMismo(turno.getPacienteId()),
                 "Solo podés confirmar un turno que reservaste vos");
-        return aResponse(turnoService.confirmarTurno(turnoId, particular));
+        if (clave == null || clave.isBlank()) {
+            return conEtag(turnoService.confirmarTurno(turnoId, particular));
+        }
+        // Con Idempotency-Key: la confirmacion y el registro de la clave van en una sola transaccion.
+        IdempotenciaService.Resultado r = idempotencia.ejecutar(clave, usuarioActual.id(),
+                "POST /turnos/" + turnoId + "/confirmar?particular=" + particular,
+                () -> aResponse(turnoService.confirmarTurno(turnoId, particular)));
+        if (r.repetido()) {
+            return Response.ok(r.json(), MediaType.APPLICATION_JSON).header("Idempotent-Replayed", "true").build();
+        }
+        return Response.ok(r.cuerpo()).build();
     }
 
     @PUT
     @Path("/{turnoId}/reprogramar")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public TurnoResponse reprogramar(@PathParam("turnoId") Long turnoId, ReprogramarTurnoRequest request) {
-        return aResponse(turnoService.reprogramarTurno(usuarioActual.id(), turnoId, request.fechaHora));
+    public Response reprogramar(@PathParam("turnoId") Long turnoId, ReprogramarTurnoRequest request,
+                                @HeaderParam("If-Match") String ifMatch) {
+        EtagDeTurno.exigirIfMatch(ifMatch, turnoService.buscarTurno(turnoId));
+        return conEtag(turnoService.reprogramarTurno(usuarioActual.id(), turnoId, request.fechaHora));
     }
 
     @DELETE
     @Path("/{turnoId}")
-    public void cancelar(@PathParam("turnoId") Long turnoId) {
+    public void cancelar(@PathParam("turnoId") Long turnoId, @HeaderParam("If-Match") String ifMatch) {
         Turno turno = turnoService.buscarTurno(turnoId);
         usuarioActual.exigir(turno == null || usuarioActual.esElMismo(turno.getPacienteId())
                         || usuarioActual.esElMismo(turno.getProfesionalId()) || usuarioActual.es(Roles.ADMIN),
                 "Solo podés cancelar tus propios turnos");
+        EtagDeTurno.exigirIfMatch(ifMatch, turno);
         turnoService.cancelarTurno(turnoId);
     }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public TurnoResponse crear(CrearTurnoRequest request) {
-        return aResponse(turnoService.crearTurnoDisponible(usuarioActual.id(), request.fechaHora, request.modalidad));
+    public Response crear(CrearTurnoRequest request) {
+        return conEtag(turnoService.crearTurnoDisponible(usuarioActual.id(), request.fechaHora, request.modalidad));
     }
 
     @POST

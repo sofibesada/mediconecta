@@ -1,5 +1,6 @@
 package ar.com.mediconecta.usuarios.presentation;
 
+import ar.com.mediconecta.config.ApiError;
 import ar.com.mediconecta.seguridad.TokenService;
 import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
@@ -48,14 +49,10 @@ public class UsuarioResource {
     public Response login(LoginRequest request) {
         Usuario usuario = usuarioService.autenticar(request.email, request.password);
         if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"error\":\"Email o contraseña incorrectos\"}")
-                    .build();
+            return ApiError.respuesta(Response.Status.UNAUTHORIZED, "Email o contraseña incorrectos");
         }
         if (!usuario.isActivo()) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("{\"error\":\"Tu cuenta está desactivada. Contactá al administrador.\"}")
-                    .build();
+            return ApiError.respuesta(Response.Status.FORBIDDEN, "Tu cuenta está desactivada. Contactá al administrador.");
         }
         return Response.ok(conToken(usuario)).build();
     }

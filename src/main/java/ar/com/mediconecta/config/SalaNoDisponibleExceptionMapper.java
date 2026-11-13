@@ -1,7 +1,6 @@
 package ar.com.mediconecta.config;
 
 import ar.com.mediconecta.telemedicina.business.SalaNoDisponibleException;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -15,9 +14,6 @@ public class SalaNoDisponibleExceptionMapper implements ExceptionMapper<SalaNoDi
 
     @Override
     public Response toResponse(SalaNoDisponibleException ex) {
-        return Response.status(Response.Status.NOT_FOUND)
-                .entity(new ApiError(ex.getMessage()))
-                .type(MediaType.APPLICATION_JSON)
-                .build();
+        return ApiError.respuesta(Response.Status.NOT_FOUND, ex.getMessage());
     }
 }

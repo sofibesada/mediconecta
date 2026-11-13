@@ -34,24 +34,44 @@ describe("baseQuery", () => {
     expect(JSON.parse(init.body)).toEqual({ profesionalId: 5 });
   });
 
+  it("cancelar y reprogramar mandan If-Match con la versión del turno", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respuesta(204));
+    vi.stubGlobal("fetch", fetchMock);
+    const store = crearStore();
+    await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate({ id: 3, version: 5 }));
+    await store.dispatch(mediconectaApi.endpoints.reprogramarTurno.initiate({ id: 3, fechaHora: "2030-01-01T10:00:00", version: 6 }));
+    await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate({ id: 4 }));
+    expect(fetchMock.mock.calls[0][1].headers["If-Match"]).toBe('"5"');
+    expect(fetchMock.mock.calls[1][1].headers["If-Match"]).toBe('"6"');
+    expect(fetchMock.mock.calls[2][1].headers["If-Match"]).toBeUndefined();
+  });
+
+  it("confirmar manda la Idempotency-Key", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respuesta(200, { id: 1 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const store = crearStore();
+    await store.dispatch(mediconectaApi.endpoints.confirmar.initiate({ particular: false, clave: "abc-123" }));
+    expect(fetchMock.mock.calls[0][1].headers["Idempotency-Key"]).toBe("abc-123");
+  });
+
   it("traduce el error de la API al mensaje que ve el usuario", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respuesta(409, { error: "No se puede cancelar: faltan menos de 24hs para el turno" })));
     const store = crearStore();
-    const r = await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate(3));
+    const r = await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate({ id: 3 }));
     expect("error" in r && r.error).toEqual({ status: 409, mensaje: "No se puede cancelar: faltan menos de 24hs para el turno" });
   });
 
   it("acepta errores en formato Problem Details", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respuesta(412, { title: "Precondition Failed", detail: "El turno cambió" })));
     const store = crearStore();
-    const r = await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate(3));
+    const r = await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate({ id: 3 }));
     expect("error" in r && r.error).toEqual({ status: 412, mensaje: "El turno cambió" });
   });
 
   it("sin conexión avisa que el servidor no responde", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const store = crearStore();
-    const r = await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate(3));
+    const r = await store.dispatch(mediconectaApi.endpoints.cancelarTurno.initiate({ id: 3 }));
     expect("error" in r && r.error).toEqual({ status: "SIN_CONEXION", mensaje: SIN_CONEXION });
   });
 

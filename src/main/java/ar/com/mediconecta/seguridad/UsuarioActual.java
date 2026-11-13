@@ -7,7 +7,6 @@ import jakarta.security.enterprise.SecurityContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
 import java.util.logging.Logger;
@@ -32,8 +31,7 @@ public class UsuarioActual {
     public Long id() {
         Principal p = securityContext.getCallerPrincipal();
         if (p == null) {
-            throw new NotAuthorizedException(Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(new ApiError("Tenés que iniciar sesión")).type(MediaType.APPLICATION_JSON).build());
+            throw new NotAuthorizedException(ApiError.respuesta(Response.Status.UNAUTHORIZED, "Tenés que iniciar sesión"));
         }
         return Long.valueOf(p.getName());
     }
@@ -59,7 +57,6 @@ public class UsuarioActual {
     }
 
     public static NotFoundException noEncontrado() {
-        return new NotFoundException(Response.status(Response.Status.NOT_FOUND)
-                .entity(new ApiError("No encontrado")).type(MediaType.APPLICATION_JSON).build());
+        return new NotFoundException(ApiError.respuesta(Response.Status.NOT_FOUND, "No encontrado"));
     }
 }

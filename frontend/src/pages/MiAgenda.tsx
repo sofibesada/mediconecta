@@ -100,7 +100,7 @@ function Reprogramar({ turno, onCerrar }: { turno: Turno; onCerrar: () => void }
     if (!fecha) return void toast("Elegí la nueva fecha y hora", "err");
     if (!esFutura(fecha)) return void toast("Elegí una fecha y hora futuras", "err");
     void ejecutar(async () => {
-      await reprogramar({ id: turno.id, fechaHora: conSegundos(fecha) }).unwrap();
+      await reprogramar({ id: turno.id, fechaHora: conSegundos(fecha), version: turno.version }).unwrap();
       toast("Turno reprogramado", "ok");
       onCerrar();
       revisarPronto();

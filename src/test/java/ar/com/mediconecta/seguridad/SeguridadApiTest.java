@@ -95,9 +95,9 @@ class SeguridadApiTest {
     @Test
     void sec01a_sinToken_operacionProtegida_401_sinDatos() {
         Response r = given().get("/notificaciones");
-        evidencia("SEC-01", "Sin token, lectura protegida", "GET /notificaciones (sin Authorization)", "401 y solo {error}", r);
+        evidencia("SEC-01", "Sin token, lectura protegida", "GET /notificaciones (sin Authorization)", "401 y solo el error (Problem Details)", r);
         assertEquals(401, r.statusCode());
-        assertEquals(List.of("error"), List.copyOf(r.jsonPath().getMap("$").keySet()));
+        assertSinDatos(r);
     }
 
     @Test
@@ -294,6 +294,8 @@ class SeguridadApiTest {
                 .extract().jsonPath().getList("$").size();
     }
 
+    private static final java.util.Set<String> CAMPOS_DE_ERROR = java.util.Set.of("type", "title", "status", "detail", "error");
+
     private boolean activo(long usuarioId) {
         List<Map<String, Object>> usuarios = con(tokenAdmin).get("/admin/usuarios").then().statusCode(200).extract().jsonPath().getList("$");
         return usuarios.stream().filter(u -> ((Number) u.get("id")).longValue() == usuarioId)
@@ -301,8 +303,11 @@ class SeguridadApiTest {
     }
 
     private void assertSinDatos(Response r) {
+        // Un error solo trae los campos de Problem Details (RFC 9457) y el mensaje: ningun dato del recurso.
         Map<String, Object> cuerpo = r.jsonPath().getMap("$");
-        assertEquals(List.of("error"), List.copyOf(cuerpo.keySet()), "La respuesta trae algo mas que el mensaje de error");
+        assertTrue(CAMPOS_DE_ERROR.containsAll(cuerpo.keySet()), "La respuesta trae algo mas que el error: " + cuerpo.keySet());
+        assertEquals(r.statusCode(), ((Number) cuerpo.get("status")).intValue());
+        assertNotNull(cuerpo.get("error"));
     }
 
     private static Map<String, Object> payload(String token) {

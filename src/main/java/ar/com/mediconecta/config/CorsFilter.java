@@ -29,7 +29,9 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
 
     private static final String ORIGENES_POR_DEFECTO = "http://localhost:5173,http://127.0.0.1:5173";
     private static final String ALLOW_METHODS = "GET, POST, PUT, DELETE, OPTIONS";
-    private static final String ALLOW_HEADERS = "origin, content-type, accept, authorization";
+    private static final String ALLOW_HEADERS = "origin, content-type, accept, authorization, if-match, if-none-match, idempotency-key";
+    /** Encabezados de la respuesta que el frontend puede leer. */
+    private static final String EXPOSE_HEADERS = "ETag, Idempotent-Replayed";
 
     @Override
     public void filter(ContainerRequestContext request) {
@@ -61,6 +63,7 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
         }
         setter.accept("Access-Control-Allow-Methods", ALLOW_METHODS);
         setter.accept("Access-Control-Allow-Headers", ALLOW_HEADERS);
+        setter.accept("Access-Control-Expose-Headers", EXPOSE_HEADERS);
     }
 
     private static Set<String> origenesPermitidos() {

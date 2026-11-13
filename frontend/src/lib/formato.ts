@@ -53,6 +53,12 @@ export function conSegundos(fechaInput: string): string {
   return fechaInput.length === 16 ? fechaInput + ":00" : fechaInput;
 }
 
+/** Clave unica para Idempotency-Key (UUID; con un respaldo si el navegador no tiene crypto.randomUUID). */
+export function nuevaClave(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
 /** Segundos que faltan hasta "hasta" (nunca negativo) y el texto mm:ss. */
 export function cuentaRegresiva(hasta: string | null | undefined, ahora = Date.now()): { segundos: number; texto: string } {
   const segundos = Math.max(0, Math.floor((new Date(hasta ?? 0).getTime() - ahora) / 1000));

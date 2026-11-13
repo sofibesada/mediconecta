@@ -58,6 +58,26 @@ class ExceptionMappersTest {
     }
 
     @Test
+    void laCausaSeBuscaAunqueVengaEnvueltaEnVariosEJBException() {
+        // Un EJB que llama a otro en la misma transaccion: el contenedor envuelve dos veces.
+        EJBException doble = new EJBException(new EJBException(new IllegalStateException("ocupado")));
+        assertRespuesta(409, "ocupado", ejb.toResponse(doble));
+    }
+
+    @Test
+    void dosCambiosAlMismoTiempoEs409() {
+        EJBException e = new EJBException(new RuntimeException("flush", new jakarta.persistence.OptimisticLockException("version")));
+        assertRespuesta(409, "Otra persona modificó este turno al mismo tiempo. Actualizá la pantalla y probá de nuevo.", ejb.toResponse(e));
+    }
+
+    @Test
+    void idempotencyKeyReutilizadaEs422() {
+        Response r = new ClaveReutilizadaExceptionMapper().toResponse(new ar.com.mediconecta.idempotencia.business.ClaveReutilizadaException());
+        assertRespuesta(422, "Esa Idempotency-Key ya se usó para otra operación. Generá una clave nueva.", r);
+        assertEquals("Unprocessable Content", ((ApiError) r.getEntity()).title);
+    }
+
+    @Test
     void mappersDeExcepcionesDelDominio() {
         assertRespuesta(400, "malo", new IllegalArgumentExceptionMapper().toResponse(new IllegalArgumentException("malo")));
         assertRespuesta(409, "choca", new IllegalStateExceptionMapper().toResponse(new IllegalStateException("choca")));
@@ -83,8 +103,17 @@ class ExceptionMappersTest {
         assertEquals(System.getenv("PATH"), Config.valor("una.propiedad.de.prueba", "PATH"));
     }
 
+    /** Todo error sale en formato Problem Details (RFC 9457), con "error" por compatibilidad. */
     private static void assertRespuesta(int estado, String mensaje, Response r) {
         assertEquals(estado, r.getStatus());
-        assertEquals(mensaje, ((ApiError) r.getEntity()).error);
+        assertEquals(ApiError.PROBLEM_JSON_TYPE, r.getMediaType());
+        ApiError cuerpo = (ApiError) r.getEntity();
+        assertEquals("about:blank", cuerpo.type);
+        assertEquals(estado, cuerpo.status);
+        if (Response.Status.fromStatusCode(estado) != null) {
+            assertEquals(Response.Status.fromStatusCode(estado).getReasonPhrase(), cuerpo.title);
+        }
+        assertEquals(mensaje, cuerpo.detail);
+        assertEquals(mensaje, cuerpo.error);
     }
 }

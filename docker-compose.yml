@@ -30,9 +30,12 @@ services:
       ARTEMIS_USER: ${ARTEMIS_USER:-artemis}
       ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD:-artemis}
     volumes:
-      # El journal del broker (mensajes persistentes) vive en el contenedor: sobrevive a
-      # "docker compose stop/start broker", que es la prueba de apagar el broker.
       - ./docker/artemis/broker.xml:/var/lib/artemis-instance/etc-override/broker.xml:ro
+      # Instancia del broker en un volumen: el journal (mensajes persistentes, suscripciones
+      # durables, DLQ) sobrevive a reiniciar el broker y tambien a "docker compose down" y a
+      # recrear el contenedor. Solo "down -v" lo borra. Se monta la carpeta entera porque
+      # en la imagen ya pertenece al usuario artemis (una subcarpeta nueva quedaria de root).
+      - datos-broker:/var/lib/artemis-instance
     ports:
       - "127.0.0.1:8161:8161"
     healthcheck:
@@ -83,3 +86,4 @@ services:
 
 volumes:
   datos-db:
+  datos-broker:

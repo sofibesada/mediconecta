@@ -13,7 +13,7 @@ import {
 import type { EstadoAsistente, Turno } from "../api/tipos";
 import { BotonAccion, Encabezado, Kv, Lista, Muted, Pantalla } from "../components/comunes";
 import { coberturaRechazada, reservaTerminada, turnoRetenido } from "../features/agenda/agendaSlice";
-import { cuentaRegresiva, fmtFecha, modalidadLinda } from "../lib/formato";
+import { cuentaRegresiva, fmtFecha, modalidadLinda, nuevaClave } from "../lib/formato";
 
 /**
  * Agendar un turno. La reserva en curso la recuerda el SERVIDOR: un AsistenteAgendamiento
@@ -125,6 +125,7 @@ export function Agendar() {
         <div className="card" id="agCardHold">
           <h2 className="card-titulo">2 · Reserva temporal activa</h2>
           <Reserva
+            key={retenido.id}
             turno={retenido}
             onTerminada={() => {
               setAsistente(null);
@@ -184,6 +185,9 @@ function Reserva({ turno, onTerminada }: { turno: Turno; onTerminada: () => void
   const [ejecutarNormal, ocupadoNormal] = useAccion();
   const [ejecutarParticular, ocupadoParticular] = useAccion();
 
+  // Una clave por reserva y por modo de confirmacion: si se reintenta el mismo pedido, el
+  // backend devuelve la confirmacion ya hecha en lugar de confirmar dos veces.
+  const [claves] = useState(() => ({ normal: nuevaClave(), particular: nuevaClave() }));
   const [ahora, setAhora] = useState(Date.now());
   const { segundos, texto } = cuentaRegresiva(turno.holdExpiraEn, ahora);
   useEffect(() => {
@@ -199,7 +203,7 @@ function Reserva({ turno, onTerminada }: { turno: Turno; onTerminada: () => void
     return ejecutar(async () => {
       let t: Turno;
       try {
-        t = await confirmarTurno({ particular }).unwrap();
+        t = await confirmarTurno({ particular, clave: particular ? claves.particular : claves.normal }).unwrap();
       } catch (e) {
         // Rechazo o falta de respuesta de la obra social: el backend revirtió todo y el turno
         // sigue reservado; se ofrece confirmarlo como particular.

@@ -14,6 +14,8 @@ export type Pedido = {
    * agendamiento (@Stateful) para que cada pedido llegue a SU instancia.
    */
   sesion?: boolean;
+  /** Encabezados extra (If-Match, Idempotency-Key). */
+  headers?: Record<string, string>;
 };
 
 /** Error de la API tal como lo ve la interfaz: el código y el mensaje para el usuario. */
@@ -34,13 +36,14 @@ function mensajeDe(data: unknown, status: number): string {
 
 /**
  * Cada pedido lleva el token del login: el backend sabe quién es el usuario por el token,
- * no por los ids que manda el navegador. Los errores llegan como {"error": "..."}.
+ * no por los ids que manda el navegador. Los errores llegan en formato Problem Details
+ * (RFC 9457): se muestra "error" o "detail".
  */
 export const baseQuery: BaseQueryFn<string | Pedido, unknown, ErrorApi> = async (arg, api) => {
-  const { url, method = "GET", body, sesion = false } = typeof arg === "string" ? ({ url: arg } as Pedido) : arg;
+  const { url, method = "GET", body, sesion = false, headers: extra } = typeof arg === "string" ? ({ url: arg } as Pedido) : arg;
   const token = (api.getState() as { sesion: SesionState }).sesion.usuario?.token;
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...extra };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = "Bearer " + token;
 

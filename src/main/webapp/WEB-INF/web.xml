@@ -65,7 +65,12 @@
     </security-constraint>
 
     <!-- Errores de seguridad del contenedor en JSON, como el resto de la API (el frontend
-         lee el campo "error"). Quedan fuera de /api/*, asi que no piden token. -->
+         lee "detail" o "error", en formato Problem Details). Quedan fuera de /api/*, asi que no piden token. -->
+    <!-- Los unicos .json estaticos son estas paginas de error: se sirven como Problem Details. -->
+    <mime-mapping>
+        <extension>json</extension>
+        <mime-type>application/problem+json</mime-type>
+    </mime-mapping>
     <error-page>
         <error-code>401</error-code>
         <location>/errores/401.json</location>
