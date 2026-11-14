@@ -365,12 +365,19 @@ class TurnoServiceTest {
         }
 
         @Test
-        void inexistenteOYaCanceladoNoHaceNada() {
+        void unTurnoInexistenteNoSeCancela() {
             when(turnoRepository.buscarPorId(TURNO)).thenReturn(null);
-            service.cancelarTurno(TURNO);
-            when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CANCELADO, 48));
-            service.cancelarTurno(TURNO);
+            assertThrows(IllegalArgumentException.class, () -> service.cancelarTurno(TURNO));
             verify(turnoRepository, never()).actualizar(any());
+        }
+
+        @Test
+        void cancelarUnTurnoYaCanceladoEsTransicionInvalida() {
+            when(turnoRepository.buscarPorId(TURNO)).thenReturn(turno(EstadoTurno.CANCELADO, 48));
+            TransicionInvalidaException e = assertThrows(TransicionInvalidaException.class, () -> service.cancelarTurno(TURNO));
+            assertEquals("El turno ya está cancelado", e.getMessage());
+            verify(turnoRepository, never()).actualizar(any());
+            verifyNoInteractions(eventoPublisher);
         }
     }
 

@@ -10,6 +10,7 @@
         <class>ar.com.mediconecta.turnos.model.Turno</class>
         <class>ar.com.mediconecta.historiaclinica.model.Diagnostico</class>
         <class>ar.com.mediconecta.historiaclinica.model.Receta</class>
+        <class>ar.com.mediconecta.historiaclinica.model.AccesoHistoriaClinica</class>
         <class>ar.com.mediconecta.notificaciones.model.Notificacion</class>
         <class>ar.com.mediconecta.telemedicina.model.SalaVirtual</class>
         <class>ar.com.mediconecta.obrassociales.model.IntentoAutorizacion</class>

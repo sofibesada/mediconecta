@@ -26,7 +26,7 @@ test.describe("HU-04 Agendar y confirmar", () => {
     await abrirConSesion(page, request, pac);
 
     await irA(page, "Agendar turno");
-    await page.getByLabel("Profesional").selectOption({ label: "Dra. Reserva E2E" });
+    await page.getByLabel("Profesional").selectOption(String(prof.id)); // por id: el nombre se puede repetir entre corridas
     await page.locator("#agDispLista").getByRole("button", { name: "Reservar" }).first().click();
     await expect(page.locator("#agCardHold")).toBeVisible();
     await expect(page.locator("#agHoldContenido")).toContainText("La reserva vence en");
@@ -52,7 +52,7 @@ test.describe("HU-04 Agendar y confirmar", () => {
     await abrirConSesion(page, request, pac);
 
     await irA(page, "Agendar turno");
-    await page.getByLabel("Profesional").selectOption({ label: "Dr. Cobertura E2E" });
+    await page.getByLabel("Profesional").selectOption(String(prof.id));
     await page.locator("#agDispLista").getByRole("button", { name: "Reservar" }).first().click();
     await page.locator("#btnConfirmar").click();
 

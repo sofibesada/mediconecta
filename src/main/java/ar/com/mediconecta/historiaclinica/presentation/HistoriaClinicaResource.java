@@ -1,6 +1,9 @@
 package ar.com.mediconecta.historiaclinica.presentation;
 
+import ar.com.mediconecta.historiaclinica.business.AuditoriaHistoriaClinicaService;
 import ar.com.mediconecta.historiaclinica.business.IHistoriaClinicaService;
+import ar.com.mediconecta.historiaclinica.model.AccesoHistoriaClinica.Recurso;
+import ar.com.mediconecta.historiaclinica.model.AccesoHistoriaClinica.Resultado;
 import ar.com.mediconecta.historiaclinica.model.Diagnostico;
 import ar.com.mediconecta.historiaclinica.model.HistoriaClinica;
 import ar.com.mediconecta.historiaclinica.model.Receta;
@@ -22,6 +25,9 @@ import java.util.List;
 /**
  * Datos clinicos: el paciente solo accede a SU historia y el profesional solo a la de
  * pacientes que tienen (o tuvieron) un turno con el. El rol lo exige el EJB.
+ *
+ * Cada consulta (historia o ficha) queda auditada (SEC-09): la autorizada, despues de
+ * obtener los datos (si no se puede registrar, no se devuelven); la denegada, como DENEGADO.
  */
 @Path("/historia-clinica")
 public class HistoriaClinicaResource {
@@ -41,23 +47,46 @@ public class HistoriaClinicaResource {
     @Inject
     private IObraSocialService obraSocialService;
 
-    private void exigirAcceso(Long pacienteId) {
+    @Inject
+    private AuditoriaHistoriaClinicaService auditoria;
+
+    private boolean tieneAcceso(Long pacienteId) {
         if (usuarioActual.es(Roles.PROFESIONAL)) {
             Long profesionalId = usuarioActual.id();
-            boolean esSuPaciente = turnoService.listarTurnosDeProfesional(profesionalId).stream()
+            return turnoService.listarTurnosDeProfesional(profesionalId).stream()
                     .anyMatch(t -> pacienteId.equals(t.getPacienteId()));
-            usuarioActual.exigir(esSuPaciente, "Solo podés acceder a la historia clínica de tus pacientes");
-        } else {
-            usuarioActual.exigir(usuarioActual.esElMismo(pacienteId), "Solo podés acceder a tu propia historia clínica");
         }
+        return usuarioActual.esElMismo(pacienteId);
+    }
+
+    private void exigirAcceso(Long pacienteId) {
+        usuarioActual.exigir(tieneAcceso(pacienteId), usuarioActual.es(Roles.PROFESIONAL)
+                ? "Solo podés acceder a la historia clínica de tus pacientes"
+                : "Solo podés acceder a tu propia historia clínica");
+    }
+
+    /** Como exigirAcceso, pero un acceso denegado a una consulta queda auditado. */
+    private void exigirConsulta(Long pacienteId, Recurso recurso) {
+        if (!tieneAcceso(pacienteId)) {
+            auditar(pacienteId, recurso, Resultado.DENEGADO);
+        }
+        exigirAcceso(pacienteId);
+    }
+
+    private void auditar(Long pacienteId, Recurso recurso, Resultado resultado) {
+        String rol = usuarioActual.es(Roles.ADMIN) ? Roles.ADMIN
+                : usuarioActual.es(Roles.PROFESIONAL) ? Roles.PROFESIONAL : Roles.PACIENTE;
+        auditoria.registrar(usuarioActual.id(), rol, pacienteId, recurso, resultado);
     }
 
     @GET
     @Path("/{pacienteId}")
     @Produces(MediaType.APPLICATION_JSON)
     public HistoriaClinica consultar(@PathParam("pacienteId") Long pacienteId) {
-        exigirAcceso(pacienteId);
-        return historiaClinicaService.consultarHistoria(pacienteId);
+        exigirConsulta(pacienteId, Recurso.HISTORIA_CLINICA);
+        HistoriaClinica historia = historiaClinicaService.consultarHistoria(pacienteId);
+        auditar(pacienteId, Recurso.HISTORIA_CLINICA, Resultado.AUTORIZADO);
+        return historia;
     }
 
     /**
@@ -70,7 +99,7 @@ public class HistoriaClinicaResource {
     @Path("/{pacienteId}/ficha")
     @Produces(MediaType.APPLICATION_JSON)
     public FichaPacienteResponse ficha(@PathParam("pacienteId") Long pacienteId) {
-        exigirAcceso(pacienteId);
+        exigirConsulta(pacienteId, Recurso.FICHA_PACIENTE);
         Usuario paciente = usuarioService.buscarParaSesion(pacienteId);
         if (paciente == null) {
             throw new NotFoundException("Paciente no encontrado");
@@ -109,6 +138,7 @@ public class HistoriaClinicaResource {
             }
             f.recetas.add(rc);
         }
+        auditar(pacienteId, Recurso.FICHA_PACIENTE, Resultado.AUTORIZADO);
         return f;
     }
 

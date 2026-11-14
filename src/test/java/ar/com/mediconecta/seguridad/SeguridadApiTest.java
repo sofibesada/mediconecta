@@ -272,6 +272,105 @@ class SeguridadApiTest {
         assertTrue(registrado, "No se encontro un registro del acceso rechazado");
     }
 
+    // ------------------------------------------------------------------ SEC-04 con una sala que existe
+
+    private Long turnoVirtualDeA;
+
+    /** Teleconsulta confirmada de A, con su sala ya creada (la crea el MDB de telemedicina). */
+    private long turnoVirtualDeA() throws InterruptedException {
+        if (turnoVirtualDeA == null) {
+            String fecha = LocalDateTime.now().plusDays(41).withHour(11).withMinute(0).withSecond(0).withNano(0).format(ISO);
+            long turno = ((Number) con(profesional.token()).body(json(Map.of("fechaHora", fecha, "modalidad", "VIRTUAL")))
+                    .post("/turnos").then().statusCode(200).extract().path("id")).longValue();
+            con(pacienteA.token()).body(json(Map.of("turnoId", turno))).post("/turnos/agendar").then().statusCode(200);
+            con(pacienteA.token()).post("/turnos/" + turno + "/confirmar").then().statusCode(200);
+            for (int i = 0; i < 30 && con(pacienteA.token()).get("/turnos/" + turno + "/sala").statusCode() != 200; i++) {
+                Thread.sleep(500);
+            }
+            turnoVirtualDeA = turno;
+        }
+        return turnoVirtualDeA;
+    }
+
+    @Test
+    void sec04g_salaExistente_elDuenoLaConsulta_200() throws InterruptedException {
+        long turno = turnoVirtualDeA();
+        Response r = con(pacienteA.token()).get("/turnos/" + turno + "/sala");
+        // No se copia el cuerpo a la evidencia: tiene el link de la videollamada.
+        evidencia("SEC-04", "Control positivo: A consulta la sala de SU teleconsulta", "GET /turnos/{virtualDeA}/sala con token de A",
+                "200 con la sala", null, r.statusCode() + (r.statusCode() == 200 ? " con url de sala (no se registra)" : " " + r.asString()));
+        assertEquals(200, r.statusCode(), "la sala de la teleconsulta de A no estuvo disponible");
+        assertEquals(turno, ((Number) r.path("turnoId")).longValue());
+        assertNotNull(r.path("url"));
+    }
+
+    @Test
+    void sec04h_salaExistente_otroPaciente_404_igualQueInexistente() throws InterruptedException {
+        long turno = turnoVirtualDeA();
+        Response ajeno = con(pacienteB.token()).get("/turnos/" + turno + "/sala");
+        Response inexistente = con(pacienteB.token()).get("/turnos/" + ID_INEXISTENTE + "/sala");
+        evidencia("SEC-04", "B consulta la sala EXISTENTE de A", "GET /turnos/{virtualDeA}/sala con token de B",
+                "404, igual que un turno inexistente", ajeno, "inexistente: " + inexistente.statusCode());
+        assertEquals(404, ajeno.statusCode());
+        assertEquals(inexistente.asString(), ajeno.asString(), "la respuesta no debe distinguir una sala ajena de una inexistente");
+        assertFalse(ajeno.asString().contains("http"), "la respuesta no debe incluir el link de la sala");
+    }
+
+    // ------------------------------------------------------------------ SEC-09
+
+    @Test
+    void sec09a_consultaAutorizadaQuedaAuditadaSoloConIdentificadores() {
+        String diagnostico = "DIAGNOSTICO-FICTICIO-" + System.nanoTime();
+        con(profesional.token()).body(json(Map.of("descripcion", diagnostico)))
+                .post("/historia-clinica/" + pacienteA.id() + "/diagnosticos").then().statusCode(204);
+
+        Response ficha = con(profesional.token()).get("/historia-clinica/" + pacienteA.id() + "/ficha");
+        Response historia = con(profesional.token()).get("/historia-clinica/" + pacienteA.id());
+        assertEquals(200, ficha.statusCode());
+        assertEquals(200, historia.statusCode());
+        assertTrue(historia.asString().contains(diagnostico), "control: la historia trae el diagnostico");
+
+        Response auditoria = con(tokenAdmin).get("/admin/auditoria/historia-clinica?pacienteId=" + pacienteA.id());
+        evidencia("SEC-09", "El profesional consulta la ficha y la historia de A", "GET /admin/auditoria/historia-clinica?pacienteId={A}",
+                "registros AUTORIZADO con usuario, recurso y fecha, sin contenido clinico", auditoria);
+        assertEquals(200, auditoria.statusCode());
+        List<Map<String, Object>> registros = auditoria.jsonPath().getList("$");
+        for (String recurso : List.of("FICHA_PACIENTE", "HISTORIA_CLINICA")) {
+            assertTrue(registros.stream().anyMatch(a -> ((Number) a.get("usuarioId")).longValue() == profesional.id()
+                    && "PROFESIONAL".equals(a.get("rol")) && recurso.equals(a.get("recurso"))
+                    && "AUTORIZADO".equals(a.get("resultado")) && a.get("fechaHora") != null
+                    && ((Number) a.get("pacienteId")).longValue() == pacienteA.id()), "falta el registro de " + recurso);
+        }
+        String cuerpo = auditoria.asString();
+        assertFalse(cuerpo.contains(diagnostico), "la auditoria no debe guardar diagnosticos");
+        assertFalse(cuerpo.contains(profesional.token()) || cuerpo.contains("Bearer"), "la auditoria no debe guardar tokens");
+        assertFalse(cuerpo.contains("@test.local"), "la auditoria no debe guardar datos de la ficha");
+        assertEquals(java.util.Set.of("id", "usuarioId", "rol", "pacienteId", "recurso", "resultado", "fechaHora"),
+                registros.get(0).keySet(), "la auditoria guarda solo identificadores");
+    }
+
+    @Test
+    void sec09b_consultaNoAutorizadaSigueBloqueadaYNoFiguraComoExitosa() {
+        Response historia = con(pacienteB.token()).get("/historia-clinica/" + pacienteA.id());
+        Response ficha = con(pacienteB.token()).get("/historia-clinica/" + pacienteA.id() + "/ficha");
+        assertEquals(404, historia.statusCode());
+        assertEquals(404, ficha.statusCode());
+
+        Response auditoria = con(tokenAdmin).get("/admin/auditoria/historia-clinica?pacienteId=" + pacienteA.id());
+        List<Map<String, Object>> deB = auditoria.jsonPath().<Map<String, Object>>getList("$").stream()
+                .filter(a -> ((Number) a.get("usuarioId")).longValue() == pacienteB.id()).toList();
+        evidencia("SEC-09", "B intenta ver la historia y la ficha de A", "GET /historia-clinica/{A} y /ficha con token de B",
+                "404 y registros DENEGADO, ninguno AUTORIZADO", historia, "registros de B: " + deB);
+        assertTrue(deB.stream().noneMatch(a -> "AUTORIZADO".equals(a.get("resultado"))), "un acceso denegado figura como exitoso");
+        assertTrue(deB.stream().filter(a -> "DENEGADO".equals(a.get("resultado"))).count() >= 2, "los intentos denegados no quedaron registrados");
+    }
+
+    @Test
+    void sec09c_soloElAdminVeLaAuditoria() {
+        assertEquals(403, con(profesional.token()).get("/admin/auditoria/historia-clinica").statusCode());
+        assertEquals(403, con(pacienteA.token()).get("/admin/auditoria/historia-clinica").statusCode());
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private RequestSpecification con(String token) {

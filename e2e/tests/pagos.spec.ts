@@ -48,7 +48,7 @@ test.describe("HU-04 Agendar y confirmar", () => {
 
     await irA(page, "Agendar turno");
     await page.locator("#agEspecialidad").selectOption("Dermatología");
-    await page.getByLabel("Profesional").selectOption({ label: nombre });
+    await page.getByLabel("Profesional").selectOption(String(prof.id));
     const lista = page.locator("#agDispLista");
     await expect(lista.getByRole("button", { name: "Reservar" })).toHaveCount(2);
 

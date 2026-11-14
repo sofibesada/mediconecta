@@ -26,11 +26,22 @@ services:
 
   broker:
     image: apache/activemq-artemis:2.39.0-alpine
+    # Arranque propio: aplica broker.xml y regenera las cuentas en cada inicio (ver el script).
+    entrypoint: ["/bin/bash", "/opt/mediconecta/iniciar.sh"]
+    command: ["run"]
     environment:
       ARTEMIS_USER: ${ARTEMIS_USER:-artemis}
       ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD:-artemis}
+      # SEC-07: cuentas de servicio separadas para publicar y para consumir. Sin valores
+      # por defecto: van en .env (local) o se generan en cada corrida de CI.
+      ARTEMIS_PUB_USER: ${ARTEMIS_PUB_USER:-mediconecta-publicador}
+      ARTEMIS_PUB_PASSWORD: "${ARTEMIS_PUB_PASSWORD:?Falta ARTEMIS_PUB_PASSWORD: copiá .env.example como .env y completalo}"
+      ARTEMIS_CON_USER: ${ARTEMIS_CON_USER:-mediconecta-consumidor}
+      ARTEMIS_CON_PASSWORD: "${ARTEMIS_CON_PASSWORD:?Falta ARTEMIS_CON_PASSWORD: copiá .env.example como .env y completalo}"
     volumes:
       - ./docker/artemis/broker.xml:/var/lib/artemis-instance/etc-override/broker.xml:ro
+      - ./docker/artemis/iniciar.sh:/opt/mediconecta/iniciar.sh:ro
+      - ./docker/artemis/verificar-permisos.sh:/opt/mediconecta/verificar-permisos.sh:ro
       # Instancia del broker en un volumen: el journal (mensajes persistentes, suscripciones
       # durables, DLQ) sobrevive a reiniciar el broker y tambien a "docker compose down" y a
       # recrear el contenedor. Solo "down -v" lo borra. Se monta la carpeta entera porque
@@ -54,8 +65,11 @@ services:
       DB_USER: ${DB_USER:-mediconecta}
       DB_PASSWORD: ${DB_PASSWORD:-mediconecta}
       ARTEMIS_HOST: broker
-      ARTEMIS_USER: ${ARTEMIS_USER:-artemis}
-      ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD:-artemis}
+      # WildFly nunca usa la cuenta administradora del broker (SEC-07).
+      ARTEMIS_PUB_USER: ${ARTEMIS_PUB_USER:-mediconecta-publicador}
+      ARTEMIS_PUB_PASSWORD: "${ARTEMIS_PUB_PASSWORD:?Falta ARTEMIS_PUB_PASSWORD: copiá .env.example como .env y completalo}"
+      ARTEMIS_CON_USER: ${ARTEMIS_CON_USER:-mediconecta-consumidor}
+      ARTEMIS_CON_PASSWORD: "${ARTEMIS_CON_PASSWORD:?Falta ARTEMIS_CON_PASSWORD: copiá .env.example como .env y completalo}"
       MEDICONECTA_ADMIN_PASSWORD: ${MEDICONECTA_ADMIN_PASSWORD:-admin1234}
       MEDICONECTA_JWT_SECRET: ${MEDICONECTA_JWT_SECRET:-}
       VIDEOLLAMADAS_API_KEY: ${VIDEOLLAMADAS_API_KEY:-videollamadas-demo}

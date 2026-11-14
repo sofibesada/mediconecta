@@ -182,6 +182,11 @@ under the License.
       </acceptors>
 
 
+      <!-- SEC-07 (MediConecta): minimo privilegio. Cada match reemplaza al "#" (no se suman).
+           amq         administrador: consola, healthcheck y reproceso de la DLQ
+           publicador  WildFly al publicar (fabrica "productores"): solo send
+           consumidor  WildFly en los MDB (fabrica "activemq-ra"): solo consume y sus
+                       suscripciones durables -->
       <security-settings>
          <security-setting match="#">
             <permission type="createNonDurableQueue" roles="amq"/>
@@ -194,6 +199,32 @@ under the License.
             <permission type="browse" roles="amq"/>
             <permission type="send" roles="amq"/>
             <!-- we need this otherwise ./artemis data imp wouldn't work -->
+            <permission type="manage" roles="amq"/>
+         </security-setting>
+         <!-- Topico de eventos de turnos: los MDB crean (y si cambia el selector, recrean) su
+              suscripcion durable. -->
+         <security-setting match="TurnosEventosTopic">
+            <permission type="send" roles="amq,publicador"/>
+            <permission type="consume" roles="amq,consumidor"/>
+            <permission type="createDurableQueue" roles="amq,consumidor"/>
+            <permission type="deleteDurableQueue" roles="amq,consumidor"/>
+            <permission type="createNonDurableQueue" roles="amq"/>
+            <permission type="deleteNonDurableQueue" roles="amq"/>
+            <permission type="createAddress" roles="amq"/>
+            <permission type="deleteAddress" roles="amq"/>
+            <permission type="browse" roles="amq"/>
+            <permission type="manage" roles="amq"/>
+         </security-setting>
+         <security-setting match="FacturacionQueue">
+            <permission type="send" roles="amq,publicador"/>
+            <permission type="consume" roles="amq,consumidor"/>
+            <permission type="createDurableQueue" roles="amq"/>
+            <permission type="deleteDurableQueue" roles="amq"/>
+            <permission type="createNonDurableQueue" roles="amq"/>
+            <permission type="deleteNonDurableQueue" roles="amq"/>
+            <permission type="createAddress" roles="amq"/>
+            <permission type="deleteAddress" roles="amq"/>
+            <permission type="browse" roles="amq"/>
             <permission type="manage" roles="amq"/>
          </security-setting>
       </security-settings>
@@ -255,6 +286,16 @@ under the License.
          <address name="ExpiryQueue">
             <anycast>
                <queue name="ExpiryQueue" />
+            </anycast>
+         </address>
+         <!-- Destinos de MediConecta declarados de antemano: la cuenta publicadora no necesita
+              permiso para crear direcciones ni colas. -->
+         <address name="TurnosEventosTopic">
+            <multicast/>
+         </address>
+         <address name="FacturacionQueue">
+            <anycast>
+               <queue name="FacturacionQueue" />
             </anycast>
          </address>
 

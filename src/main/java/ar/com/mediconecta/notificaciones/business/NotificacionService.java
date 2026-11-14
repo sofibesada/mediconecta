@@ -91,7 +91,8 @@ public class NotificacionService implements INotificacionService {
         repository.guardar(n);
 
         // Envio simulado: en un sistema real aca se mandaria un mail/SMS/push.
-        LOG.info("[EMAIL simulado] Para: usuario #" + usuarioId + " | " + titulo + " | " + mensaje);
+        // Solo id y titulo: el texto del aviso tiene nombres y fechas, que no van al log.
+        LOG.info("[EMAIL simulado] Para: usuario #" + usuarioId + " | " + titulo);
     }
 
     @Override

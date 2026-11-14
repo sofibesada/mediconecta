@@ -88,8 +88,15 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      - name: Cuentas del broker de esta corrida (SEC-07)
+        # Contrasenas al azar en cada corrida: no hay credenciales del broker en el repo.
+        run: |
+          echo "ARTEMIS_PUB_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "ARTEMIS_CON_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
       - name: Levantar el sistema (docker compose)
         run: docker compose up --build -d --wait --wait-timeout 600
+      - name: Permisos de las cuentas del broker (SEC-07)
+        run: docker compose exec -T broker bash /opt/mediconecta/verificar-permisos.sh
       - name: Pruebas de la API
         run: |
           docker compose logs -f --no-log-prefix app > app.log 2>&1 &

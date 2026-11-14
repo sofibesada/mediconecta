@@ -46,6 +46,21 @@ public class AdminResource {
                 "pagos", pagoService.listarRecientes());
     }
 
+    @Inject
+    private ar.com.mediconecta.historiaclinica.business.AuditoriaHistoriaClinicaService auditoriaHistoriaClinica;
+
+    /**
+     * Auditoria de consultas a datos clinicos (SEC-09): quien, que recurso, de que paciente,
+     * cuando y con que resultado. Solo identificadores. Filtra por paciente con ?pacienteId=.
+     */
+    @GET
+    @Path("/auditoria/historia-clinica")
+    @Produces(MediaType.APPLICATION_JSON)
+    public java.util.List<ar.com.mediconecta.historiaclinica.model.AccesoHistoriaClinica> auditoriaHistoriaClinica(
+            @QueryParam("pacienteId") Long pacienteId) {
+        return auditoriaHistoriaClinica.listar(pacienteId);
+    }
+
     @POST
     @Path("/profesionales")
     @Consumes(MediaType.APPLICATION_JSON)

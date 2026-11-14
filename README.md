@@ -9,6 +9,14 @@ Grupo 4 · Desarrollo de Aplicaciones II · UADE · 2.º cuatrimestre 2026.
 Requisito: **Docker** con Docker Compose (Docker Desktop en Windows/Mac). Nada más:
 Java, Maven, WildFly, PostgreSQL y el broker corren dentro de los contenedores.
 
+La primera vez, crear el archivo `.env` con las contraseñas de las cuentas de servicio del
+broker (SEC-07). No tienen valor por defecto y el `.env` no se sube al repositorio:
+
+```bash
+cp .env.example .env
+# completar ARTEMIS_PUB_PASSWORD y ARTEMIS_CON_PASSWORD con dos valores largos y distintos
+```
+
 ```bash
 docker compose up --build
 ```
@@ -48,6 +56,8 @@ cambiarlos sin tocar el repo, copiar `.env.example` como `.env` y completarlo.
 | Panel del legado de obras sociales | — | `padron-demo` |
 | API key de la pasarela de pagos | — | `pagos-demo` |
 | Consola de Artemis | `artemis` | `artemis` |
+| Cuenta de WildFly para publicar en el broker | `mediconecta-publicador` | la de `ARTEMIS_PUB_PASSWORD` en `.env` |
+| Cuenta de WildFly para consumir del broker | `mediconecta-consumidor` | la de `ARTEMIS_CON_PASSWORD` en `.env` |
 
 Los pacientes se registran desde la aplicación; los profesionales los crea el administrador.
 

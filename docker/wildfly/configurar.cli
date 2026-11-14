@@ -26,13 +26,15 @@ data-source add --name=MediconectaDS --jndi-name=java:/MediconectaDS --driver-na
 #  - productores: la usa la aplicacion para publicar (JMSContext por defecto). Un solo
 #    intento (conexion con timeout de 3 s en el conector) y llamadas de 5 s como maximo: si el broker esta caido, el envio falla enseguida, la
 #    transaccion se revierte y el usuario recibe un 503 (sin hilos colgados).
+# Cada fabrica entra al broker con su propia cuenta (SEC-07): los MDB con la consumidora
+# (solo consume) y la aplicacion con la publicadora (solo send).
 /subsystem=messaging-activemq/pooled-connection-factory=activemq-ra:add(connectors=[artemis], \
   entries=[java:/jms/ConsumidoresRA], transaction=xa, \
-  user=${env.ARTEMIS_USER}, password=${env.ARTEMIS_PASSWORD}, enable-amq1-prefix=false, \
+  user=${env.ARTEMIS_CON_USER}, password=${env.ARTEMIS_CON_PASSWORD}, enable-amq1-prefix=false, \
   reconnect-attempts=-1, retry-interval=2000, setup-attempts=-1, setup-interval=2000)
 /subsystem=messaging-activemq/pooled-connection-factory=productores:add(connectors=[artemis], \
   entries=[java:/JmsXA, java:jboss/DefaultJMSConnectionFactory], transaction=xa, \
-  user=${env.ARTEMIS_USER}, password=${env.ARTEMIS_PASSWORD}, enable-amq1-prefix=false, \
+  user=${env.ARTEMIS_PUB_USER}, password=${env.ARTEMIS_PUB_PASSWORD}, enable-amq1-prefix=false, \
   initial-connect-attempts=1, reconnect-attempts=0, call-timeout=5000)
 /subsystem=messaging-activemq/external-jms-topic=TurnosEventosTopic:add(entries=[java:/jms/topic/TurnosEventos], enable-amq1-prefix=false)
 /subsystem=messaging-activemq/external-jms-queue=FacturacionQueue:add(entries=[java:/jms/queue/Facturacion], enable-amq1-prefix=false)

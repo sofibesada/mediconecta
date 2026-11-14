@@ -252,9 +252,10 @@ public class TurnoService implements ITurnoService {
     @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL, Roles.ADMIN})
     public void cancelarTurno(Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
-        if (turno == null || turno.getEstado() == EstadoTurno.CANCELADO) {
-            return;
+        if (turno == null) {
+            throw new IllegalArgumentException("Turno inexistente");
         }
+        // Un turno ya cancelado tambien pasa por el State: Cancelado no admite cancelar (409).
         PoliticaCancelacion politica = turno.isUrgente()
                 ? new PoliticaCancelacionUrgencia()
                 : new PoliticaCancelacionEstandar();

@@ -170,7 +170,10 @@ public class TurnoResource {
     @Path("/{turnoId}")
     public void cancelar(@PathParam("turnoId") Long turnoId, @HeaderParam("If-Match") String ifMatch) {
         Turno turno = turnoService.buscarTurno(turnoId);
-        usuarioActual.exigir(turno == null || usuarioActual.esElMismo(turno.getPacienteId())
+        if (turno == null) {
+            throw UsuarioActual.noEncontrado();
+        }
+        usuarioActual.exigir(usuarioActual.esElMismo(turno.getPacienteId())
                         || usuarioActual.esElMismo(turno.getProfesionalId()) || usuarioActual.es(Roles.ADMIN),
                 "Solo podés cancelar tus propios turnos");
         EtagDeTurno.exigirIfMatch(ifMatch, turno);

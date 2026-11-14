@@ -19,8 +19,12 @@ Qué se puede hacer con un turno depende del estado en el que está:
 | CONFIRMADO | ✗ | ✗ | ✗ | → CANCELADO (si no finalizó) | cambia la fecha (si no finalizó) |
 | CANCELADO | ✗ | ✗ | ✗ | ✗ | ✗ |
 
-✗ = transición inválida. La cancelación además respeta la anticipación mínima de 24 horas,
-salvo en las urgencias.
+✗ = transición inválida. La API la responde con **409 Conflict**. La cancelación además
+respeta la anticipación mínima de 24 horas, salvo en las urgencias.
+
+`DELETE /turnos/{id}` **no** es idempotente a propósito. Cancelar un turno ya cancelado pasa
+por el estado `Cancelado` y responde 409 «El turno ya está cancelado». Cancelar un turno que no
+existe, o que no es del usuario, responde 404.
 
 Antes, estas reglas estaban repartidas en `TurnoService` como cadenas de `if` sobre el
 estado antes de cada `setEstado(...)`. Una regla nueva obligaba a revisar todos los métodos.

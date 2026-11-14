@@ -242,6 +242,41 @@ class IntegracionApiTest {
         assertTrue(avisos.contains(emailPaciente), avisos);
     }
 
+    // ------------------------------------------------------------------ State al cancelar
+
+    @Test
+    void int10_cancelarDosVecesEs409YUnTurnoInexistente404() {
+        long turno = publicar();
+        assertEquals(204, con(tokenProfesional).delete("/turnos/" + turno).statusCode());
+
+        Response otra = con(tokenProfesional).delete("/turnos/" + turno);
+        assertEquals(409, otra.statusCode(), otra.asString());
+        assertEquals("El turno ya está cancelado", otra.path("detail"));
+
+        assertEquals(404, con(tokenProfesional).delete("/turnos/999999999").statusCode());
+    }
+
+    // ------------------------------------------------------------------ Mensajeria (SEC-07)
+
+    @Test
+    void int11_confirmarUnTurnoSigueGenerandoLaNotificacionPorElBroker() throws InterruptedException {
+        // Paciente nuevo: cualquier aviso que tenga vino de este turno.
+        String token = given().contentType(ContentType.JSON)
+                .body(json(Map.of("nombre", "Paciente Broker", "email", "int_broker_" + System.nanoTime() + "@test.local", "password", "Prueba1234")))
+                .post("/usuarios").then().statusCode(200).extract().path("token");
+        long turno = publicar();
+        con(token).post("/turnos/" + turno + "/reservar").then().statusCode(200);
+        con(token).post("/turnos/" + turno + "/confirmar?particular=true").then().statusCode(200);
+
+        // Publica WildFly con la cuenta publicadora y la consume el MDB con la consumidora.
+        String avisos = "";
+        for (int i = 0; i < 20 && !avisos.contains("Turno confirmado"); i++) {
+            Thread.sleep(500);
+            avisos = con(token).get("/notificaciones").asString();
+        }
+        assertTrue(avisos.contains("Turno confirmado"), "no llegó la notificación del turno " + turno + ": " + avisos);
+    }
+
     private static Map<String, Object> tarjeta(long turno, String numero, String cvv) {
         return Map.of("turnoId", turno, "numero", numero, "vencimiento", "12/30", "cvv", cvv, "titular", "PACIENTE INTEGRACION");
     }
