@@ -38,6 +38,8 @@ public class TokenService {
     private static final Duration VIGENCIA = Duration.ofMinutes(15);
     private static final String HEADER = base64("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
     private static final Jsonb JSONB = JsonbBuilder.create();
+    /** Un solo generador para toda la clase: crear uno por uso es costoso y menos seguro. */
+    private static final SecureRandom ALEATORIO = new SecureRandom();
 
     private byte[] clave;
 
@@ -48,7 +50,7 @@ public class TokenService {
             clave = configurada.getBytes(StandardCharsets.UTF_8);
         } else {
             clave = new byte[32];
-            new SecureRandom().nextBytes(clave);
+            ALEATORIO.nextBytes(clave);
             LOG.warning("[Seguridad] mediconecta.jwt.secret no configurada (o con menos de 32 caracteres): "
                     + "se usa una clave aleatoria y los tokens se invalidan en cada redeploy");
         }

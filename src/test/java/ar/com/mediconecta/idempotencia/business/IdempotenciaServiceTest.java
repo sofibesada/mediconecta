@@ -105,8 +105,10 @@ class IdempotenciaServiceTest {
         service.respuestaPrevia("clave-1", USUARIO, OPERACION);
 
         verify(repository).buscar(eq("clave-1"), eq(USUARIO), desde.capture());
-        long horas = java.time.Duration.between(desde.getValue(), LocalDateTime.now()).toHours();
-        assertEquals(IdempotenciaService.HORAS_DE_VALIDEZ, horas, 1);
+        // El limite es "ahora menos 24 horas" (con un minuto de margen por el tiempo de la prueba).
+        LocalDateTime esperado = LocalDateTime.now().minusHours(IdempotenciaService.HORAS_DE_VALIDEZ);
+        assertFalse(desde.getValue().isBefore(esperado.minusMinutes(1)), "La ventana es mayor a 24 horas");
+        assertFalse(desde.getValue().isAfter(esperado.plusMinutes(1)), "La ventana es menor a 24 horas");
     }
 
     @Test
