@@ -22,25 +22,18 @@ public class MigracionCifradoService {
     @Inject
     private CifradoClinicoRepository repository;
 
-    private CifradoDatos cifrado;
-
-    /** Para las pruebas: un cifrador con una clave conocida. */
-    void usar(CifradoDatos cifrado) {
-        this.cifrado = cifrado;
-    }
-
-    private CifradoDatos cifrado() {
-        return cifrado != null ? cifrado : CifradoDatos.configurado();
-    }
-
-    /** Devuelve cuantos valores cifro. */
+    /** Devuelve cuantos valores cifro. Sin clave configurada falla antes de tocar la base. */
     @PermitAll
     public int cifrarDatosExistentes() {
-        CifradoDatos c = cifrado(); // sin clave falla aca, antes de tocar la base
+        return cifrarCon(CifradoDatos.configurado());
+    }
+
+    /** Sin estado en el EJB (se comparte entre pedidos): el cifrador llega como parametro. */
+    int cifrarCon(CifradoDatos cifrado) {
         repository.ampliarColumnas();
         List<ValorGuardado> pendientes = repository.sinCifrar(CifradoDatos.PREFIJO);
         for (ValorGuardado v : pendientes) {
-            repository.actualizar(v, c.cifrar(v.valor()));
+            repository.actualizar(v, cifrado.cifrar(v.valor()));
         }
         // Solo cantidades: nunca el contenido.
         LOG.info("[Cifrado] datos clinicos en texto plano cifrados al arrancar: " + pendientes.size());

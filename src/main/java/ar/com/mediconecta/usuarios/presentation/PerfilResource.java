@@ -4,6 +4,7 @@ import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.usuarios.business.DatosPerfil;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import ar.com.mediconecta.usuarios.business.RecuperacionPasswordService;
+import ar.com.mediconecta.usuarios.model.Usuario;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -36,7 +37,12 @@ public class PerfilResource {
 
     @GET
     public UsuarioResponse obtener() {
-        return UsuarioResponse.from(usuarioService.buscarParaSesion(usuarioActual.id()));
+        Usuario usuario = usuarioService.buscarParaSesion(usuarioActual.id());
+        if (usuario == null) {
+            // Token todavia vigente de una cuenta que ya no existe: 404, no un 500.
+            throw UsuarioActual.noEncontrado();
+        }
+        return UsuarioResponse.from(usuario);
     }
 
     @PUT

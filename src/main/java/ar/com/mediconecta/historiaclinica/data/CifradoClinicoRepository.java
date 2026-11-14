@@ -3,55 +3,75 @@ package ar.com.mediconecta.historiaclinica.data;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Acceso directo (SQL nativo) a las columnas clinicas, sin pasar por el converter: lo usa
  * solo la migracion que cifra los datos guardados antes de SEC-10.
+ *
+ * Cada sentencia es un literal fijo (no se arma SQL concatenando nombres): los valores
+ * viajan siempre como parametros.
  */
 @ApplicationScoped
 public class CifradoClinicoRepository {
 
-    /** Fila de una columna clinica: tabla, columna, id y el valor tal como esta en la base. */
-    public record ValorGuardado(String tabla, String columna, Long id, String valor) {}
+    /** Una columna clinica cifrada y sus sentencias. */
+    public enum Columna {
+        DIAGNOSTICO_DESCRIPCION(
+                "ALTER TABLE diagnosticos ALTER COLUMN descripcion TYPE varchar(8000)",
+                "SELECT id, descripcion FROM diagnosticos WHERE descripcion IS NOT NULL AND descripcion NOT LIKE ?1",
+                "UPDATE diagnosticos SET descripcion = ?1 WHERE id = ?2"),
+        RECETA_MEDICAMENTO(
+                "ALTER TABLE recetas ALTER COLUMN medicamento TYPE varchar(8000)",
+                "SELECT id, medicamento FROM recetas WHERE medicamento IS NOT NULL AND medicamento NOT LIKE ?1",
+                "UPDATE recetas SET medicamento = ?1 WHERE id = ?2"),
+        RECETA_INDICACIONES(
+                "ALTER TABLE recetas ALTER COLUMN indicaciones TYPE varchar(8000)",
+                "SELECT id, indicaciones FROM recetas WHERE indicaciones IS NOT NULL AND indicaciones NOT LIKE ?1",
+                "UPDATE recetas SET indicaciones = ?1 WHERE id = ?2");
 
-    /** Columnas clinicas cifradas: tabla y columna. */
-    public static final List<String[]> COLUMNAS = List.of(
-            new String[] {"diagnosticos", "descripcion"},
-            new String[] {"recetas", "medicamento"},
-            new String[] {"recetas", "indicaciones"});
+        private final String ampliar;
+        private final String pendientes;
+        private final String actualizar;
 
-    static final int LARGO_COLUMNA = 8000;
+        Columna(String ampliar, String pendientes, String actualizar) {
+            this.ampliar = ampliar;
+            this.pendientes = pendientes;
+            this.actualizar = actualizar;
+        }
+    }
+
+    /** Un valor de una columna clinica, tal como esta en la base. */
+    public record ValorGuardado(Columna columna, Long id, String valor) {}
 
     @PersistenceContext(unitName = "mediconectaPU")
     private EntityManager em;
 
     /** Hibernate (hbm2ddl=update) no agranda columnas existentes: el texto cifrado es mas largo. */
     public void ampliarColumnas() {
-        for (String[] c : COLUMNAS) {
-            em.createNativeQuery("ALTER TABLE " + c[0] + " ALTER COLUMN " + c[1] + " TYPE varchar(" + LARGO_COLUMNA + ")")
-                    .executeUpdate();
+        for (Columna c : Columna.values()) {
+            em.createNativeQuery(c.ampliar).executeUpdate();
         }
     }
 
     /** Valores que todavia estan en texto plano (sin el prefijo del formato cifrado). */
     public List<ValorGuardado> sinCifrar(String prefijo) {
-        java.util.ArrayList<ValorGuardado> lista = new java.util.ArrayList<>();
-        for (String[] c : COLUMNAS) {
+        List<ValorGuardado> lista = new ArrayList<>();
+        for (Columna c : Columna.values()) {
             @SuppressWarnings("unchecked")
-            List<Object[]> filas = em.createNativeQuery("SELECT id, " + c[1] + " FROM " + c[0]
-                            + " WHERE " + c[1] + " IS NOT NULL AND " + c[1] + " NOT LIKE ?1")
+            List<Object[]> filas = em.createNativeQuery(c.pendientes)
                     .setParameter(1, prefijo + "%")
                     .getResultList();
             for (Object[] f : filas) {
-                lista.add(new ValorGuardado(c[0], c[1], ((Number) f[0]).longValue(), (String) f[1]));
+                lista.add(new ValorGuardado(c, ((Number) f[0]).longValue(), (String) f[1]));
             }
         }
         return lista;
     }
 
     public void actualizar(ValorGuardado v, String nuevoValor) {
-        em.createNativeQuery("UPDATE " + v.tabla() + " SET " + v.columna() + " = ?1 WHERE id = ?2")
+        em.createNativeQuery(v.columna().actualizar)
                 .setParameter(1, nuevoValor)
                 .setParameter(2, v.id())
                 .executeUpdate();
