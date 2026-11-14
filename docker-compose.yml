@@ -72,6 +72,9 @@ services:
       ARTEMIS_CON_PASSWORD: "${ARTEMIS_CON_PASSWORD:?Falta ARTEMIS_CON_PASSWORD: copiá .env.example como .env y completalo}"
       MEDICONECTA_ADMIN_PASSWORD: ${MEDICONECTA_ADMIN_PASSWORD:-admin1234}
       MEDICONECTA_JWT_SECRET: ${MEDICONECTA_JWT_SECRET:-}
+      # SEC-10: clave AES-256 (32 bytes en Base64) de los datos clinicos. Sin valor por
+      # defecto: si se pierde, los diagnosticos y recetas guardados no se pueden leer.
+      MEDICONECTA_CLAVE_DATOS: "${MEDICONECTA_CLAVE_DATOS:?Falta MEDICONECTA_CLAVE_DATOS: copiá .env.example como .env y completalo}"
       VIDEOLLAMADAS_API_KEY: ${VIDEOLLAMADAS_API_KEY:-videollamadas-demo}
       PAGOS_API_KEY: ${PAGOS_API_KEY:-pagos-demo}
       OBRASSOCIALES_ADMIN_KEY: ${OBRASSOCIALES_ADMIN_KEY:-padron-demo}

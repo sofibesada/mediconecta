@@ -17,6 +17,10 @@ import java.util.logging.Logger;
 @Stateless
 public class HistoriaClinicaService implements IHistoriaClinicaService {
 
+    static final int MAX_DIAGNOSTICO = 1000;
+    static final int MAX_MEDICAMENTO = 200;
+    static final int MAX_INDICACIONES = 1000;
+
     private static final Logger LOG = Logger.getLogger(HistoriaClinicaService.class.getName());
 
     @Inject
@@ -53,6 +57,9 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
         if (diagnostico.getDescripcion() == null || diagnostico.getDescripcion().isBlank()) {
             throw new IllegalArgumentException("La descripción del diagnóstico es obligatoria");
         }
+        if (diagnostico.getDescripcion().length() > MAX_DIAGNOSTICO) {
+            throw new IllegalArgumentException("La descripción del diagnóstico puede tener hasta " + MAX_DIAGNOSTICO + " caracteres");
+        }
         diagnostico.setPacienteId(pacienteId);
         diagnostico.setFecha(LocalDateTime.now());
         repository.guardarDiagnostico(diagnostico);
@@ -64,6 +71,12 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
         exigirPacienteExistente(pacienteId);
         if (receta.getMedicamento() == null || receta.getMedicamento().isBlank()) {
             throw new IllegalArgumentException("El medicamento de la receta es obligatorio");
+        }
+        if (receta.getMedicamento().length() > MAX_MEDICAMENTO) {
+            throw new IllegalArgumentException("El medicamento puede tener hasta " + MAX_MEDICAMENTO + " caracteres");
+        }
+        if (receta.getIndicaciones() != null && receta.getIndicaciones().length() > MAX_INDICACIONES) {
+            throw new IllegalArgumentException("Las indicaciones pueden tener hasta " + MAX_INDICACIONES + " caracteres");
         }
         receta.setPacienteId(pacienteId);
         receta.setFecha(LocalDateTime.now());

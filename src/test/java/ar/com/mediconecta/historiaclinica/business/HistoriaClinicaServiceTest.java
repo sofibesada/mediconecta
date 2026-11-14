@@ -85,6 +85,34 @@ class HistoriaClinicaServiceTest {
     }
 
     @Test
+    void largosMaximos() {
+        when(usuarioService.existeUsuario(1L)).thenReturn(true);
+        Diagnostico largo = new Diagnostico();
+        largo.setDescripcion("x".repeat(HistoriaClinicaService.MAX_DIAGNOSTICO + 1));
+        assertThrows(IllegalArgumentException.class, () -> service.registrarDiagnostico(1L, largo));
+
+        Receta remedioLargo = new Receta();
+        remedioLargo.setMedicamento("x".repeat(HistoriaClinicaService.MAX_MEDICAMENTO + 1));
+        assertThrows(IllegalArgumentException.class, () -> service.registrarReceta(1L, remedioLargo));
+
+        Receta indicacionesLargas = new Receta();
+        indicacionesLargas.setMedicamento("Enalapril 10 mg");
+        indicacionesLargas.setIndicaciones("x".repeat(HistoriaClinicaService.MAX_INDICACIONES + 1));
+        assertThrows(IllegalArgumentException.class, () -> service.registrarReceta(1L, indicacionesLargas));
+        verify(repository, never()).guardarDiagnostico(any());
+        verify(repository, never()).guardarReceta(any());
+
+        Diagnostico justo = new Diagnostico();
+        justo.setDescripcion("x".repeat(HistoriaClinicaService.MAX_DIAGNOSTICO));
+        service.registrarDiagnostico(1L, justo);
+        Receta sinIndicaciones = new Receta();
+        sinIndicaciones.setMedicamento("Enalapril 10 mg");
+        service.registrarReceta(1L, sinIndicaciones);
+        verify(repository).guardarDiagnostico(justo);
+        verify(repository).guardarReceta(sinIndicaciones);
+    }
+
+    @Test
     void pacienteInexistenteODesactivado() {
         when(usuarioService.existeUsuario(9L)).thenReturn(false);
         assertThrows(IllegalArgumentException.class, () -> service.consultarHistoria(9L));

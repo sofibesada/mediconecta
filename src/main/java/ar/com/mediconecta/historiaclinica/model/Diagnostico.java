@@ -14,7 +14,9 @@ public class Diagnostico {
     @Column(name = "paciente_id", nullable = false)
     private Long pacienteId;
 
-    @Column(nullable = false)
+    /** Cifrado en la base (SEC-10). El largo de la columna es el del texto cifrado. */
+    @Convert(converter = ar.com.mediconecta.seguridad.CampoClinicoCifrado.class)
+    @Column(nullable = false, length = 8000)
     private String descripcion;
 
     @Column(nullable = false)

@@ -10,6 +10,7 @@ local con usuarios ficticios que crea en cada corrida. Cubre:
 | SEC-03 | Un PACIENTE llama operaciones exclusivas de ADMIN: 403 sin cambios, más control positivo con ADMIN |
 | SEC-04 | El paciente B intenta ver un turno del paciente A: sin datos, código 404, no confirma existencia y registro del rechazo. Con una **sala virtual que existe**: el dueño la ve (200) y otro paciente recibe 404, igual que con un turno inexistente |
 | SEC-07 | Lo prueba `docker/artemis/verificar-permisos.sh` en el broker: la cuenta publicadora no puede consumir, la consumidora no puede publicar y ninguna lee la DLQ. `int11` (en `IntegracionApiTest`) comprueba que confirmar un turno sigue generando la notificación |
+| SEC-10 | Diagnósticos y recetas se guardan cifrados con AES-256-GCM (`CifradoDatosTest`): en la base no se lee el texto, un dato alterado no se descifra y sin clave no arranca. Ver ADR 0014. **No cubre**: respaldos ni cifrado de disco |
 | SEC-09 | Cada consulta a una historia clínica o ficha deja un registro (quién, qué recurso, de qué paciente, cuándo, resultado) con solo identificadores; un acceso no autorizado sigue bloqueado y queda como `DENEGADO`, nunca como `AUTORIZADO`; solo el admin ve la auditoría |
 
 Si no se pasa `-Dapi.base`, las pruebas se **saltean** (el `mvn package` del deploy no las corre).

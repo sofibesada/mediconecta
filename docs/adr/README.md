@@ -23,6 +23,7 @@ Cada ADR explica una decisión técnica importante de MediConecta:
 | [0011](0011-frontend-react-redux-toolkit.md) | SPA en React con estado global | React + Redux Toolkit |
 | [0012](0012-contrato-http-y-proteccion-xxe.md) | Errores estándar, concurrencia, reintentos seguros y XXE | Problem Details, ETag, Idempotency-Key |
 | [0013](0013-componente-de-pagos.md) | Cobro del copago con tarjeta | Componente Pagos + Adapter a una pasarela externa |
+| [0014](0014-cifrado-de-datos-clinicos.md) | Datos clínicos ilegibles en la base y en los volcados | AES-256-GCM con un `AttributeConverter` de JPA |
 
 Para agregar uno: copiar la estructura de un ADR existente, usar el número siguiente y
 sumarlo a esta tabla.

@@ -166,7 +166,7 @@ function NuevoDiagnostico({ pacienteId }: { pacienteId: number }) {
       <h2 className="card-titulo">Nuevo diagnóstico</h2>
       <div className="form-group">
         <label htmlFor="diagDesc">Descripción</label>
-        <textarea id="diagDesc" rows={3} placeholder="ej. Hipertensión arterial leve" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+        <textarea id="diagDesc" rows={3} maxLength={1000} placeholder="ej. Hipertensión arterial leve" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
       </div>
       <BotonAccion ocupado={ocupado} type="submit" id="btnDiag">
         Registrar diagnóstico
@@ -198,11 +198,11 @@ function NuevaReceta({ pacienteId }: { pacienteId: number }) {
       <h2 className="card-titulo">Nueva receta</h2>
       <div className="form-group">
         <label htmlFor="recMed">Medicamento</label>
-        <input type="text" id="recMed" placeholder="ej. Enalapril 10mg" value={medicamento} onChange={(e) => setMedicamento(e.target.value)} />
+        <input type="text" id="recMed" maxLength={200} placeholder="ej. Enalapril 10mg" value={medicamento} onChange={(e) => setMedicamento(e.target.value)} />
       </div>
       <div className="form-group">
         <label htmlFor="recInd">Indicaciones</label>
-        <input type="text" id="recInd" placeholder="ej. 1 comprimido por día en ayunas" value={indicaciones} onChange={(e) => setIndicaciones(e.target.value)} />
+        <input type="text" id="recInd" maxLength={1000} placeholder="ej. 1 comprimido por día en ayunas" value={indicaciones} onChange={(e) => setIndicaciones(e.target.value)} />
       </div>
       <BotonAccion ocupado={ocupado} type="submit" id="btnRec">
         Registrar receta

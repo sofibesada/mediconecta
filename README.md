@@ -10,12 +10,17 @@ Requisito: **Docker** con Docker Compose (Docker Desktop en Windows/Mac). Nada m
 Java, Maven, WildFly, PostgreSQL y el broker corren dentro de los contenedores.
 
 La primera vez, crear el archivo `.env` con las contraseñas de las cuentas de servicio del
-broker (SEC-07). No tienen valor por defecto y el `.env` no se sube al repositorio:
+broker (SEC-07) y la clave que cifra los datos clínicos (SEC-10). No tienen valor por
+defecto y el `.env` no se sube al repositorio:
 
 ```bash
 cp .env.example .env
-# completar ARTEMIS_PUB_PASSWORD y ARTEMIS_CON_PASSWORD con dos valores largos y distintos
+# completar ARTEMIS_PUB_PASSWORD y ARTEMIS_CON_PASSWORD con dos valores largos y distintos,
+# y MEDICONECTA_CLAVE_DATOS con:  openssl rand -base64 32
 ```
+
+Guarden bien `MEDICONECTA_CLAVE_DATOS`: si se pierde, los diagnósticos y recetas guardados
+no se pueden volver a leer.
 
 ```bash
 docker compose up --build

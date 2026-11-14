@@ -211,6 +211,7 @@ el `pom.xml`.
 | `videollamadas.mock.apiKey` | API key que exige el mock (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |
 | `videollamadas.mock.fallar` | `true`: el mock responde 503 (para ver los reintentos y la DLQ) | `false` |
 | `videollamadas.mock.demoraMs` | El mock tarda N ms (con más de 5000 vence el timeout del cliente) | `0` |
+| `mediconecta.datos.clave` | **Obligatoria.** Clave AES-256 de los datos clínicos, 32 bytes en Base64 (también `MEDICONECTA_CLAVE_DATOS`). Generarla con `openssl rand -base64 32`; si se pierde, no se recuperan los datos | sin valor: el despliegue falla |
 | `mediconecta.pagos.url` | URL base de la pasarela de pagos | `http://localhost:8080/pagos-mock/api/v1` |
 | `mediconecta.pagos.apiKey` | API key que se le envía a la pasarela (también `PAGOS_API_KEY`) | sin valor: hay que configurarla |
 | `pagos.mock.apiKey` | API key que exige el mock de pagos (también `PAGOS_API_KEY`) | sin valor: hay que configurarla |

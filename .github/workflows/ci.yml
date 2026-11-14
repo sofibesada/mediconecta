@@ -88,11 +88,12 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - name: Cuentas del broker de esta corrida (SEC-07)
+      - name: Secretos de esta corrida (SEC-07 y SEC-10)
         # Contrasenas al azar en cada corrida: no hay credenciales del broker en el repo.
         run: |
           echo "ARTEMIS_PUB_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
           echo "ARTEMIS_CON_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "MEDICONECTA_CLAVE_DATOS=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: Levantar el sistema (docker compose)
         run: docker compose up --build -d --wait --wait-timeout 600
       - name: Permisos de las cuentas del broker (SEC-07)
