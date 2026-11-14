@@ -50,4 +50,16 @@ Ciframos en la **aplicación**, campo por campo, con **AES-256-GCM**:
 - Se agregaron largos máximos (diagnóstico 1000, medicamento 200, indicaciones 1000
   caracteres). Antes, un texto de más de 255 terminaba en un error 500.
 - Pruebas: `CifradoDatosTest`, `MigracionCifradoServiceTest`, `HistoriaClinicaServiceTest`.
-- **Pendiente**: respaldos automáticos (`pg_dump`) y cifrado de disco del servidor.
+
+## Respaldos
+
+`scripts/respaldo.sh` hace un `pg_dump` dentro del contenedor y lo cifra al vuelo con AES-256
+(`openssl`, clave derivada con PBKDF2 de `MEDICONECTA_CLAVE_RESPALDOS`, distinta de la de
+datos). El volcado nunca toca el disco sin cifrar. Al lado deja un HMAC-SHA256:
+`scripts/restaurar.sh` lo verifica antes de descifrar y rechaza un respaldo modificado o una
+clave equivocada. CI hace un respaldo, comprueba que no se lee y lo restaura en una base aparte.
+
+Así quedan protegidos también los datos que no se cifran por campo (nombres, emails, afiliados).
+
+**Pendiente (infraestructura, no código):** programar el respaldo (cron o el Programador de
+tareas), guardar las copias fuera del servidor y cifrar el disco del servidor de producción.

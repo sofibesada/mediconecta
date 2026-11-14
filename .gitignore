@@ -39,3 +39,6 @@ build/
 .DS_Store
 ### Configuracion local (credenciales)
 .env
+
+# Respaldos de la base (cifrados, pero no van al repositorio)
+respaldos/

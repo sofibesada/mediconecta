@@ -134,6 +134,24 @@ npm run lint       # ESLint
 npm run build      # build de producción en dist/
 ```
 
+## Respaldos cifrados de la base
+
+```bash
+bash scripts/respaldo.sh
+```
+
+Deja `respaldos/mediconecta-AAAAMMDD-HHMMSS.dump.enc`, cifrado con AES-256 y con un `.hmac`
+para detectar si alguien lo modificó. Usa `MEDICONECTA_CLAVE_RESPALDOS` del `.env` y conserva
+los últimos 7. Para probar un respaldo sin tocar la base real:
+
+```bash
+bash scripts/restaurar.sh respaldos/<archivo>.dump.enc --base prueba_restauracion
+```
+
+Restaurar sobre la base real pide además `--si`. Para leer los diagnósticos y recetas de un
+respaldo hacen falta **las dos claves**: la de respaldos y la `MEDICONECTA_CLAVE_DATOS` que
+estaba en uso cuando se hizo. Guárdenlas fuera de la máquina y separadas de los respaldos.
+
 ## Simular fallas de los sistemas externos y del broker
 
 Sin reiniciar nada (se deshacen cambiando `:add(value=…)` por `:remove`). En Git Bash

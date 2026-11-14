@@ -94,6 +94,7 @@ jobs:
           echo "ARTEMIS_PUB_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
           echo "ARTEMIS_CON_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
           echo "MEDICONECTA_CLAVE_DATOS=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "MEDICONECTA_CLAVE_RESPALDOS=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: Levantar el sistema (docker compose)
         run: docker compose up --build -d --wait --wait-timeout 600
       - name: Permisos de las cuentas del broker (SEC-07)
@@ -105,6 +106,19 @@ jobs:
             -Dapi.base=http://localhost:8080/mediconecta/api \
             -Dadmin.email=admin@mediconecta.com -Dadmin.password=admin1234 \
             -Dwildfly.log=app.log
+      - name: Respaldo cifrado y restauracion (SEC-10)
+        # Respalda, comprueba que el archivo no se lee, lo restaura en una base aparte y
+        # compara la cantidad de filas con la base real.
+        run: |
+          bash scripts/respaldo.sh
+          f=$(ls -1t respaldos/*.dump.enc | head -1)
+          if grep -aq "admin@mediconecta.com" "$f"; then echo "el respaldo se lee sin cifrar"; exit 1; fi
+          bash scripts/restaurar.sh "$f" --base prueba_restauracion
+          q="select (select count(*) from usuarios)||'/'||(select count(*) from turnos)||'/'||(select count(*) from diagnosticos)"
+          real=$(docker compose exec -T db psql -U mediconecta -d mediconecta -Atc "$q")
+          copia=$(docker compose exec -T db psql -U mediconecta -d prueba_restauracion -Atc "$q")
+          echo "real=$real restaurada=$copia"
+          test "$real" = "$copia"
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
