@@ -255,7 +255,7 @@ class UsuarioServiceTest {
             Usuario p = usuario(5L, RolUsuario.PACIENTE, "x");
             when(repo.buscarPorId(5L)).thenReturn(p);
 
-            Usuario conOs = service.guardarCobertura(5L, "OSMED", "12345678", "Plan 210", 30);
+            Usuario conOs = service.guardarCobertura(5L, "OSDE", "12345678", "Plan 210", 30);
             assertTrue(conOs.tieneObraSocial());
             assertEquals(30, conOs.getCopagoPorcentaje());
             assertEquals("Plan 210", conOs.getPlanObraSocial());

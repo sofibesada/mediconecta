@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <!--
+        Simulador de la PASARELA DE PAGOS externa que consume MediConecta (como un proveedor
+        real de cobros con tarjeta). Es otra aplicacion, en otro contexto, para que la
+        integracion sea REST de verdad, por HTTP.
+        API:  http://localhost:8080/pagos-mock/api/v1/pagos
+    -->
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>ar.com.pagos</groupId>
+    <artifactId>pagos-mock</artifactId>
+    <version>1.0</version>
+    <packaging>war</packaging>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <failOnMissingWebXml>false</failOnMissingWebXml>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>10.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>pagos-mock</finalName>
+    </build>
+</project>

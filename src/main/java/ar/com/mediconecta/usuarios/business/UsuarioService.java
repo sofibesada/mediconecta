@@ -72,6 +72,7 @@ public class UsuarioService implements IUsuarioService {
         prof.setNombre(datos.getNombre());
         prof.setEmail(datos.getEmail());
         prof.setRol(RolUsuario.PROFESIONAL);
+        prof.setEspecialidad(Especialidades.validar(datos.getEspecialidad()));
         prof.setDebeCambiarPassword(true);
         prof.setPassword(BCrypt.hashpw(datos.getPassword(), BCrypt.gensalt()));
         return usuarioRepository.guardar(prof);
@@ -130,6 +131,7 @@ public class UsuarioService implements IUsuarioService {
         String temporal = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         u.setPassword(BCrypt.hashpw(temporal, BCrypt.gensalt()));
         u.setDebeCambiarPassword(true);
+        u.setRecuperacionSolicitadaEn(null); // si habia un pedido de recuperacion, queda atendido
         usuarioRepository.actualizar(u);
         return temporal;
     }
@@ -255,6 +257,61 @@ public class UsuarioService implements IUsuarioService {
         }
         return usuarioRepository.listarPorIds(idsLimpios).stream()
                 .collect(Collectors.toMap(Usuario::getId, Usuario::getNombre));
+    }
+
+    @Override
+    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL, Roles.ADMIN})
+    public Usuario actualizarPerfil(Long usuarioId, DatosPerfil datos) {
+        Usuario u = usuarioRepository.buscarPorId(usuarioId);
+        if (u == null || !u.isActivo()) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+        if (datos.nombre() == null || datos.nombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre es obligatorio");
+        }
+        if (datos.nombre().trim().length() > 80) {
+            throw new IllegalArgumentException("El nombre puede tener hasta 80 caracteres");
+        }
+        String email = datos.email() == null ? "" : datos.email().trim().toLowerCase(java.util.Locale.ROOT);
+        if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new IllegalArgumentException("El email no es válido");
+        }
+        if (!email.equalsIgnoreCase(u.getEmail())) {
+            // Cambiar el email cambia con que se ingresa: se pide la contrasena para confirmar.
+            if (datos.passwordActual() == null || !BCrypt.checkpw(datos.passwordActual(), u.getPassword())) {
+                throw new IllegalArgumentException("Para cambiar el email ingresá tu contraseña actual");
+            }
+            if (usuarioRepository.buscarPorEmail(email) != null) {
+                throw new IllegalStateException("Ya existe una cuenta con ese email");
+            }
+            u.setEmail(email);
+        }
+        u.setNombre(datos.nombre().trim());
+        if (u.getRol() == RolUsuario.PROFESIONAL) {
+            u.setEspecialidad(Especialidades.validar(datos.especialidad()));
+        }
+        return usuarioRepository.actualizar(u);
+    }
+
+    @Override
+    @PermitAll
+    public Map<Long, String> especialidadesDe(Set<Long> ids) {
+        Set<Long> limpios = new HashSet<>();
+        for (Long id : ids) {
+            if (id != null) {
+                limpios.add(id);
+            }
+        }
+        if (limpios.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> r = new java.util.HashMap<>();
+        for (Usuario u : usuarioRepository.listarPorIds(limpios)) {
+            if (u.getEspecialidad() != null) {
+                r.put(u.getId(), u.getEspecialidad());
+            }
+        }
+        return r;
     }
 
     @Override

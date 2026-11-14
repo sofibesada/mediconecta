@@ -24,7 +24,7 @@ describe("sesionSlice", () => {
   });
 
   it("al actualizar la cobertura conserva el token y borra los campos que ya no vienen", () => {
-    let s = reducer(undefined, sesionIniciada({ ...paciente, obraSocial: "OSMED", planObraSocial: "Plata", copagoPorcentaje: 20 }));
+    let s = reducer(undefined, sesionIniciada({ ...paciente, obraSocial: "OSDE", planObraSocial: "Plata", copagoPorcentaje: 20 }));
     s = reducer(s, usuarioActualizado({ id: 7, nombre: "Ana", email: "ana@x.com", rol: "PACIENTE" }));
     expect(s.usuario?.token).toBe("t1");
     expect(s.usuario).not.toHaveProperty("obraSocial");

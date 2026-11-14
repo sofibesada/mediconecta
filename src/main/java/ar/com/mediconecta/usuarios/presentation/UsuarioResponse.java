@@ -13,6 +13,9 @@ public class UsuarioResponse {
     public String numeroAfiliado;
     public String planObraSocial;
     public Integer copagoPorcentaje;
+    public String especialidad;
+    /** El usuario pidio recuperar la contrasena y el administrador todavia no le genero una temporal. */
+    public boolean recuperacionSolicitada;
     /** Solo viene al iniciar sesion (login, registro, cambio de contrasena). */
     public String token;
 
@@ -28,6 +31,8 @@ public class UsuarioResponse {
         response.numeroAfiliado = usuario.getNumeroAfiliado();
         response.planObraSocial = usuario.getPlanObraSocial();
         response.copagoPorcentaje = usuario.getCopagoPorcentaje();
+        response.especialidad = usuario.getEspecialidad();
+        response.recuperacionSolicitada = usuario.getRecuperacionSolicitadaEn() != null;
         return response;
     }
 }

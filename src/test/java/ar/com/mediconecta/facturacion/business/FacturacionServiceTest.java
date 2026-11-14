@@ -33,7 +33,7 @@ class FacturacionServiceTest {
 
     @Test
     void registrarDejaElReclamoPendienteYLoEncola() {
-        service.registrarPrestacion(100L, 1L, "OSMED", "12345678", "AUT-1", new BigDecimal("14000"));
+        service.registrarPrestacion(100L, 1L, "OSDE", "12345678", "AUT-1", new BigDecimal("14000"));
 
         ArgumentCaptor<Reclamo> captor = ArgumentCaptor.forClass(Reclamo.class);
         verify(reclamoRepository).guardar(captor.capture());
@@ -49,7 +49,7 @@ class FacturacionServiceTest {
     void procesarUnReclamoAceptado() {
         Reclamo r = pendiente();
         when(reclamoRepository.buscarPorId(5L)).thenReturn(r);
-        when(obraSocialService.registrarReclamo("OSMED", "12345678", "AUT-1", new BigDecimal("14000"), 100L))
+        when(obraSocialService.registrarReclamo("OSDE", "12345678", "AUT-1", new BigDecimal("14000"), 100L))
                 .thenReturn(new ResultadoReclamo(true, "REC-9", new BigDecimal("14000"), null));
 
         service.procesarReclamo(5L);
@@ -94,7 +94,7 @@ class FacturacionServiceTest {
     private static Reclamo pendiente() {
         Reclamo r = new Reclamo();
         r.setTurnoId(100L);
-        r.setObraSocial("OSMED");
+        r.setObraSocial("OSDE");
         r.setNumeroAfiliado("12345678");
         r.setCodigoAutorizacion("AUT-1");
         r.setImporte(new BigDecimal("14000"));

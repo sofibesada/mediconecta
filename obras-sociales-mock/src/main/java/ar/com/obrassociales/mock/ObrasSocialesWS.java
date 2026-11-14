@@ -63,8 +63,10 @@ public class ObrasSocialesWS {
             r.motivo = "Afiliado dado de baja";
         } else {
             r.cubierto = true;
-            r.plan = entidad.get().plan;
-            r.copagoPorcentaje = entidad.get().copagoPorcentaje;
+            // El plan del afiliado manda; si no tiene uno propio, el plan basico de la entidad.
+            Afiliado a = afiliado.get();
+            r.plan = a.plan != null ? a.plan : entidad.get().plan;
+            r.copagoPorcentaje = a.copagoPorcentaje != null ? a.copagoPorcentaje : entidad.get().copagoPorcentaje;
         }
         LOG.info("[Mock obras sociales] consultarCobertura " + obraSocial + " afiliado " + enmascarar(numeroAfiliado)
                 + " -> " + (r.cubierto ? "cubierto, " + r.plan : r.motivo));

@@ -136,12 +136,15 @@ tokens dejan de valer en cada redeploy). Mínimo 32 caracteres, **no versionarla
 
 ## 7. Build y deploy
 
-Son **tres aplicaciones**: MediConecta y dos simuladores de sistemas externos.
+Son **cuatro aplicaciones**: MediConecta y tres simuladores de sistemas externos.
 - La plataforma de videollamadas (moderna), que MediConecta consume por **REST**.
+- La pasarela de pagos con tarjeta, que MediConecta consume por **REST**.
 - El sistema **legado** de obras sociales, que MediConecta consume por **SOAP**.
 
 ```bash
 cd videollamadas-mock
+mvn clean package wildfly:deploy
+cd ../pagos-mock
 mvn clean package wildfly:deploy
 cd ../obras-sociales-mock
 mvn clean package wildfly:deploy
@@ -151,6 +154,7 @@ mvn clean package wildfly:deploy
 
 - MediConecta: `http://localhost:8080/mediconecta/api`
 - Videollamadas (mock): `http://localhost:8080/videollamadas-mock/api/v1/rooms`
+- Pasarela de pagos (mock): `http://localhost:8080/pagos-mock/api/v1/pagos`
 - Obras sociales (mock, SOAP): WSDL en `http://localhost:8080/obras-sociales-mock/ObrasSociales?wsdl`
 
 ### Padrón del sistema de obras sociales (panel del legado)
@@ -165,17 +169,31 @@ redeploys; para volver a los datos de prueba, borrar ese archivo y redesplegar e
 
 Datos de prueba iniciales:
 
-| Obra social | Afiliado | Estado |
-|---|---|---|
-| OSMED | `12345678` | Activo: cubierto y autorizado |
-| OSMED | `12345679` | **Dado de baja**: no se puede cargar la cobertura |
-| PREVENIR | `12345677` | Activo con **tope alcanzado**: la autorización se rechaza |
-| PREVENIR | `22223333` | Activo |
-| SALUDPLUS | `33334444` | Activo |
+| Obra social / prepaga | Afiliado | Plan | Resultado |
+|---|---|---|---|
+| OSDE | `12345678` | OSDE 210 (copago 30 %) | Cubierto y autorizado |
+| OSDE | `61234567` | OSDE 410 (copago 10 %) | Cubierto y autorizado |
+| OSDE | `12345679` | — | **Dado de baja**: no se puede cargar la cobertura |
+| Swiss Medical | `12345677` | SMG30 | **Tope alcanzado**: la autorización se rechaza |
+| Swiss Medical | `22223333` | SMG40 (copago 15 %) | Cubierto y autorizado |
+| Galeno | `33334444` | Galeno Plata 330 | Cubierto y autorizado |
+| Medifé | `44445555` | Medifé Plata | Cubierto y autorizado |
+| PAMI | `15012345678900` | PAMI (sin copago) | Cubierto y autorizado |
+| IOMA | `66667777` | IOMA | Cubierto y autorizado |
+| OSECAC | `77778888` | OSECAC | Cubierto y autorizado |
+| SanCor Salud | `88889999` | SanCor 3000 | Cubierto y autorizado |
+| OMINT | `99990000` | OMINT Clásico | Cubierto y autorizado |
+| OSDEPYM | `11112222` | OSDEPYM 2000 | Cubierto y autorizado |
 
-Vademécum inicial: OSMED (Enalapril 40%, Amoxicilina 50%, Ibuprofeno 30%), PREVENIR
-(Enalapril 70%, Metformina 60%) y SALUDPLUS (Amoxicilina 100%, Omeprazol 40%,
-Atorvastatina 60%).
+Son **obras sociales y prepagas reales** de Argentina con los nombres comerciales de sus
+planes. Los afiliados, los porcentajes de copago y los descuentos son de ejemplo: el padrón
+real de cada entidad no es público, así que lo simula el sistema legado (se administra desde
+su panel, ver abajo).
+
+Vademécum inicial (descuentos de ejemplo): OSDE (Enalapril 40 %, Amoxicilina 50 %,
+Ibuprofeno 30 %, Losartán 40 %), Swiss Medical (Enalapril 70 %, Metformina 60 %), PAMI
+(Enalapril, Losartán y Metformina 100 %, Atorvastatina 80 %), Galeno (Amoxicilina 40 %),
+Medifé (Omeprazol 40 %), IOMA (Ibuprofeno 50 %) y SanCor Salud (Atorvastatina 60 %).
 
 Credenciales de administración de WildFly usadas por `wildfly-maven-plugin`:
 están en `~/.m2/settings.xml` bajo `<server><id>wildfly-admin</id>`, **no** en
@@ -193,6 +211,11 @@ el `pom.xml`.
 | `videollamadas.mock.apiKey` | API key que exige el mock (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |
 | `videollamadas.mock.fallar` | `true`: el mock responde 503 (para ver los reintentos y la DLQ) | `false` |
 | `videollamadas.mock.demoraMs` | El mock tarda N ms (con más de 5000 vence el timeout del cliente) | `0` |
+| `mediconecta.pagos.url` | URL base de la pasarela de pagos | `http://localhost:8080/pagos-mock/api/v1` |
+| `mediconecta.pagos.apiKey` | API key que se le envía a la pasarela (también `PAGOS_API_KEY`) | sin valor: hay que configurarla |
+| `pagos.mock.apiKey` | API key que exige el mock de pagos (también `PAGOS_API_KEY`) | sin valor: hay que configurarla |
+| `pagos.mock.fallar` | `true`: la pasarela responde 503 | `false` |
+| `pagos.mock.demoraMs` | La pasarela tarda N ms (con más de 5000 vence el timeout del cliente) | `0` |
 | `mediconecta.obrassociales.url` | Endpoint SOAP del sistema de obras sociales | `http://localhost:8080/obras-sociales-mock/ObrasSociales` |
 | `mediconecta.consulta.valor` | Valor de la consulta (base del copago y del reclamo) | `20000` |
 | `obrassociales.mock.fallar` | `true`: `registrarReclamo` responde con SOAP Fault (reintentos de la cola y DLQ) | `false` |

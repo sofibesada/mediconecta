@@ -15,6 +15,7 @@
         <class>ar.com.mediconecta.obrassociales.model.IntentoAutorizacion</class>
         <class>ar.com.mediconecta.facturacion.model.Reclamo</class>
         <class>ar.com.mediconecta.idempotencia.model.RegistroIdempotencia</class>
+        <class>ar.com.mediconecta.pagos.model.Pago</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <properties>
             <property name="hibernate.hbm2ddl.auto" value="update"/>

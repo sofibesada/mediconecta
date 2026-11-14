@@ -1,6 +1,8 @@
 package ar.com.mediconecta.turnos.presentation;
 
 import ar.com.mediconecta.idempotencia.business.IdempotenciaService;
+import ar.com.mediconecta.pagos.business.PagoService;
+import ar.com.mediconecta.pagos.model.Pago;
 import ar.com.mediconecta.seguridad.Roles;
 import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.turnos.business.AgendaTurnoFacade;
@@ -39,10 +41,25 @@ public class TurnoResource {
     @Inject
     private IdempotenciaService idempotencia;
 
+    @Inject
+    private PagoService pagoService;
+
     private TurnoResponse aResponse(Turno t) {
-        return TurnoResponse.from(t,
-                usuarioService.nombreDe(t.getProfesionalId()),
-                usuarioService.nombreDe(t.getPacienteId()));
+        return aResponse(List.of(t)).get(0);
+    }
+
+    /** Especialidad del profesional y pago online de cada turno, con una consulta para toda la lista. */
+    private void completar(List<TurnoResponse> respuestas) {
+        Set<Long> profesionales = respuestas.stream().map(r -> r.profesionalId).collect(Collectors.toSet());
+        Map<Long, String> especialidades = usuarioService.especialidadesDe(profesionales);
+        Map<Long, Pago> pagos = pagoService.aprobadosDe(respuestas.stream().map(r -> r.id).toList());
+        for (TurnoResponse r : respuestas) {
+            r.profesionalEspecialidad = especialidades.get(r.profesionalId);
+            Pago p = pagos.get(r.id);
+            if (p != null) {
+                r.pago = new TurnoResponse.PagoTurno(p.getMarca(), p.getUltimos4(), p.getCodigoAutorizacion(), p.getCreadoEn());
+            }
+        }
     }
 
     /** Respuesta con el turno y su ETag (la version actual). */
@@ -61,9 +78,11 @@ public class TurnoResource {
             }
         }
         Map<Long, String> nombres = usuarioService.nombresDe(ids);
-        return turnos.stream()
+        List<TurnoResponse> respuestas = turnos.stream()
                 .map(t -> TurnoResponse.from(t, nombres.get(t.getProfesionalId()), nombres.get(t.getPacienteId())))
                 .collect(Collectors.toList());
+        completar(respuestas);
+        return respuestas;
     }
 
     @GET

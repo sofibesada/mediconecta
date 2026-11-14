@@ -37,12 +37,14 @@ class IntegracionApiTest {
 
     private String tokenPaciente;
     private String tokenProfesional;
+    private String tokenAdmin;
+    private String emailPaciente;
 
     @BeforeAll
     void preparar() {
         RestAssured.baseURI = System.getProperty("api.base");
         String sufijo = String.valueOf(System.currentTimeMillis());
-        String tokenAdmin = login(requerida("admin.email"), requerida("admin.password"));
+        tokenAdmin = login(requerida("admin.email"), requerida("admin.password"));
 
         String emailProf = "int_prof_" + sufijo + "@test.local";
         con(tokenAdmin).body(json(Map.of("nombre", "Profesional Integracion", "email", emailProf, "passwordTemporal", "Temp1234")))
@@ -51,8 +53,9 @@ class IntegracionApiTest {
                 .body(json(Map.of("passwordActual", "Temp1234", "passwordNueva", "Prueba1234")))
                 .post("/usuarios/cambiar-password").then().statusCode(200).extract().path("token");
 
+        emailPaciente = "int_pac_" + sufijo + "@test.local";
         tokenPaciente = given().contentType(ContentType.JSON)
-                .body(json(Map.of("nombre", "Paciente Integracion", "email", "int_pac_" + sufijo + "@test.local", "password", "Prueba1234")))
+                .body(json(Map.of("nombre", "Paciente Integracion", "email", emailPaciente, "password", "Prueba1234")))
                 .post("/usuarios").then().statusCode(200).extract().path("token");
     }
 
@@ -143,7 +146,7 @@ class IntegracionApiTest {
         String xxe = "<?xml version=\"1.0\"?>"
                 + "<!DOCTYPE x [ <!ENTITY xxe SYSTEM \"file:///etc/passwd\"> ]>"
                 + "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:ws=\"http://legado.obrassociales.ar/ws\">"
-                + "<soapenv:Body><ws:consultarCobertura><obraSocial>OSMED</obraSocial><numeroAfiliado>&xxe;</numeroAfiliado>"
+                + "<soapenv:Body><ws:consultarCobertura><obraSocial>OSDE</obraSocial><numeroAfiliado>&xxe;</numeroAfiliado>"
                 + "</ws:consultarCobertura></soapenv:Body></soapenv:Envelope>";
 
         Response r = given().baseUri(urlSoap()).contentType("text/xml; charset=utf-8").header("SOAPAction", "\"\"")
@@ -164,12 +167,85 @@ class IntegracionApiTest {
         Response r = given().baseUri(urlSoap()).contentType("text/xml; charset=utf-8").header("SOAPAction", "\"\"")
                 .body(normal).post();
         assertEquals(200, r.statusCode());
-        assertTrue(r.asString().contains("OSMED"));
+        assertTrue(r.asString().contains("OSDE"));
     }
 
     // ------------------------------------------------------------------ helpers
 
     /** El simulador del legado corre en el mismo WildFly que la API. */
+    // ------------------------------------------------------------------ Pagos (8vo componente)
+
+    @Test
+    void int06_pagarConTarjetaQuedaEnElTurnoYNoSePagaDosVeces() {
+        long turno = turnoConfirmado();
+        String clave = "int06-" + turno;
+        Map<String, Object> visa = tarjeta(turno, "4111 1111 1111 1111", "123");
+
+        Response r = con(tokenPaciente).header("Idempotency-Key", clave).body(json(visa)).post("/pagos");
+        assertEquals(201, r.statusCode(), r.asString());
+        assertEquals("APROBADO", r.path("estado"));
+        assertEquals("Visa", r.path("marca"));
+        assertEquals("1111", r.path("ultimos4"));
+
+        // Reintento con la misma clave: misma respuesta, no hay segundo cobro.
+        Response otra = con(tokenPaciente).header("Idempotency-Key", clave).body(json(visa)).post("/pagos");
+        assertEquals((Object) r.path("id"), otra.path("id"));
+
+        // Con otra clave el turno ya figura pagado.
+        assertEquals(409, con(tokenPaciente).header("Idempotency-Key", clave + "-b").body(json(visa)).post("/pagos").statusCode());
+
+        Response t = con(tokenPaciente).get("/turnos/" + turno);
+        assertEquals("1111", t.path("pago.ultimos4"));
+        assertEquals(1, con(tokenPaciente).get("/pagos/turno/" + turno).jsonPath().getList("$").size());
+    }
+
+    @Test
+    void int07_unaTarjetaRechazadaDa402YUnaInvalida400() {
+        long turno = turnoConfirmado();
+        Response r = con(tokenPaciente).body(json(tarjeta(turno, "4000000000000002", "123"))).post("/pagos");
+        assertEquals(402, r.statusCode(), r.asString());
+        assertTrue(r.<String>path("detail").contains("rechazada"));
+
+        assertEquals(400, con(tokenPaciente).body(json(tarjeta(turno, "4111111111111112", "123"))).post("/pagos").statusCode());
+        assertEquals(400, con(tokenPaciente).body(json(tarjeta(turno, "378282246310005", "123"))).post("/pagos").statusCode());
+        // Un turno ajeno responde 404 (no revela que existe), antes de llegar al chequeo de rol.
+        assertEquals(404, con(tokenProfesional).body(json(tarjeta(turno, "4111111111111111", "123"))).post("/pagos").statusCode());
+    }
+
+    // ------------------------------------------------------------------ Perfil y recuperacion
+
+    @Test
+    void int08_elPerfilSeEditaYCambiarElEmailPideLaContrasena() {
+        String emailProf = con(tokenProfesional).get("/perfil").path("email");
+        con(tokenProfesional).body(json(Map.of("nombre", "Dra. Integracion", "email", emailProf, "especialidad", "Cardiología")))
+                .put("/perfil").then().statusCode(200);
+        assertEquals("Cardiología", con(tokenProfesional).get("/perfil").path("especialidad"));
+
+        assertEquals(400, con(tokenPaciente).body(json(Map.of("nombre", "Paciente", "email", "otro_" + emailPaciente)))
+                .put("/perfil").statusCode());
+
+        // El listado publico de profesionales ya no expone emails.
+        Response lista = con(tokenPaciente).get("/profesionales");
+        assertEquals(200, lista.statusCode());
+        assertTrue(!lista.asString().contains("@"), "el listado de profesionales no debe tener emails");
+    }
+
+    @Test
+    void int09_pedirRecuperarLaContrasenaAvisaAlAdmin() {
+        Response r = given().contentType(ContentType.JSON).body(json(Map.of("email", emailPaciente))).post("/usuarios/recuperar-password");
+        assertEquals(202, r.statusCode());
+        // Un email que no existe responde igual (no revela cuentas).
+        assertEquals(202, given().contentType(ContentType.JSON).body(json(Map.of("email", "nadie@test.local")))
+                .post("/usuarios/recuperar-password").statusCode());
+
+        String avisos = con(tokenAdmin).get("/notificaciones").asString();
+        assertTrue(avisos.contains(emailPaciente), avisos);
+    }
+
+    private static Map<String, Object> tarjeta(long turno, String numero, String cvv) {
+        return Map.of("turnoId", turno, "numero", numero, "vencimiento", "12/30", "cvv", cvv, "titular", "PACIENTE INTEGRACION");
+    }
+
     private static String urlSoap() {
         return System.getProperty("api.base").replace("/mediconecta/api", "/obras-sociales-mock/ObrasSociales");
     }

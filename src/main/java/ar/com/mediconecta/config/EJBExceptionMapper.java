@@ -28,7 +28,8 @@ public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
         }
 
         Response.Status estado;
-        if (causa instanceof ObrasSocialesNoDisponibleException) {
+        if (causa instanceof ObrasSocialesNoDisponibleException
+                || causa instanceof ar.com.mediconecta.pagos.integracion.PasarelaNoDisponibleException) {
             estado = Response.Status.SERVICE_UNAVAILABLE;
         } else if (esFallaDeMensajeria(ex)) {
             // Broker caido: la transaccion ya se revirtio (no quedo nada a medias).

@@ -56,7 +56,7 @@ export default function App() {
         <Route path="/pacientes" element={<Privada roles={["PROFESIONAL"]}><MisPacientes /></Privada>} />
         <Route path="/pacientes/:pacienteId/historia" element={<Privada roles={["PROFESIONAL"]}><HistoriaClinica /></Privada>} />
 
-        <Route path="/notificaciones" element={<Privada roles={["PACIENTE", "PROFESIONAL"]}><Notificaciones /></Privada>} />
+        <Route path="/notificaciones" element={<Privada roles={["PACIENTE", "PROFESIONAL", "ADMIN"]}><Notificaciones /></Privada>} />
 
         <Route path="/admin" element={<Privada roles={["ADMIN"]}><Administracion /></Privada>} />
         <Route path="/facturacion" element={<Privada roles={["ADMIN"]}><Facturacion /></Privada>} />

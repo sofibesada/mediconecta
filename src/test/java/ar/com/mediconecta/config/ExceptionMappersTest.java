@@ -36,6 +36,12 @@ class ExceptionMappersTest {
     }
 
     @Test
+    void pasarelaDePagosCaidaEs503() {
+        EJBException e = new EJBException(new ar.com.mediconecta.pagos.integracion.PasarelaNoDisponibleException("La pasarela no responde", null));
+        assertRespuesta(503, "La pasarela no responde", ejb.toResponse(e));
+    }
+
+    @Test
     void brokerCaidoEs503AunqueVengaAnidado() {
         EJBException e = new EJBException(new RuntimeException("envio", new JMSRuntimeException("sin broker")));
         Response r = ejb.toResponse(e);
@@ -82,6 +88,8 @@ class ExceptionMappersTest {
         assertRespuesta(400, "malo", new IllegalArgumentExceptionMapper().toResponse(new IllegalArgumentException("malo")));
         assertRespuesta(409, "choca", new IllegalStateExceptionMapper().toResponse(new IllegalStateException("choca")));
         assertRespuesta(404, "sin sala", new SalaNoDisponibleExceptionMapper().toResponse(new SalaNoDisponibleException("sin sala")));
+        assertRespuesta(402, "El pago fue rechazado: Fondos insuficientes",
+                new PagoRechazadoExceptionMapper().toResponse(new ar.com.mediconecta.pagos.business.PagoRechazadoException("Fondos insuficientes")));
     }
 
     @Test

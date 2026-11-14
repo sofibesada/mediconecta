@@ -43,6 +43,14 @@ public class Usuario {
     @Column(name = "copago_porcentaje")
     private Integer copagoPorcentaje;
 
+    /** Solo para profesionales (ver Especialidades). */
+    @Column(length = 60)
+    private String especialidad;
+
+    /** Ultimo pedido de recuperacion de contrasena pendiente (null: ninguno). */
+    @Column(name = "recuperacion_solicitada_en")
+    private java.time.LocalDateTime recuperacionSolicitadaEn;
+
     @Version
     private Long version;
 
@@ -70,6 +78,11 @@ public class Usuario {
     public void setPlanObraSocial(String planObraSocial) { this.planObraSocial = planObraSocial; }
     public Integer getCopagoPorcentaje() { return copagoPorcentaje; }
     public void setCopagoPorcentaje(Integer copagoPorcentaje) { this.copagoPorcentaje = copagoPorcentaje; }
+
+    public String getEspecialidad() { return especialidad; }
+    public void setEspecialidad(String especialidad) { this.especialidad = especialidad; }
+    public java.time.LocalDateTime getRecuperacionSolicitadaEn() { return recuperacionSolicitadaEn; }
+    public void setRecuperacionSolicitadaEn(java.time.LocalDateTime recuperacionSolicitadaEn) { this.recuperacionSolicitadaEn = recuperacionSolicitadaEn; }
 
     public boolean tieneObraSocial() { return obraSocial != null; }
 }

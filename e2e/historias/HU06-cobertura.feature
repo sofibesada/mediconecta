@@ -8,14 +8,14 @@ Característica: Cargar la cobertura de la obra social
   @E2E-08
   Escenario: Cargo una cobertura activa
     Dado que ingresé como paciente
-    Cuando cargo OSMED con el afiliado 12345678 en "Mi Perfil"
+    Cuando cargo OSDE con el afiliado 12345678 en "Mi Perfil"
     Entonces veo "Cobertura verificada"
     Y mi perfil muestra el afiliado 12345678 con su plan y el porcentaje de copago
 
   @E2E-08
   Escenario: Un afiliado dado de baja no se puede cargar
     Dado que ingresé como paciente
-    Cuando cargo OSMED con el afiliado 12345679
+    Cuando cargo OSDE con el afiliado 12345679
     Entonces veo "La obra social informó: Afiliado dado de baja"
     Y mi perfil sigue diciendo "No cargaste obra social"
 

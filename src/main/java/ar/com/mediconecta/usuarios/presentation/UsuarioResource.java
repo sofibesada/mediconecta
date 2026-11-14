@@ -14,6 +14,9 @@ import jakarta.ws.rs.core.Response;
 public class UsuarioResource {
 
     @Inject
+    private ar.com.mediconecta.usuarios.business.RecuperacionPasswordService recuperacion;
+
+    @Inject
     private IUsuarioService usuarioService;
 
     @Inject
@@ -74,6 +77,22 @@ public class UsuarioResource {
      * Devuelve un token nuevo para el usuario del token actual (que todavia tiene que ser
      * valido). Asi la sesion dura mientras se use, aunque cada token venza a los 15 min.
      */
+    /**
+     * "Olvide mi contrasena": le avisa al administrador. Responde siempre lo mismo, exista o no
+     * la cuenta, para no revelar que emails estan registrados.
+     */
+    @POST
+    @Path("/recuperar-password")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response recuperarPassword(RecuperarRequest request) {
+        recuperacion.solicitarPorEmail(request == null ? null : request.email());
+        return Response.accepted(java.util.Map.of("mensaje",
+                "Si el email corresponde a una cuenta activa, le avisamos al administrador para que te genere una contraseña temporal.")).build();
+    }
+
+    public record RecuperarRequest(String email) {}
+
     @POST
     @Path("/renovar")
     @Produces(MediaType.APPLICATION_JSON)

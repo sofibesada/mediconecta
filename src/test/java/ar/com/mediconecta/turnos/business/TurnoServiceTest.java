@@ -224,18 +224,18 @@ class TurnoServiceTest {
         void conObraSocialAutorizadaCalculaCopagoYFactura() {
             System.setProperty("mediconecta.consulta.valor", "30000");
             conObraSocial();
-            when(obraSocialService.autorizarConsulta(eq("OSMED"), eq("12345678"), eq(TURNO), any()))
+            when(obraSocialService.autorizarConsulta(eq("OSDE"), eq("12345678"), eq(TURNO), any()))
                     .thenReturn(new ResultadoAutorizacion(true, "AUT-1", null));
 
             Turno t = service.confirmarTurno(TURNO, false);
 
-            assertEquals("OSMED", t.getObraSocial());
+            assertEquals("OSDE", t.getObraSocial());
             assertEquals("AUT-1", t.getCodigoAutorizacion());
             assertEquals(new BigDecimal("9000.00"), t.getImporteCopago());
             assertEquals(new BigDecimal("21000.00"), t.getImporteObraSocial());
-            verify(auditoria).registrar(TURNO, PACIENTE, "OSMED", Resultado.AUTORIZADA, "AUT-1", null);
+            verify(auditoria).registrar(TURNO, PACIENTE, "OSDE", Resultado.AUTORIZADA, "AUT-1", null);
             verify(eventoPublisher).publicar(TipoEventoTurno.TURNO_CONFIRMADO, t, null);
-            verify(facturacionService).registrarPrestacion(TURNO, PACIENTE, "OSMED", "12345678", "AUT-1", new BigDecimal("21000.00"));
+            verify(facturacionService).registrarPrestacion(TURNO, PACIENTE, "OSDE", "12345678", "AUT-1", new BigDecimal("21000.00"));
         }
 
         @Test
@@ -253,7 +253,7 @@ class TurnoServiceTest {
             AutorizacionRechazadaException e = assertThrows(AutorizacionRechazadaException.class, () -> service.confirmarTurno(TURNO, false));
 
             assertTrue(e.getMessage().contains("Tope alcanzado"));
-            verify(auditoria).registrar(TURNO, PACIENTE, "OSMED", Resultado.RECHAZADA, null, "Tope alcanzado");
+            verify(auditoria).registrar(TURNO, PACIENTE, "OSDE", Resultado.RECHAZADA, null, "Tope alcanzado");
             verifyNoInteractions(eventoPublisher, facturacionService);
         }
 
@@ -265,7 +265,7 @@ class TurnoServiceTest {
 
             assertThrows(AutorizacionRechazadaException.class, () -> service.confirmarTurno(TURNO, false));
 
-            verify(auditoria).registrar(eq(TURNO), eq(PACIENTE), eq("OSMED"), eq(Resultado.SIN_RESPUESTA), isNull(), any());
+            verify(auditoria).registrar(eq(TURNO), eq(PACIENTE), eq("OSDE"), eq(Resultado.SIN_RESPUESTA), isNull(), any());
             verifyNoInteractions(eventoPublisher, facturacionService);
         }
 
@@ -306,7 +306,7 @@ class TurnoServiceTest {
         }
 
         private void conObraSocial() {
-            paciente.setObraSocial("OSMED");
+            paciente.setObraSocial("OSDE");
             paciente.setNumeroAfiliado("12345678");
             paciente.setCopagoPorcentaje(30);
         }

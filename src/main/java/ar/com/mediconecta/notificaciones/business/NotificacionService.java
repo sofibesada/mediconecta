@@ -51,6 +51,12 @@ public class NotificacionService implements INotificacionService {
                 crear(e, e.getProfesionalId(), "Turno reprogramado",
                         "El turno de " + paciente + " pasó del " + anterior + " al " + fecha + ".");
             }
+            case PAGO_ACREDITADO -> {
+                crear(e, e.getPacienteId(), "Pago acreditado",
+                        "Recibimos el pago de tu turno con " + profesional + " del " + fecha + ". No tenés que pagar nada en el consultorio.");
+                crear(e, e.getProfesionalId(), "Turno pagado",
+                        paciente + " pagó online el turno del " + fecha + ".");
+            }
             case TURNO_RECORDATORIO -> {
                 crear(e, e.getPacienteId(), "Recordatorio de turno",
                         "Te recordamos tu turno con " + profesional + " el " + fecha + "."
@@ -111,6 +117,19 @@ public class NotificacionService implements INotificacionService {
     @Override
     public void marcarTodasLeidas(Long usuarioId) {
         repository.marcarTodasLeidas(usuarioId);
+    }
+
+    @Override
+    public void avisar(Long usuarioId, String tipo, String titulo, String mensaje) {
+        Notificacion n = new Notificacion();
+        n.setEventoId(java.util.UUID.randomUUID().toString());
+        n.setUsuarioId(usuarioId);
+        n.setTipo(tipo);
+        n.setTitulo(titulo);
+        n.setMensaje(mensaje);
+        n.setCreadaEn(LocalDateTime.now());
+        repository.guardar(n);
+        LOG.info("[EMAIL simulado] Para: usuario #" + usuarioId + " | " + titulo);
     }
 
     private String formatear(LocalDateTime fecha) {

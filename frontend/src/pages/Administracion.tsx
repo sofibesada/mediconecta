@@ -1,7 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useAccion, useToast } from "../app/hooks";
 import { mensajeDeError } from "../api/baseQuery";
-import { useCambiarEstadoUsuarioMutation, useCrearProfesionalMutation, useResetearPasswordMutation, useUsuariosQuery } from "../api/mediconectaApi";
+import {
+  useCambiarEstadoUsuarioMutation,
+  useCrearProfesionalMutation,
+  useEspecialidadesQuery,
+  useResetearPasswordMutation,
+  useUsuariosQuery,
+} from "../api/mediconectaApi";
 import type { Usuario } from "../api/tipos";
 import { Actualizar, BotonAccion, ContenidoDeLista, Encabezado, Lista, Pantalla } from "../components/comunes";
 import { rolLindo } from "../lib/formato";
@@ -29,6 +35,8 @@ function CrearProfesional() {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [passwordTemporal, setPasswordTemporal] = useState("");
+  const [especialidad, setEspecialidad] = useState("Clínica médica");
+  const especialidades = useEspecialidadesQuery();
   const [creado, setCreado] = useState<{ email: string; password: string } | null>(null);
   const [crear] = useCrearProfesionalMutation();
   const [ejecutar, ocupado] = useAccion();
@@ -37,7 +45,7 @@ function CrearProfesional() {
     e.preventDefault();
     if (!nombre.trim() || !email.trim() || !passwordTemporal) return void toast("Completá nombre, email y contraseña temporal", "err");
     void ejecutar(async () => {
-      const p = await crear({ nombre: nombre.trim(), email: email.trim(), passwordTemporal }).unwrap();
+      const p = await crear({ nombre: nombre.trim(), email: email.trim(), passwordTemporal, especialidad }).unwrap();
       setCreado({ email: p.email, password: passwordTemporal });
       setNombre("");
       setEmail("");
@@ -56,6 +64,16 @@ function CrearProfesional() {
       <div className="form-group">
         <label htmlFor="npEmail">Email</label>
         <input type="email" id="npEmail" placeholder="profesional@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="form-group">
+        <label htmlFor="npEspecialidad">Especialidad</label>
+        <select id="npEspecialidad" value={especialidad} onChange={(e) => setEspecialidad(e.target.value)}>
+          {(especialidades.data ?? ["Clínica médica"]).map((esp) => (
+            <option key={esp} value={esp}>
+              {esp}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="form-group">
         <label htmlFor="npPass">Contraseña temporal</label>
@@ -114,6 +132,7 @@ function FilaUsuario({ usuario: u }: { usuario: Usuario }) {
         <div className="fila-titulo">{u.nombre}</div>
         <div className="fila-detalle">
           {u.email} · <span className="badge badge-rol">{rolLindo(u.rol)}</span>
+          {u.especialidad && ` · ${u.especialidad}`}
           {!u.activo && (
             <>
               {" · "}
@@ -127,6 +146,11 @@ function FilaUsuario({ usuario: u }: { usuario: Usuario }) {
             </>
           )}
         </div>
+        {u.recuperacionSolicitada && !temporal && (
+          <div className="hold-box" style={{ marginTop: 8, padding: 10 }}>
+            <strong>Pidió recuperar su contraseña.</strong> Generale una temporal con «Resetear contraseña».
+          </div>
+        )}
         {temporal && (
           <div className="cred-box">
             Contraseña temporal para <strong>{u.nombre}</strong>: <strong>{temporal}</strong>

@@ -60,7 +60,7 @@
         <h2>Obras sociales y prepagas</h2>
         <div class="cuerpo">
             <div class="formulario">
-                <label>Código<input id="osCodigo" size="10" placeholder="OSMED"></label>
+                <label>Código<input id="osCodigo" size="10" placeholder="OSDE"></label>
                 <label>Nombre<input id="osNombre" size="26"></label>
                 <label>Tipo<select id="osTipo"><option value="OBRA_SOCIAL">Obra social</option><option value="PREPAGA">Prepaga</option></select></label>
                 <label>Plan<input id="osPlan" size="14"></label>
@@ -77,14 +77,16 @@
         <div class="cuerpo">
             <div class="formulario">
                 <label>Obra social<select id="afOS" class="selectOS"></select></label>
-                <label>N.º de afiliado<input id="afNumero" size="10" maxlength="8" placeholder="8 dígitos"></label>
+                <label>N.º de afiliado<input id="afNumero" size="14" maxlength="14" placeholder="6 a 14 dígitos"></label>
                 <label>Nombre<input id="afNombre" size="24"></label>
                 <label class="check"><input type="checkbox" id="afActivo" checked> Activo</label>
                 <label class="check"><input type="checkbox" id="afTope"> Tope de consultas alcanzado</label>
+                <label>Plan (opcional)<input id="afPlan" size="14" placeholder="el de la entidad"></label>
+                <label>Copago % (opcional)<input id="afCopago" type="number" min="0" max="100" size="4"></label>
                 <button onclick="guardarAfiliado()">Guardar</button>
             </div>
             <div class="formulario"><label>Filtrar por obra social<select id="filtroAf" onchange="pintar()"><option value="">Todas</option></select></label></div>
-            <table><thead><tr><th>Obra social</th><th>N.º</th><th>Nombre</th><th>Estado</th><th></th></tr></thead><tbody id="tablaAf"></tbody></table>
+            <table><thead><tr><th>Obra social</th><th>N.º</th><th>Nombre</th><th>Plan</th><th>Estado</th><th></th></tr></thead><tbody id="tablaAf"></tbody></table>
         </div>
     </div>
 
@@ -146,7 +148,7 @@
         const f = $("filtroAf"), fv = f.value; f.innerHTML = `<option value="">Todas</option>` + opciones; f.value = fv;
 
         const afs = datos.afiliados.filter(a => !fv || a.obraSocial === fv).sort((a, b) => (a.obraSocial + a.numero).localeCompare(b.obraSocial + b.numero));
-        $("tablaAf").innerHTML = afs.map(a => `<tr><td>${esc(nombreOS(a.obraSocial))}</td><td>${esc(a.numero)}</td><td>${esc(a.nombre)}</td>
+        $("tablaAf").innerHTML = afs.map(a => `<tr><td>${esc(nombreOS(a.obraSocial))}</td><td>${esc(a.numero)}</td><td>${esc(a.nombre)}</td><td>${esc(a.plan || "(el de la entidad)")}${a.copagoPorcentaje != null ? " · " + a.copagoPorcentaje + "%" : ""}</td>
             <td>${!a.activo ? '<span class="estado mal">DADO DE BAJA</span>' : a.topeAlcanzado ? '<span class="estado aviso">ACTIVO · TOPE ALCANZADO</span>' : '<span class="estado ok">ACTIVO</span>'}</td>
             <td><button class="sec" onclick="editarAf('${esc(a.obraSocial)}','${esc(a.numero)}')" style="color:var(--acento);border-color:#c4b5fd;">Editar</button>
                 <button class="sec" onclick="borrar('/afiliados/${encodeURIComponent(a.obraSocial)}/${encodeURIComponent(a.numero)}', 'el afiliado ${esc(a.numero)}')">Borrar</button></td></tr>`).join("")
@@ -164,7 +166,7 @@
     }
     function editarAf(os, numero) {
         const a = datos.afiliados.find(x => x.obraSocial === os && x.numero === numero);
-        $("afOS").value = a.obraSocial; $("afNumero").value = a.numero; $("afNombre").value = a.nombre; $("afActivo").checked = a.activo; $("afTope").checked = a.topeAlcanzado;
+        $("afOS").value = a.obraSocial; $("afNumero").value = a.numero; $("afNombre").value = a.nombre; $("afActivo").checked = a.activo; $("afTope").checked = a.topeAlcanzado; $("afPlan").value = a.plan || ""; $("afCopago").value = a.copagoPorcentaje ?? "";
     }
 
     async function guardar(ruta, cuerpo, ok) {
@@ -176,7 +178,8 @@
     }
     function guardarAfiliado() {
         guardar("/afiliados", { obraSocial: $("afOS").value, numero: $("afNumero").value.trim(), nombre: $("afNombre").value.trim(),
-            activo: $("afActivo").checked, topeAlcanzado: $("afTope").checked }, "Afiliado guardado");
+            activo: $("afActivo").checked, topeAlcanzado: $("afTope").checked,
+            plan: $("afPlan").value.trim() || null, copagoPorcentaje: $("afCopago").value === "" ? null : Number($("afCopago").value) }, "Afiliado guardado");
     }
     function guardarMedicamento() {
         guardar("/medicamentos", { obraSocial: $("medOS").value, nombre: $("medNombre").value.trim(), descuentoPorcentaje: Number($("medDesc").value) }, "Medicamento guardado");

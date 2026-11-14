@@ -110,6 +110,19 @@ class NotificacionServiceTest {
     }
 
     @Test
+    void unAvisoSueltoNoTieneTurno() {
+        service.avisar(1L, "RECUPERAR_PASSWORD", "Pedido", "Ana pidio recuperar su contrasena");
+
+        assertEquals(1, guardadas.size());
+        Notificacion n = guardadas.get(0);
+        assertEquals(1L, n.getUsuarioId());
+        assertEquals("RECUPERAR_PASSWORD", n.getTipo());
+        assertEquals("Pedido", n.getTitulo());
+        assertEquals(null, n.getTurnoId());
+        org.junit.jupiter.api.Assertions.assertNotNull(n.getEventoId());
+    }
+
+    @Test
     void consultas() {
         when(repository.listarPorUsuario(PACIENTE, 50)).thenReturn(List.of(new Notificacion()));
         when(repository.contarNoLeidas(PACIENTE)).thenReturn(3L);

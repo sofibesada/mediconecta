@@ -14,6 +14,10 @@ export type Usuario = {
   numeroAfiliado?: string;
   planObraSocial?: string;
   copagoPorcentaje?: number;
+  /** Solo profesionales. */
+  especialidad?: string | null;
+  /** Pidió recuperar la contraseña y el administrador todavía no le generó una temporal. */
+  recuperacionSolicitada?: boolean;
 };
 
 export type EstadoTurno = "DISPONIBLE" | "RESERVADO_TEMPORAL" | "CONFIRMADO" | "CANCELADO" | "FINALIZADO";
@@ -35,6 +39,11 @@ export type Turno = {
   importeCopago?: number | null;
   /** Version del turno: el ETag es este numero entre comillas (se manda en If-Match). */
   version?: number | null;
+  /** Parte que paga la obra social (null si es particular). */
+  importeObraSocial?: number | null;
+  profesionalEspecialidad?: string | null;
+  /** Pago online aprobado (null si no se pagó online). */
+  pago?: { marca: string; ultimos4: string; codigoAutorizacion?: string | null; pagadoEn: string } | null;
 };
 
 /** Lo que recuerda el AsistenteAgendamiento (@Stateful) de la conversación con el paciente. */
@@ -46,7 +55,19 @@ export type EstadoAsistente = {
   turnoRetenido?: Turno | null;
 };
 
-export type Profesional = { id: number; nombre: string };
+export type Profesional = { id: number; nombre: string; especialidad: string };
+
+export type Pago = {
+  id: number;
+  turnoId: number;
+  estado: "APROBADO" | "RECHAZADO";
+  importe: number;
+  marca: string | null;
+  ultimos4: string | null;
+  codigoAutorizacion?: string | null;
+  motivo?: string | null;
+  creadoEn: string;
+};
 
 export type Diagnostico = { id: number; descripcion: string; fecha: string };
 export type Receta = { id: number; medicamento: string; indicaciones?: string; fecha: string };
@@ -88,7 +109,7 @@ export type Reclamo = {
   creadoEn: string;
   estado: string;
 };
-export type Facturacion = { autorizaciones: Autorizacion[]; reclamos: Reclamo[] };
+export type Facturacion = { autorizaciones: Autorizacion[]; reclamos: Reclamo[]; pagos?: Pago[] };
 
 export type ProfesionalCreado = { id: number; email: string; nombre: string };
 export type ResetPassword = { passwordTemporal: string };

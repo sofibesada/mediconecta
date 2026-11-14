@@ -21,6 +21,9 @@ import java.util.stream.Collectors;
 public class AdminResource {
 
     @Inject
+    private ar.com.mediconecta.pagos.business.PagoService pagoService;
+
+    @Inject
     private IUsuarioService usuarioService;
 
     @Inject
@@ -39,7 +42,8 @@ public class AdminResource {
     public Map<String, Object> facturacion() {
         return Map.of(
                 "autorizaciones", auditoria.listarRecientes(),
-                "reclamos", facturacionService.listarRecientes());
+                "reclamos", facturacionService.listarRecientes(),
+                "pagos", pagoService.listarRecientes());
     }
 
     @POST
@@ -51,6 +55,7 @@ public class AdminResource {
         datos.setNombre(req.nombre);
         datos.setEmail(req.email);
         datos.setPassword(req.passwordTemporal);
+        datos.setEspecialidad(req.especialidad);
         return UsuarioResponse.from(usuarioService.crearProfesional(usuarioActual.id(), datos));
     }
 

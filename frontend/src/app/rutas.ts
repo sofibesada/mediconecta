@@ -8,7 +8,7 @@ export const MENU: ItemMenu[] = [
   { ruta: "/agendar", texto: "Agendar turno", roles: ["PACIENTE"] },
   { ruta: "/mis-citas", texto: "Mis Citas", roles: ["PACIENTE"] },
   { ruta: "/historia", texto: "Historia Clínica", roles: ["PACIENTE"] },
-  { ruta: "/notificaciones", texto: "Notificaciones", roles: ["PACIENTE", "PROFESIONAL"] },
+  { ruta: "/notificaciones", texto: "Notificaciones", roles: ["PACIENTE", "PROFESIONAL", "ADMIN"] },
   { ruta: "/mi-agenda", texto: "Mi Agenda", roles: ["PROFESIONAL"] },
   { ruta: "/pacientes", texto: "Mis Pacientes", roles: ["PROFESIONAL"] },
   { ruta: "/admin", texto: "Administración", roles: ["ADMIN"] },

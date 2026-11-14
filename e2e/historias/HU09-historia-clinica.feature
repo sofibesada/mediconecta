@@ -12,7 +12,7 @@ Característica: Historia clínica
     Y los dos aparecen en su historia clínica con la fecha de hoy
 
   Escenario: Veo qué recetas tienen descuento con su obra social
-    Dado que el paciente tiene OSMED y le receté Enalapril
+    Dado que el paciente tiene OSDE y le receté Enalapril
     Entonces la receta muestra 40 % de descuento
 
   Escenario: No veo la historia de pacientes que no atiendo

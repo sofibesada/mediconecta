@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Turno } from "../api/tipos";
-import { estadoLindo, fmtFecha, modalidadLinda } from "../lib/formato";
+import { estadoLindo, fmtFecha, fmtPesos, modalidadLinda } from "../lib/formato";
+import { resumenDePago } from "../lib/turnos";
 import { Badge } from "./comunes";
 
 type Props = {
@@ -10,10 +11,14 @@ type Props = {
   onUnirse?: (t: Turno) => void;
   onCancelar?: (t: Turno) => void;
   onReprogramar?: (t: Turno) => void;
+  /** Muestra el botón "Ver detalle"; detalleAbierto cambia el texto. */
+  onDetalle?: (t: Turno) => void;
+  detalleAbierto?: boolean;
   children?: ReactNode;
 };
 
-export function FilaTurno({ turno: t, vistaProfesional, onUnirse, onCancelar, onReprogramar, children }: Props) {
+export function FilaTurno({ turno: t, vistaProfesional, onUnirse, onCancelar, onReprogramar, onDetalle, detalleAbierto, children }: Props) {
+  const pago = resumenDePago(t);
   const otro = vistaProfesional
     ? t.pacienteNombre
       ? "Paciente: " + t.pacienteNombre
@@ -39,10 +44,20 @@ export function FilaTurno({ turno: t, vistaProfesional, onUnirse, onCancelar, on
           {t.obraSocial && ` · ${t.obraSocial} (${t.codigoAutorizacion ?? ""})`}
         </div>
         <Badge clase={t.estado}>{estadoLindo(t.estado)}</Badge>
+        {pago.pagado ? (
+          <span className="pill pill-ok">Pagado</span>
+        ) : (
+          pago.puedePagar && <span className="pill pill-pendiente">A pagar {fmtPesos(pago.aPagar)}</span>
+        )}
         {children}
       </div>
-      {(puedeUnirse || puedeReprogramar || puedeCancelar) && (
+      {(onDetalle || puedeUnirse || puedeReprogramar || puedeCancelar) && (
         <div className="fila-acciones">
+          {onDetalle && (
+            <button type="button" className="btn-secondary btn-sm" aria-expanded={!!detalleAbierto} onClick={() => onDetalle(t)}>
+              {detalleAbierto ? "Ocultar detalle" : "Ver detalle"}
+            </button>
+          )}
           {puedeUnirse && (
             <button type="button" className="btn-primary btn-sm" onClick={() => onUnirse(t)}>
               Unirse a la videollamada

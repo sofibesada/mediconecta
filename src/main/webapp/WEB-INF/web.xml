@@ -19,7 +19,9 @@
             <web-resource-name>Publico</web-resource-name>
             <url-pattern>/api/usuarios</url-pattern>
             <url-pattern>/api/usuarios/login</url-pattern>
+            <url-pattern>/api/usuarios/recuperar-password</url-pattern>
             <url-pattern>/api/profesionales</url-pattern>
+            <url-pattern>/api/profesionales/especialidades</url-pattern>
         </web-resource-collection>
     </security-constraint>
 

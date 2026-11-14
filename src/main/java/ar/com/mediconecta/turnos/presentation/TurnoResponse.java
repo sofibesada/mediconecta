@@ -20,6 +20,13 @@ public class TurnoResponse {
     public BigDecimal importeCopago;
     /** Version del turno; el ETag es este numero entre comillas (para If-Match). */
     public Long version;
+    /** Parte que paga la obra social (null si es particular). */
+    public BigDecimal importeObraSocial;
+    public String profesionalEspecialidad;
+    /** Pago aprobado con tarjeta (null si no se pago online). */
+    public PagoTurno pago;
+
+    public record PagoTurno(String marca, String ultimos4, String codigoAutorizacion, LocalDateTime pagadoEn) {}
 
     public static TurnoResponse from(Turno t, String profesionalNombre, String pacienteNombre) {
         TurnoResponse r = new TurnoResponse();
@@ -37,6 +44,7 @@ public class TurnoResponse {
         r.codigoAutorizacion = t.getCodigoAutorizacion();
         r.importeCopago = t.getImporteCopago();
         r.version = t.getVersion();
+        r.importeObraSocial = t.getImporteObraSocial();
         return r;
     }
 }

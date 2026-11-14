@@ -9,7 +9,7 @@ export function Facturacion() {
 
   return (
     <Pantalla id="facturacion">
-      <Encabezado titulo="Facturación" subtitulo="Autorizaciones pedidas a las obras sociales y reclamos enviados por la cola de facturación" />
+      <Encabezado titulo="Facturación" subtitulo="Autorizaciones de las obras sociales, pagos con tarjeta y reclamos enviados por la cola de facturación" />
       <Actualizar onClick={() => void f.refetch()} />
       <div style={{ marginBottom: 24 }}>
         <Lista titulo="Autorizaciones (auditoría)" id="factAutorizaciones">
@@ -27,6 +27,31 @@ export function Facturacion() {
                       {fmtFecha(a.fecha)}
                     </div>
                     <Badge clase={a.resultado}>{estadoLindo(a.resultado)}</Badge>
+                  </div>
+                </div>
+              ))
+            }
+          </ContenidoDeLista>
+        </Lista>
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <Lista titulo="Pagos con tarjeta" id="factPagos">
+          <ContenidoDeLista cargando={f.isLoading} error={f.error} datos={f.data?.pagos} vacio="Todavía no hay pagos con tarjeta.">
+            {(lista) =>
+              lista.map((p) => (
+                <div className="fila" key={p.id}>
+                  <div className="fila-info">
+                    <div className="fila-titulo">
+                      Turno #{p.turnoId} · {fmtPesos(p.importe)}
+                    </div>
+                    <div className="fila-detalle">
+                      {p.marca ?? "Tarjeta"} terminada en {p.ultimos4 ?? "—"}
+                      {p.codigoAutorizacion && " · Autorización " + p.codigoAutorizacion}
+                      {p.motivo && " · " + p.motivo}
+                      <br />
+                      {fmtFecha(p.creadoEn)}
+                    </div>
+                    <Badge clase={p.estado === "APROBADO" ? "AUTORIZADA" : "RECHAZADA"}>{p.estado}</Badge>
                   </div>
                 </div>
               ))

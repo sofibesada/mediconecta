@@ -159,6 +159,16 @@ a.boton-link { display: inline-block; padding: 7px 12px; border: 1px solid var(-
 a.boton-link:hover { background: var(--slate-50); border-color: var(--slate-300); }
 /* Texto solo para lectores de pantalla. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* Estado del pago de un turno (no usa .badge para no confundirse con el estado del turno). */
+.pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 999px; margin: 6px 0 0 6px; letter-spacing: 0.3px; }
+.pill-ok { background: rgba(22,163,74,0.12); color: var(--green-600); }
+.pill-pendiente { background: var(--amber-100); color: var(--amber-700); }
+.detalle-cita { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--slate-200); border-radius: 10px; background: var(--slate-50); }
+.tarjeta-form { margin-top: 12px; padding: 16px; border: 1px solid var(--slate-200); border-radius: 10px; background: var(--white); max-width: 460px; }
+.tarjeta-numero { position: relative; }
+.tarjeta-numero input { padding-right: 140px; letter-spacing: 1px; }
+.tarjeta-marca { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: var(--slate-400); padding: 3px 8px; border-radius: 6px; background: var(--slate-100); }
+.tarjeta-marca.reconocida { color: var(--sky-700); background: rgba(3,105,161,0.10); }
 .boton-salir { width: 100%; text-align: left; border: none; background: transparent; font-weight: 400; letter-spacing: 0; }
 
 /* Quien pide menos movimiento en el sistema no ve las animaciones de entrada. */

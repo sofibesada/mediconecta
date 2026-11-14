@@ -16,7 +16,8 @@ con una etiqueta (`@must`, `@should`, `@could`).
 | HU-09 | Historia clínica | Should |
 | HU-10 | Reprogramar un turno | Could |
 | HU-11 | Uso en celular, tablet y escritorio, con accesibilidad y temas | Could |
-| — | Pago online de la consulta | Won't (fuera del alcance de esta versión) |
+| HU-12 | Pagar el turno online con tarjeta | Should |
+| HU-13 | Editar mi perfil y recuperar la contraseña | Should |
 | — | Aplicación móvil nativa | Won't (fuera del alcance de esta versión) |
 
 Los escenarios con etiqueta `@E2E-NN` están automatizados en `e2e/tests`: cada prueba

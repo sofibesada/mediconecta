@@ -9,10 +9,12 @@ COPY pom.xml .
 COPY src src
 COPY videollamadas-mock videollamadas-mock
 COPY obras-sociales-mock obras-sociales-mock
+COPY pagos-mock pagos-mock
 RUN --mount=type=cache,target=/root/.m2 \
     mvn -q -B -DskipTests package \
  && mvn -q -B -DskipTests -f videollamadas-mock/pom.xml package \
  && mvn -q -B -DskipTests -f obras-sociales-mock/pom.xml package \
+ && mvn -q -B -DskipTests -f pagos-mock/pom.xml package \
  && mvn -q -B dependency:copy -Dartifact=org.postgresql:postgresql:42.7.4 -DoutputDirectory=/drivers
 
 # --- 2. Servidor ---------------------------------------------------------------------
@@ -25,6 +27,7 @@ RUN /opt/jboss/wildfly/bin/jboss-cli.sh --file=/tmp/configurar.cli \
 COPY --from=build /src/target/mediconecta.war \
                   /src/videollamadas-mock/target/videollamadas-mock.war \
                   /src/obras-sociales-mock/target/obras-sociales-mock.war \
+                  /src/pagos-mock/target/pagos-mock.war \
                   /opt/jboss/wildfly/standalone/deployments/
 
 # Zona horaria de la clinica. Las fechas de los turnos se guardan sin zona (hora local), asi

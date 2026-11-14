@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useAccion, useAppDispatch, useToast } from "../app/hooks";
-import { useLoginMutation, useRegistrarMutation } from "../api/mediconectaApi";
+import { useLoginMutation, useRecuperarPasswordMutation, useRegistrarMutation } from "../api/mediconectaApi";
 import type { Usuario } from "../api/tipos";
 import { BotonAccion, Pantalla } from "../components/comunes";
 import { sesionIniciada } from "../features/sesion/sesionSlice";
@@ -75,6 +75,7 @@ function FormLogin({ alIngresar }: { alIngresar: (u: Usuario) => void }) {
   }
 
   return (
+    <>
     <form id="form-login" onSubmit={enviar} noValidate>
       <div className="form-group">
         <label htmlFor="loginEmail">Email</label>
@@ -91,6 +92,58 @@ function FormLogin({ alIngresar }: { alIngresar: (u: Usuario) => void }) {
         Los profesionales ingresan con el usuario que les dio el administrador.
       </p>
     </form>
+    <OlvideMiPassword />
+    </>
+  );
+}
+
+/**
+ * "¿Olvidaste tu contraseña?": le avisa al administrador, que genera una temporal. La
+ * respuesta es siempre la misma, exista o no la cuenta (no se revela qué emails están registrados).
+ */
+function OlvideMiPassword() {
+  const [abierto, setAbierto] = useState(false);
+  const [email, setEmail] = useState("");
+  const [respuesta, setRespuesta] = useState<string | null>(null);
+  const [recuperar] = useRecuperarPasswordMutation();
+  const [ejecutar, ocupado] = useAccion();
+  const toast = useToast();
+
+  if (!abierto) {
+    return (
+      <p style={{ textAlign: "center", marginTop: 6 }}>
+        <button type="button" className="link-back" style={{ border: "none", background: "none", padding: 0 }} onClick={() => setAbierto(true)}>
+          ¿Olvidaste tu contraseña?
+        </button>
+      </p>
+    );
+  }
+  if (respuesta) {
+    return (
+      <div className="cred-box" role="status">
+        {respuesta}
+      </div>
+    );
+  }
+  return (
+    <div className="card" style={{ marginTop: 14, marginBottom: 0, padding: 16 }}>
+      <div className="form-group">
+        <label htmlFor="recEmail">Email de tu cuenta</label>
+        <input id="recEmail" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <BotonAccion
+        ocupado={ocupado}
+        type="button"
+        className="btn-secondary btn-full"
+        id="btnRecuperar"
+        onClick={() => {
+          if (!email.trim()) return void toast("Ingresá tu email", "err");
+          void ejecutar(async () => setRespuesta((await recuperar({ email: email.trim() }).unwrap()).mensaje));
+        }}
+      >
+        Pedir una contraseña temporal al administrador
+      </BotonAccion>
+    </div>
   );
 }
 

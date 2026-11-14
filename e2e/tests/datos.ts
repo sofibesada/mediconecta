@@ -36,10 +36,10 @@ export async function nuevoPaciente(request: APIRequestContext, nombre = "Pacien
 }
 
 /** Profesional dado de alta por el admin y con la contrasena temporal ya cambiada. */
-export async function nuevoProfesional(request: APIRequestContext, nombre = "Dra. E2E"): Promise<Sesion> {
+export async function nuevoProfesional(request: APIRequestContext, nombre = "Dra. E2E", especialidad?: string): Promise<Sesion> {
   const admin = await login(request, ADMIN_EMAIL, ADMIN_PASSWORD);
   const email = emailUnico("prof");
-  const p = await post(request, "/admin/profesionales", { nombre, email, passwordTemporal: "temp1234" }, admin.token);
+  const p = await post(request, "/admin/profesionales", { nombre, email, passwordTemporal: "temp1234", especialidad }, admin.token);
   const temporal = await login(request, email, "temp1234");
   const u = await post(request, "/usuarios/cambiar-password", { passwordActual: "temp1234", passwordNueva: "nueva1234" }, temporal.token);
   return { id: p.id, nombre, email, password: "nueva1234", token: u.token };

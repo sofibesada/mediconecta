@@ -4,4 +4,5 @@ public class CrearProfesionalRequest {
     public String nombre;
     public String email;
     public String passwordTemporal;
+    public String especialidad;
 }

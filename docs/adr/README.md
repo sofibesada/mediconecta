@@ -22,6 +22,7 @@ Cada ADR explica una decisión técnica importante de MediConecta:
 | [0010](0010-capas-repository-y-dto.md) | Organización de cada componente | Capas, Repository y DTO |
 | [0011](0011-frontend-react-redux-toolkit.md) | SPA en React con estado global | React + Redux Toolkit |
 | [0012](0012-contrato-http-y-proteccion-xxe.md) | Errores estándar, concurrencia, reintentos seguros y XXE | Problem Details, ETag, Idempotency-Key |
+| [0013](0013-componente-de-pagos.md) | Cobro del copago con tarjeta | Componente Pagos + Adapter a una pasarela externa |
 
 Para agregar uno: copiar la estructura de un ADR existente, usar el número siguiente y
 sumarlo a esta tabla.

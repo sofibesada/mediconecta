@@ -45,7 +45,7 @@ test.describe("HU-04 Agendar y confirmar", () => {
     await publicarHorario(request, prof, 96);
     const pac = await nuevoPaciente(request, "Paciente Tope");
     const r = await request.put("http://localhost:8080/mediconecta/api/cobertura", {
-      data: { obraSocial: "PREVENIR", numeroAfiliado: "12345677" },
+      data: { obraSocial: "SWISS", numeroAfiliado: "12345677" },
       headers: { Authorization: "Bearer " + pac.token },
     });
     expect(r.ok(), await r.text()).toBeTruthy();
@@ -88,13 +88,13 @@ test.describe("HU-06 Cobertura", () => {
     await abrirConSesion(page, request, pac);
     await irA(page, "Mi Perfil");
 
-    await page.getByLabel("Obra social o prepaga").selectOption("OSMED");
+    await page.getByLabel("Obra social o prepaga").selectOption("OSDE");
     await page.getByLabel("Número de afiliado").fill("12345679");
     await page.locator("#btnCobertura").click();
     await expect(toast(page, "err", "La obra social informó: Afiliado dado de baja")).toBeVisible();
     await expect(page.locator("#cobActual")).toContainText("No cargaste obra social");
 
-    await page.getByLabel("Obra social o prepaga").selectOption("OSMED");
+    await page.getByLabel("Obra social o prepaga").selectOption("OSDE");
     await page.getByLabel("Número de afiliado").fill("12345678");
     await page.locator("#btnCobertura").click();
     await expect(toast(page, "ok", "Cobertura verificada")).toBeVisible();

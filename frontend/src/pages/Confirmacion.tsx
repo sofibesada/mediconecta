@@ -28,6 +28,11 @@ export function Confirmacion() {
           {turno.codigoAutorizacion && <Kv label="Autorización">{turno.codigoAutorizacion}</Kv>}
           <Kv label={turno.obraSocial ? "Copago a tu cargo" : "A pagar"}>{fmtPesos(turno.importeCopago)}</Kv>
           <Kv label="Estado">{turno.estado}</Kv>
+          {(turno.importeCopago ?? 0) > 0 && (
+            <p className="inline-hint" style={{ marginTop: 10 }}>
+              Podés pagarlo online con tarjeta desde Mis Citas (botón «Ver detalle») o abonarlo en el consultorio.
+            </p>
+          )}
           {turno.modalidad === "VIRTUAL" && (
             <p className="inline-hint" style={{ marginTop: 10 }}>
               Es una teleconsulta: en unos segundos vas a tener el botón &quot;Unirse a la videollamada&quot; en Mis Citas.

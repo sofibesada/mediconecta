@@ -8,6 +8,7 @@ import type {
   Modalidad,
   Notificacion,
   ObraSocial,
+  Pago,
   Profesional,
   ProfesionalCreado,
   ResetPassword,
@@ -70,6 +71,10 @@ export const mediconectaApi = createApi({
     sala: b.query<Sala, number>({
       query: (id) => `/turnos/${id}/sala`,
       keepUnusedDataFor: 0,
+    }),
+    especialidades: b.query<string[], void>({
+      query: () => "/profesionales/especialidades",
+      keepUnusedDataFor: 3600,
     }),
     profesionales: b.query<Profesional[], void>({
       query: () => "/profesionales",
@@ -149,7 +154,25 @@ export const mediconectaApi = createApi({
       query: () => "/admin/usuarios",
       providesTags: ["Usuarios"],
     }),
-    crearProfesional: b.mutation<ProfesionalCreado, { nombre: string; email: string; passwordTemporal: string }>({
+    // ---------- perfil propio ----------
+    actualizarPerfil: b.mutation<Usuario, { nombre: string; email: string; especialidad?: string; passwordActual?: string }>({
+      query: (body) => ({ url: "/perfil", method: "PUT", body }),
+    }),
+    recuperarPassword: b.mutation<{ mensaje: string }, { email: string }>({
+      query: (body) => ({ url: "/usuarios/recuperar-password", method: "POST", body }),
+    }),
+    recuperarDesdePerfil: b.mutation<{ mensaje: string }, void>({
+      query: () => ({ url: "/perfil/recuperar-password", method: "POST" }),
+    }),
+
+    // ---------- pagos ----------
+    // Idempotency-Key: si el pedido se repite (doble clic, corte de red), no se cobra dos veces.
+    pagar: b.mutation<Pago, { turnoId: number; numero: string; vencimiento: string; cvv: string; titular: string; clave: string }>({
+      query: ({ clave, ...body }) => ({ url: "/pagos", method: "POST", body, headers: { "Idempotency-Key": clave } }),
+      invalidatesTags: ["Turnos", "Notificaciones"],
+    }),
+
+    crearProfesional: b.mutation<ProfesionalCreado, { nombre: string; email: string; passwordTemporal: string; especialidad: string }>({
       query: (body) => ({ url: "/admin/profesionales", method: "POST", body }),
       invalidatesTags: ["Usuarios"],
     }),
@@ -199,4 +222,9 @@ export const {
   useCambiarEstadoUsuarioMutation,
   useResetearPasswordMutation,
   useFacturacionQuery,
+  useEspecialidadesQuery,
+  useActualizarPerfilMutation,
+  useRecuperarPasswordMutation,
+  useRecuperarDesdePerfilMutation,
+  usePagarMutation,
 } = mediconectaApi;

@@ -26,8 +26,9 @@ export function Layout() {
 
   const logueado = !!usuario;
   const bloqueado = logueado && !!usuario.debeCambiarPassword;
-  // El ADMIN no tiene turnos, así que no recibe notificaciones.
-  const conNotificaciones = logueado && !bloqueado && usuario.rol !== "ADMIN";
+  // Paciente y profesional reciben avisos de sus turnos; el administrador, los pedidos de
+  // recuperación de contraseña.
+  const conNotificaciones = logueado && !bloqueado;
   const sinLeer = useAvisosDeNotificaciones(conNotificaciones);
 
   useEffect(() => {

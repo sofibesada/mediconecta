@@ -34,7 +34,7 @@ public final class Padron {
     private static final Logger LOG = Logger.getLogger(Padron.class.getName());
     private static final Jsonb JSONB = JsonbBuilder.create(new JsonbConfig().withFormatting(true));
 
-    /** Una obra social o prepaga con su plan (el legado simplifica a un plan por entidad). */
+    /** Una obra social o prepaga con su plan basico (cada afiliado puede tener otro plan). */
     public static class Entidad {
         public String codigo;
         public String nombre;
@@ -50,6 +50,10 @@ public final class Padron {
         public boolean activo = true;
         /** true: alcanzo el tope de consultas del plan, las autorizaciones se rechazan. */
         public boolean topeAlcanzado;
+        /** Plan del afiliado (por ejemplo, OSDE 410). Si es null, se usa el plan de la entidad. */
+        public String plan;
+        /** Copago del plan del afiliado. Si es null, se usa el de la entidad. */
+        public Integer copagoPorcentaje;
     }
 
     public static class Medicamento {
@@ -127,7 +131,11 @@ public final class Padron {
 
     static synchronized void guardarAfiliado(Afiliado a) {
         validar(entidad(a.obraSocial).isPresent(), "La obra social no existe");
-        validar(a.numero != null && a.numero.matches("\\d{8}"), "El numero de afiliado debe tener 8 digitos");
+        validar(a.numero != null && a.numero.matches("\\d{6,14}"), "El numero de afiliado debe tener entre 6 y 14 digitos");
+        validar(a.copagoPorcentaje == null || (a.copagoPorcentaje >= 0 && a.copagoPorcentaje <= 100), "El copago va de 0 a 100");
+        if (a.plan != null && a.plan.isBlank()) {
+            a.plan = null;
+        }
         validar(a.nombre != null && !a.nombre.isBlank(), "El nombre del afiliado es obligatorio");
         datos().afiliados.removeIf(x -> x.obraSocial.equals(a.obraSocial) && x.numero.equals(a.numero));
         datos().afiliados.add(a);
@@ -186,24 +194,53 @@ public final class Padron {
         }
     }
 
+    /**
+     * Datos iniciales: obras sociales y prepagas reales de Argentina. Los planes son los nombres
+     * comerciales de cada entidad; los porcentajes de copago, los afiliados y los descuentos son
+     * de ejemplo (el padron real de cada entidad no es publico).
+     */
     private static Datos datosDePrueba() {
         Datos d = new Datos();
-        d.obrasSociales.add(entidad("OSMED", "Obra Social Medica Nacional", "OBRA_SOCIAL", "OSMED 210", 30));
-        d.obrasSociales.add(entidad("PREVENIR", "Prevenir Salud", "OBRA_SOCIAL", "Prevenir Clasico", 20));
-        d.obrasSociales.add(entidad("SALUDPLUS", "Salud Plus Prepaga", "PREPAGA", "Plus 410", 0));
-        d.afiliados.add(afiliado("OSMED", "12345678", "Afiliado de prueba OSMED", true, false));
-        d.afiliados.add(afiliado("OSMED", "12345679", "Afiliado dado de baja", false, false));
-        d.afiliados.add(afiliado("PREVENIR", "12345677", "Afiliado con tope alcanzado", true, true));
-        d.afiliados.add(afiliado("PREVENIR", "22223333", "Afiliado de prueba Prevenir", true, false));
-        d.afiliados.add(afiliado("SALUDPLUS", "33334444", "Afiliado de prueba Salud Plus", true, false));
-        d.vademecum.add(medicamento("OSMED", "Enalapril", 40));
-        d.vademecum.add(medicamento("OSMED", "Amoxicilina", 50));
-        d.vademecum.add(medicamento("OSMED", "Ibuprofeno", 30));
-        d.vademecum.add(medicamento("PREVENIR", "Enalapril", 70));
-        d.vademecum.add(medicamento("PREVENIR", "Metformina", 60));
-        d.vademecum.add(medicamento("SALUDPLUS", "Amoxicilina", 100));
-        d.vademecum.add(medicamento("SALUDPLUS", "Omeprazol", 40));
-        d.vademecum.add(medicamento("SALUDPLUS", "Atorvastatina", 60));
+        d.obrasSociales.add(entidad("OSDE", "OSDE", "PREPAGA", "OSDE 210", 30));
+        d.obrasSociales.add(entidad("SWISS", "Swiss Medical", "PREPAGA", "SMG20", 25));
+        d.obrasSociales.add(entidad("GALENO", "Galeno", "PREPAGA", "Galeno Azul 220", 25));
+        d.obrasSociales.add(entidad("MEDIFE", "Medifé", "PREPAGA", "Medifé Bronce", 30));
+        d.obrasSociales.add(entidad("OMINT", "OMINT", "PREPAGA", "OMINT Clásico", 20));
+        d.obrasSociales.add(entidad("SANCOR", "SanCor Salud", "PREPAGA", "SanCor 1000", 30));
+        d.obrasSociales.add(entidad("IOMA", "IOMA (Instituto de Obra Médico Asistencial)", "OBRA_SOCIAL", "IOMA", 30));
+        d.obrasSociales.add(entidad("PAMI", "PAMI", "OBRA_SOCIAL", "PAMI", 0));
+        d.obrasSociales.add(entidad("OSECAC", "OSECAC (Empleados de Comercio)", "OBRA_SOCIAL", "OSECAC", 30));
+        d.obrasSociales.add(entidad("OSDEPYM", "OSDEPYM", "OBRA_SOCIAL", "OSDEPYM 2000", 30));
+
+        // Afiliados de prueba (documentados en el README). El plan del afiliado manda sobre el de la entidad.
+        d.afiliados.add(afiliado("OSDE", "12345678", "Afiliada de prueba OSDE", true, false, "OSDE 210", 30));
+        d.afiliados.add(afiliado("OSDE", "12345679", "Afiliado dado de baja", false, false, null, null));
+        d.afiliados.add(afiliado("OSDE", "61234567", "Afiliado OSDE 410", true, false, "OSDE 410", 10));
+        d.afiliados.add(afiliado("SWISS", "12345677", "Afiliado con tope alcanzado", true, true, "SMG30", 20));
+        d.afiliados.add(afiliado("SWISS", "22223333", "Afiliada de prueba Swiss Medical", true, false, "SMG40", 15));
+        d.afiliados.add(afiliado("GALENO", "33334444", "Afiliado de prueba Galeno", true, false, "Galeno Plata 330", 20));
+        d.afiliados.add(afiliado("MEDIFE", "44445555", "Afiliada de prueba Medifé", true, false, "Medifé Plata", 25));
+        d.afiliados.add(afiliado("PAMI", "15012345678900", "Jubilado de prueba PAMI", true, false, null, null));
+        d.afiliados.add(afiliado("IOMA", "66667777", "Afiliada de prueba IOMA", true, false, null, null));
+        d.afiliados.add(afiliado("OSECAC", "77778888", "Afiliado de prueba OSECAC", true, false, null, null));
+        d.afiliados.add(afiliado("SANCOR", "88889999", "Afiliada de prueba SanCor", true, false, "SanCor 3000", 20));
+        d.afiliados.add(afiliado("OMINT", "99990000", "Afiliado de prueba OMINT", true, false, null, null));
+        d.afiliados.add(afiliado("OSDEPYM", "11112222", "Afiliada de prueba OSDEPYM", true, false, null, null));
+
+        d.vademecum.add(medicamento("OSDE", "Enalapril", 40));
+        d.vademecum.add(medicamento("OSDE", "Amoxicilina", 50));
+        d.vademecum.add(medicamento("OSDE", "Ibuprofeno", 30));
+        d.vademecum.add(medicamento("OSDE", "Losartán", 40));
+        d.vademecum.add(medicamento("SWISS", "Enalapril", 70));
+        d.vademecum.add(medicamento("SWISS", "Metformina", 60));
+        d.vademecum.add(medicamento("GALENO", "Amoxicilina", 40));
+        d.vademecum.add(medicamento("MEDIFE", "Omeprazol", 40));
+        d.vademecum.add(medicamento("PAMI", "Enalapril", 100));
+        d.vademecum.add(medicamento("PAMI", "Losartán", 100));
+        d.vademecum.add(medicamento("PAMI", "Metformina", 100));
+        d.vademecum.add(medicamento("PAMI", "Atorvastatina", 80));
+        d.vademecum.add(medicamento("IOMA", "Ibuprofeno", 50));
+        d.vademecum.add(medicamento("SANCOR", "Atorvastatina", 60));
         return d;
     }
 
@@ -213,9 +250,11 @@ public final class Padron {
         return e;
     }
 
-    private static Afiliado afiliado(String os, String numero, String nombre, boolean activo, boolean tope) {
+    private static Afiliado afiliado(String os, String numero, String nombre, boolean activo, boolean tope,
+                                     String plan, Integer copago) {
         Afiliado a = new Afiliado();
         a.obraSocial = os; a.numero = numero; a.nombre = nombre; a.activo = activo; a.topeAlcanzado = tope;
+        a.plan = plan; a.copagoPorcentaje = copago;
         return a;
     }
 

@@ -13,4 +13,6 @@ public interface INotificacionService {
     long contarNoLeidas(Long usuarioId);
     void marcarLeida(Long usuarioId, Long notificacionId);
     void marcarTodasLeidas(Long usuarioId);
+    /** Aviso que no viene de un evento de turno (por ejemplo, un pedido de recuperacion de contrasena). */
+    void avisar(Long usuarioId, String tipo, String titulo, String mensaje);
 }

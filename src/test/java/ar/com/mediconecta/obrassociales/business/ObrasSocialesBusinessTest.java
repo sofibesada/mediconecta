@@ -57,12 +57,12 @@ class ObrasSocialesBusinessTest {
     @Test
     void traduceElListadoDeObrasSociales() {
         ContratoLegado.ObraSocial os = new ContratoLegado.ObraSocial();
-        os.codigo = "OSMED";
+        os.codigo = "OSDE";
         os.nombre = "OS Medica";
         os.tipo = "PREPAGA";
         when(puerto.listarObrasSociales()).thenReturn(List.of(os));
 
-        assertEquals(List.of(new ObraSocialDisponible("OSMED", "OS Medica", "PREPAGA")), adapter.listarObrasSociales());
+        assertEquals(List.of(new ObraSocialDisponible("OSDE", "OS Medica", "PREPAGA")), adapter.listarObrasSociales());
     }
 
     @Test
@@ -71,9 +71,9 @@ class ObrasSocialesBusinessTest {
         r.cubierto = true;
         r.plan = "Plan 210";
         r.copagoPorcentaje = 30;
-        when(puerto.consultarCobertura("OSMED", "12345678")).thenReturn(r);
+        when(puerto.consultarCobertura("OSDE", "12345678")).thenReturn(r);
 
-        assertEquals(new CoberturaVerificada(true, "Plan 210", 30, null), adapter.verificarCobertura("OSMED", "12345678"));
+        assertEquals(new CoberturaVerificada(true, "Plan 210", 30, null), adapter.verificarCobertura("OSDE", "12345678"));
     }
 
     @Test
@@ -82,24 +82,24 @@ class ObrasSocialesBusinessTest {
         r.autorizada = true;
         r.codigoAutorizacion = "AUT-1";
         LocalDateTime fecha = LocalDateTime.of(2026, 12, 1, 10, 0);
-        when(puerto.autorizarPrestacion("OSMED", "12345678", IObraSocialService.PRESTACION_CONSULTA, fecha.toString(), "turno-100")).thenReturn(r);
+        when(puerto.autorizarPrestacion("OSDE", "12345678", IObraSocialService.PRESTACION_CONSULTA, fecha.toString(), "turno-100")).thenReturn(r);
 
-        assertEquals(new ResultadoAutorizacion(true, "AUT-1", null), adapter.autorizarConsulta("OSMED", "12345678", 100L, fecha));
+        assertEquals(new ResultadoAutorizacion(true, "AUT-1", null), adapter.autorizarConsulta("OSDE", "12345678", 100L, fecha));
     }
 
     @Test
     void coberturaDeMedicamentos() {
-        assertTrue(adapter.coberturaMedicamentos("OSMED", "1", List.of()).isEmpty());
+        assertTrue(adapter.coberturaMedicamentos("OSDE", "1", List.of()).isEmpty());
         verifyNoInteractions(cliente);
 
         ContratoLegado.CoberturaMedicamento c = new ContratoLegado.CoberturaMedicamento();
         c.medicamento = "Enalapril";
         c.cubierto = true;
         c.descuentoPorcentaje = 40;
-        when(puerto.consultarCoberturaMedicamentos("OSMED", "1", List.of("Enalapril"))).thenReturn(List.of(c));
+        when(puerto.consultarCoberturaMedicamentos("OSDE", "1", List.of("Enalapril"))).thenReturn(List.of(c));
 
         assertEquals(List.of(new CoberturaMedicamento("Enalapril", true, 40)),
-                adapter.coberturaMedicamentos("OSMED", "1", List.of("Enalapril")));
+                adapter.coberturaMedicamentos("OSDE", "1", List.of("Enalapril")));
     }
 
     @Test
@@ -108,21 +108,21 @@ class ObrasSocialesBusinessTest {
         r.aceptado = true;
         r.numeroReclamo = "REC-1";
         r.importeReconocido = BigDecimal.TEN;
-        when(puerto.registrarReclamo("OSMED", "1", "AUT-1", BigDecimal.TEN, "reclamo-turno-100")).thenReturn(r);
+        when(puerto.registrarReclamo("OSDE", "1", "AUT-1", BigDecimal.TEN, "reclamo-turno-100")).thenReturn(r);
 
         assertEquals(new ResultadoReclamo(true, "REC-1", BigDecimal.TEN, null),
-                adapter.registrarReclamo("OSMED", "1", "AUT-1", BigDecimal.TEN, 100L));
+                adapter.registrarReclamo("OSDE", "1", "AUT-1", BigDecimal.TEN, 100L));
     }
 
     @Test
     void siElLegadoNoRespondeSePropaga() {
         org.mockito.Mockito.doThrow(new ObrasSocialesNoDisponibleException("caido", null)).when(cliente).llamar(anyString(), any());
-        assertThrows(ObrasSocialesNoDisponibleException.class, () -> adapter.verificarCobertura("OSMED", "1"));
+        assertThrows(ObrasSocialesNoDisponibleException.class, () -> adapter.verificarCobertura("OSDE", "1"));
     }
 
     @Test
     void auditaCadaIntento() {
-        auditoria.registrar(100L, 1L, "OSMED", Resultado.RECHAZADA, null, "Tope alcanzado");
+        auditoria.registrar(100L, 1L, "OSDE", Resultado.RECHAZADA, null, "Tope alcanzado");
 
         ArgumentCaptor<IntentoAutorizacion> captor = ArgumentCaptor.forClass(IntentoAutorizacion.class);
         verify(em).persist(captor.capture());

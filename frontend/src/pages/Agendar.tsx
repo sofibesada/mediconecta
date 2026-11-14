@@ -6,14 +6,16 @@ import {
   useAbandonarReservaMutation,
   useConfirmarMutation,
   useElegirProfesionalMutation,
+  useEspecialidadesQuery,
   useLazyEstadoAsistenteQuery,
   useProfesionalesQuery,
   useReservarMutation,
 } from "../api/mediconectaApi";
-import type { EstadoAsistente, Turno } from "../api/tipos";
+import type { EstadoAsistente, Modalidad, Turno } from "../api/tipos";
 import { BotonAccion, Encabezado, Kv, Lista, Muted, Pantalla } from "../components/comunes";
 import { coberturaRechazada, reservaTerminada, turnoRetenido } from "../features/agenda/agendaSlice";
 import { cuentaRegresiva, fmtFecha, modalidadLinda, nuevaClave } from "../lib/formato";
+import { filtrarHorarios } from "../lib/turnos";
 
 /**
  * Agendar un turno. La reserva en curso la recuerda el SERVIDOR: un AsistenteAgendamiento
@@ -33,6 +35,14 @@ export function Agendar() {
   const [asistente, setAsistente] = useState<EstadoAsistente | null>(null);
   const [profesionalId, setProfesionalId] = useState<number | "">("");
   const [horarios, setHorarios] = useState<{ cargando: boolean; error?: string; lista: Turno[] } | null>(null);
+  // Filtros de búsqueda: especialidad (filtra profesionales), modalidad y fecha (filtran horarios).
+  const [especialidad, setEspecialidad] = useState("");
+  const [modalidad, setModalidad] = useState<"" | Modalidad>("");
+  const [desde, setDesde] = useState("");
+  const especialidades = useEspecialidadesQuery();
+  const profesionalesFiltrados = (profesionales.data ?? []).filter((p) => !especialidad || p.especialidad === especialidad);
+  // Agrupados por especialidad (la opción muestra solo el nombre).
+  const grupos = [...new Set(profesionalesFiltrados.map((p) => p.especialidad))].sort();
   // Si el paciente cambia de profesional antes de que llegue la respuesta, se ignora la vieja.
   const pedido = useRef(0);
 
@@ -88,9 +98,47 @@ export function Agendar() {
 
   return (
     <Pantalla id="agendar">
-      <Encabezado titulo="Agendar turno" subtitulo="Elegí un profesional y reservá un horario disponible" />
+      <Encabezado titulo="Agendar turno" subtitulo="Buscá por especialidad, fecha o modalidad y reservá un horario disponible" />
       <div className="card">
-        <h2 className="card-titulo">1 · Elegí un profesional</h2>
+        <h2 className="card-titulo">1 · Buscá un turno</h2>
+        <div className="row-inline" style={{ marginBottom: 16 }} id="agFiltros">
+          <div className="form-group">
+            <label htmlFor="agEspecialidad">Especialidad</label>
+            <select
+              id="agEspecialidad"
+              value={especialidad}
+              onChange={(e) => {
+                const esp = e.target.value;
+                setEspecialidad(esp);
+                // Si el profesional elegido no es de esa especialidad, se deselecciona.
+                const elegido = profesionales.data?.find((p) => p.id === profesionalId);
+                if (esp && elegido && elegido.especialidad !== esp) {
+                  setProfesionalId("");
+                  void mostrarHorarios("");
+                }
+              }}
+            >
+              <option value="">Todas</option>
+              {especialidades.data?.map((esp) => (
+                <option key={esp} value={esp}>
+                  {esp}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label htmlFor="agModalidad">Modalidad</label>
+            <select id="agModalidad" value={modalidad} onChange={(e) => setModalidad(e.target.value as "" | Modalidad)}>
+              <option value="">Presencial y virtual</option>
+              <option value="PRESENCIAL">Solo presencial</option>
+              <option value="VIRTUAL">Solo teleconsulta</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label htmlFor="agDesde">Desde el día</label>
+            <input id="agDesde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+          </div>
+        </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="agSelectProf">Profesional</label>
           <select
@@ -103,10 +151,16 @@ export function Agendar() {
             }}
           >
             <option value="">{profesionales.isLoading ? "Cargando…" : "— Seleccioná —"}</option>
-            {profesionales.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
+            {grupos.map((g) => (
+              <optgroup key={g} label={g}>
+                {profesionalesFiltrados
+                  .filter((p) => p.especialidad === g)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -115,8 +169,10 @@ export function Agendar() {
             <Muted>{mensajeDeError(profesionales.error)}</Muted>
           ) : profesionales.data?.length === 0 ? (
             <Muted>Todavía no hay profesionales cargados.</Muted>
+          ) : profesionalesFiltrados.length === 0 ? (
+            <Muted>No hay profesionales de {especialidad} por ahora.</Muted>
           ) : (
-            horarios && <Horarios {...horarios} onReservar={reservar} />
+            horarios && <Horarios {...horarios} modalidad={modalidad} desde={desde} onReservar={reservar} />
           )}
         </div>
       </div>
@@ -145,13 +201,30 @@ export function Agendar() {
   );
 }
 
-function Horarios({ cargando, error, lista, onReservar }: { cargando: boolean; error?: string; lista: Turno[]; onReservar: (id: number) => void }) {
+function Horarios({
+  cargando,
+  error,
+  lista,
+  modalidad,
+  desde,
+  onReservar,
+}: {
+  cargando: boolean;
+  error?: string;
+  lista: Turno[];
+  modalidad: "" | Modalidad;
+  desde: string;
+  onReservar: (id: number) => void;
+}) {
   if (cargando) return <Muted>Buscando horarios…</Muted>;
   if (error) return <Muted>{error}</Muted>;
   if (lista.length === 0) return <Muted>Este profesional no tiene horarios disponibles por ahora.</Muted>;
+  const filtrados = filtrarHorarios(lista, modalidad, desde);
+  if (filtrados.length === 0) return <Muted>Ningún horario de este profesional coincide con la modalidad o la fecha elegidas.</Muted>;
+  const titulo = filtrados.length === lista.length ? "Horarios disponibles" : `Horarios disponibles (${filtrados.length} de ${lista.length})`;
   return (
-    <Lista titulo="Horarios disponibles">
-      {lista.map((t) => (
+    <Lista titulo={titulo}>
+      {filtrados.map((t) => (
         <div className="fila" key={t.id}>
           <div className="fila-info">
             <div className="fila-titulo">{fmtFecha(t.fechaHora)}</div>

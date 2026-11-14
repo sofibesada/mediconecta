@@ -34,4 +34,8 @@ public interface IUsuarioService {
     List<Usuario> listarProfesionales();
     List<Usuario> listarTodos();
     Usuario autenticar(String email, String password);
+    /** Cada usuario cambia los datos de su propia cuenta (nombre, email y, si es profesional, especialidad). */
+    Usuario actualizarPerfil(Long usuarioId, DatosPerfil datos);
+    /** Especialidad de cada profesional (para mostrar en los turnos). */
+    Map<Long, String> especialidadesDe(Set<Long> ids);
 }
