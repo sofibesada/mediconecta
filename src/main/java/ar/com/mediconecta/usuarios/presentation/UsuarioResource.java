@@ -29,9 +29,20 @@ public class UsuarioResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public UsuarioResponse registrar(Usuario usuario) {
-        return conToken(usuarioService.registrarUsuario(usuario));
+    public UsuarioResponse registrar(RegistroRequest req) {
+        if (req == null) {
+            throw new IllegalArgumentException("Nombre, email y contraseña son obligatorios");
+        }
+        // Solo estos tres campos: rol, cobertura, copago o estado no se pueden mandar desde afuera.
+        Usuario datos = new Usuario();
+        datos.setNombre(req.nombre());
+        datos.setEmail(req.email());
+        datos.setPassword(req.password());
+        return conToken(usuarioService.registrarUsuario(datos));
     }
+
+    /** Registro publico: lo unico que elige el paciente. La cobertura se carga despues, verificada. */
+    public record RegistroRequest(String nombre, String email, String password) {}
 
     /** Protegido con rol ADMIN en web.xml y con @RolesAllowed en UsuarioService.buscarUsuario. */
     @GET

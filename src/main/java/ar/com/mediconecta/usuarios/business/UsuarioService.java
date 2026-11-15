@@ -50,10 +50,15 @@ public class UsuarioService implements IUsuarioService {
         if (usuarioRepository.buscarPorEmail(usuario.getEmail()) != null) {
             throw new IllegalStateException("El correo ya está registrado");
         }
-        usuario.setRol(RolUsuario.PACIENTE);
-        usuario.setDebeCambiarPassword(false);
-        usuario.setPassword(BCrypt.hashpw(usuario.getPassword(), BCrypt.gensalt()));
-        return usuarioRepository.guardar(usuario);
+        // Usuario nuevo con solo nombre, email y contrasena: aunque llegue una entidad con
+        // rol, cobertura o copago, nada de eso se guarda (la cobertura se verifica despues).
+        Usuario nuevo = new Usuario();
+        nuevo.setNombre(usuario.getNombre());
+        nuevo.setEmail(usuario.getEmail());
+        nuevo.setRol(RolUsuario.PACIENTE);
+        nuevo.setDebeCambiarPassword(false);
+        nuevo.setPassword(BCrypt.hashpw(usuario.getPassword(), BCrypt.gensalt()));
+        return usuarioRepository.guardar(nuevo);
     }
 
     @Override

@@ -66,6 +66,27 @@ class UsuarioServiceTest {
         }
 
         @Test
+        void noGuardaCoberturaCopagoNiEstadoQueLleguenEnElRegistro() {
+            Usuario d = datos("Ana", "ana@test.local", "1234");
+            d.setObraSocial("OSDE");
+            d.setNumeroAfiliado("12345678");
+            d.setPlanObraSocial("OSDE 510");
+            d.setCopagoPorcentaje(0);
+            d.setActivo(false);
+            d.setEspecialidad("Cardiología");
+
+            Usuario u = service.registrarUsuario(d);
+
+            assertNull(u.getObraSocial());
+            assertNull(u.getNumeroAfiliado());
+            assertNull(u.getPlanObraSocial());
+            assertNull(u.getCopagoPorcentaje());
+            assertNull(u.getEspecialidad());
+            assertTrue(u.isActivo());
+            assertEquals("Ana", u.getNombre());
+        }
+
+        @Test
         void camposObligatorios() {
             assertThrows(IllegalArgumentException.class, () -> service.registrarUsuario(datos(null, "a@b", "1")));
             assertThrows(IllegalArgumentException.class, () -> service.registrarUsuario(datos(" ", "a@b", "1")));

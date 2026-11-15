@@ -51,7 +51,7 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
     }
 
     @Override
-    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL})
+    @RolesAllowed(Roles.PROFESIONAL) // el paciente lee su historia, pero no la escribe
     public void registrarDiagnostico(Long pacienteId, Diagnostico diagnostico) {
         exigirPacienteExistente(pacienteId);
         if (diagnostico.getDescripcion() == null || diagnostico.getDescripcion().isBlank()) {
@@ -66,7 +66,7 @@ public class HistoriaClinicaService implements IHistoriaClinicaService {
     }
 
     @Override
-    @RolesAllowed({Roles.PACIENTE, Roles.PROFESIONAL})
+    @RolesAllowed(Roles.PROFESIONAL) // el paciente lee su historia, pero no la escribe
     public void registrarReceta(Long pacienteId, Receta receta) {
         exigirPacienteExistente(pacienteId);
         if (receta.getMedicamento() == null || receta.getMedicamento().isBlank()) {

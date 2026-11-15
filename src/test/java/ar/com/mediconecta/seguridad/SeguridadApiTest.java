@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.restassured.RestAssured;
@@ -211,6 +212,46 @@ class SeguridadApiTest {
         con(tokenAdmin).body(json(Map.of("activo", true))).post("/admin/usuarios/" + pacienteDescartable.id() + "/activo");
         assertEquals(200, r.statusCode());
         assertFalse(despues);
+    }
+
+    @Test
+    void sec03d_unPacienteNoPuedeEscribirSuPropiaHistoriaClinica() {
+        String texto = "AUTODIAGNOSTICO-" + System.nanoTime();
+        Response diag = con(pacienteA.token()).body(json(Map.of("descripcion", texto)))
+                .post("/historia-clinica/" + pacienteA.id() + "/diagnosticos");
+        Response receta = con(pacienteA.token()).body(json(Map.of("medicamento", texto)))
+                .post("/historia-clinica/" + pacienteA.id() + "/recetas");
+        evidencia("SEC-03", "Un PACIENTE intenta cargarse un diagnóstico y una receta", "POST /historia-clinica/{A}/diagnosticos y /recetas",
+                "403 y nada guardado", diag, "receta: " + receta.statusCode());
+        assertEquals(403, diag.statusCode());
+        assertEquals(403, receta.statusCode());
+        assertFalse(con(pacienteA.token()).get("/historia-clinica/" + pacienteA.id()).asString().contains(texto));
+    }
+
+    @Test
+    void sec03e_elRegistroPublicoIgnoraRolCoberturaYCopago() {
+        Response r = given().contentType(ContentType.JSON)
+                .body("{\"nombre\":\"Paciente Ventajero\",\"email\":\"sec_reg_" + System.nanoTime() + "@test.local\","
+                        + "\"password\":\"Prueba1234\",\"rol\":\"ADMIN\",\"obraSocial\":\"OSDE\",\"numeroAfiliado\":\"12345678\","
+                        + "\"planObraSocial\":\"OSDE 510\",\"copagoPorcentaje\":0,\"activo\":true}")
+                .post("/usuarios");
+        evidencia("SEC-03", "Registro con rol, cobertura y copago en el cuerpo", "POST /usuarios",
+                "PACIENTE sin obra social", r);
+        assertEquals(200, r.statusCode(), r.asString());
+        assertEquals("PACIENTE", r.path("rol"));
+        assertNull(r.path("obraSocial"));
+        assertNull(r.path("copagoPorcentaje"));
+
+        // Y al confirmar un turno paga el valor completo: no hay obra social que lo cubra.
+        String token = r.path("token");
+        String fecha = LocalDateTime.now().plusDays(43).withHour(12).withMinute(0).withSecond(0).withNano(0).format(ISO);
+        long turno = ((Number) con(profesional.token()).body(json(Map.of("fechaHora", fecha)))
+                .post("/turnos").then().statusCode(200).extract().path("id")).longValue();
+        con(token).post("/turnos/" + turno + "/reservar").then().statusCode(200);
+        Response confirmado = con(token).post("/turnos/" + turno + "/confirmar");
+        assertEquals(200, confirmado.statusCode(), confirmado.asString());
+        assertNull(confirmado.path("obraSocial"));
+        assertEquals(20000f, ((Number) confirmado.path("importeCopago")).floatValue());
     }
 
     // ------------------------------------------------------------------ SEC-04
