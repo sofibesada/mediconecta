@@ -77,3 +77,17 @@ Una prueba de carga encontró cobros duplicados y un pago asignado a otro pacien
 
 Pruebas: `PagoServiceTest`, `IdempotenciaServiceTest`, `int06b` (4 pagos simultáneos), `int06c`
 (misma clave, dos pacientes) e `int06d` (devolución al cancelar).
+
+### Cobros con resultado incierto (15/11/2026)
+
+Si la pasarela no responde a tiempo (503) puede igual aprobar el cobro después. Para que eso no
+termine en un doble cobro ni en un pago sin devolver:
+
+- El intento se guarda como **PENDIENTE** en su propia transacción **antes** de llamar a la pasarela.
+- Mientras haya un PENDIENTE reciente (60 s, `mediconecta.pagos.ventanaSegundos`), un nuevo pago del
+  turno responde **409**: no se arriesga un segundo cobro, aunque sea con otra tarjeta.
+- **Conciliación** (`IntentosPago`): se le pregunta a la pasarela cómo terminó. Aprobado → queda
+  registrado; si el turno ya se canceló, **se devuelve**. Sin rastro pasada la ventana → FALLIDO.
+- Se concilia al volver a pagar, al cancelar y cada minuto (`ConciliacionPagos`, `@Schedule`).
+
+Pruebas: `IntentosPagoTest` y `PagoServiceTest`.

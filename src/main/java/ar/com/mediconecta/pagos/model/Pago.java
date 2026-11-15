@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 @Table(name = "pago")
 public class Pago {
 
-    public enum Estado { APROBADO, RECHAZADO, REEMBOLSADO }
+    /** PENDIENTE: se llamo a la pasarela y todavia no se sabe como termino (ver IntentosPago). */
+    public enum Estado { PENDIENTE, APROBADO, RECHAZADO, REEMBOLSADO, FALLIDO }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

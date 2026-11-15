@@ -52,7 +52,7 @@ export function Facturacion() {
                       <br />
                       {fmtFecha(p.creadoEn)}
                     </div>
-                    <Badge clase={p.estado === "APROBADO" ? "AUTORIZADA" : p.estado === "REEMBOLSADO" ? "CANCELADO" : "RECHAZADA"}>{p.estado}</Badge>
+                    <Badge clase={p.estado === "APROBADO" ? "AUTORIZADA" : p.estado === "REEMBOLSADO" ? "CANCELADO" : p.estado === "PENDIENTE" ? "PENDIENTE" : "RECHAZADA"}>{p.estado}</Badge>
                   </div>
                 </div>
               ))

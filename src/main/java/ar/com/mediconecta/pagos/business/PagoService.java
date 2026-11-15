@@ -59,6 +59,9 @@ public class PagoService {
     @Inject
     private TurnoEventoPublisher eventoPublisher;
 
+    @Inject
+    private IntentosPago intentos;
+
     /** Datos de la tarjeta tal como los ingresa el paciente. */
     public record DatosTarjeta(String numero, String vencimiento, String cvv, String titular) {}
 
@@ -84,30 +87,53 @@ public class PagoService {
         Tarjetas.validar(tarjeta.numero(), tarjeta.vencimiento(), tarjeta.cvv(), tarjeta.titular(), YearMonth.now());
 
         String referencia = referencia(turnoId);
+        // 1) Intentos anteriores con resultado incierto (503, timeout, caida del broker): primero
+        //    se averigua como terminaron. Si alguno se aprobo, el turno ya esta pagado.
+        List<Long> pendientes = repository.idsPendientesDe(turnoId);
+        for (Long id : pendientes) {
+            intentos.conciliar(id);
+        }
+        if (!pendientes.isEmpty()) {
+            List<Pago> aprobado = repository.aprobadosDe(List.of(turnoId));
+            if (!aprobado.isEmpty()) {
+                return aprobado.get(0); // el cobro anterior si se hizo: no se cobra de nuevo
+            }
+            if (!repository.idsPendientesDe(turnoId).isEmpty()) {
+                throw new PagoEnCursoException(); // todavia puede aprobarse: no se arriesga otro cobro
+            }
+        }
+        // 2) Conciliacion por si la pasarela tiene un cobro que MediConecta nunca registro.
         Optional<PasarelaPagosClient.Resultado> yaCobrado = pasarela.aprobadoDe(referencia);
+        String numero = Tarjetas.soloDigitos(tarjeta.numero());
+        Long intentoId;
         PasarelaPagosClient.Resultado r;
         if (yaCobrado.isPresent()) {
             r = yaCobrado.get();
+            intentoId = intentos.registrarPendiente(turnoId, pacienteId, importe, r.marca(), r.ultimos4());
             LOG.info("[Pagos] la pasarela ya tenia aprobado el pago de " + referencia + ": se concilia sin cobrar de nuevo");
         } else {
-            String numero = Tarjetas.soloDigitos(tarjeta.numero());
+            // 3) El intento queda PENDIENTE en su propia transaccion ANTES de cobrar: si la
+            //    respuesta se pierde, bloquea otro cobro y el conciliador lo resuelve.
             int intento = repository.listarDeTurno(turnoId).size() + 1;
-            r = pasarela.cobrar(importe, referencia, numero, tarjeta.vencimiento(), tarjeta.cvv(), tarjeta.titular().trim(),
-                    claveParaPasarela(turnoId, intento, numero, tarjeta.vencimiento(), importe));
+            intentoId = intentos.registrarPendiente(turnoId, pacienteId, importe,
+                    Tarjetas.marca(numero), numero.substring(numero.length() - 4));
+            try {
+                r = pasarela.cobrar(importe, referencia, numero, tarjeta.vencimiento(), tarjeta.cvv(), tarjeta.titular().trim(),
+                        claveParaPasarela(turnoId, intento, numero, tarjeta.vencimiento(), importe));
+            } catch (PasarelaPagosClient.DatosInvalidosException e) {
+                intentos.marcarFallido(intentoId, e.getMessage()); // seguro que no se cobro
+                throw e;
+            }
         }
 
-        Pago pago = new Pago();
-        pago.setTurnoId(turnoId);
-        pago.setPacienteId(pacienteId);
-        pago.setImporte(importe);
+        Pago pago = repository.buscarPorId(intentoId);
         pago.setEstado(r.aprobado() ? Pago.Estado.APROBADO : Pago.Estado.RECHAZADO);
         pago.setMarca(r.marca());
         pago.setUltimos4(r.ultimos4());
         pago.setIdExterno(r.id());
         pago.setCodigoAutorizacion(r.codigoAutorizacion());
         pago.setMotivo(r.motivo());
-        pago.setCreadoEn(LocalDateTime.now());
-        repository.guardar(pago);
+        repository.actualizar(pago);
 
         if (!r.aprobado()) {
             throw new PagoRechazadoException(r.motivo()); // rollback = false: el intento queda registrado
@@ -124,6 +150,11 @@ public class PagoService {
      */
     @PermitAll
     public int reembolsarDeTurno(Long turnoId) {
+        // Cobros con resultado incierto: si la pasarela los aprobo, la conciliacion los devuelve
+        // (el turno ya esta cancelado). Si todavia no se sabe, lo resuelve ConciliacionPagos.
+        for (Long id : repository.idsPendientesDe(turnoId)) {
+            intentos.conciliar(id);
+        }
         List<Pago> aprobados = repository.aprobadosDe(List.of(turnoId));
         for (Pago p : aprobados) {
             pasarela.reembolsar(p.getIdExterno());

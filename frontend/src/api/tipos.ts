@@ -71,7 +71,7 @@ export type Pago = {
   id: number;
   turnoId: number;
   pacienteNombre?: string | null;
-  estado: "APROBADO" | "RECHAZADO" | "REEMBOLSADO";
+  estado: "PENDIENTE" | "APROBADO" | "RECHAZADO" | "REEMBOLSADO" | "FALLIDO";
   importe: number;
   marca: string | null;
   ultimos4: string | null;

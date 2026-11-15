@@ -49,9 +49,12 @@ class PagoServiceTest {
     @Mock private PasarelaPagosClient pasarela;
     @Mock private ITurnoService turnoService;
     @Mock private TurnoEventoPublisher eventoPublisher;
+    @Mock private IntentosPago intentos;
     @InjectMocks private PagoService service;
 
     private Turno turno;
+    /** El intento que IntentosPago registra como PENDIENTE antes de cobrar. */
+    private Pago intento;
 
     @BeforeEach
     void preparar() {
@@ -64,6 +67,13 @@ class PagoServiceTest {
         lenient().when(repository.aprobadosDe(List.of(TURNO))).thenReturn(List.of());
         lenient().when(repository.listarDeTurno(TURNO)).thenReturn(List.of());
         lenient().when(pasarela.aprobadoDe("turno-30")).thenReturn(Optional.empty());
+        lenient().when(repository.idsPendientesDe(TURNO)).thenReturn(List.of());
+        intento = new Pago();
+        intento.setTurnoId(TURNO);
+        intento.setImporte(IMPORTE);
+        intento.setEstado(Pago.Estado.PENDIENTE);
+        lenient().when(intentos.registrarPendiente(eq(TURNO), eq(PACIENTE), eq(IMPORTE), any(), any())).thenReturn(99L);
+        lenient().when(repository.buscarPorId(99L)).thenReturn(intento);
     }
 
     private static PasarelaPagosClient.Resultado resultado(String estado, String motivo) {
@@ -83,7 +93,8 @@ class PagoServiceTest {
         assertEquals("123456", p.getCodigoAutorizacion());
         assertEquals(IMPORTE, p.getImporte());
         verify(turnoService).buscarTurnoParaPagar(TURNO);
-        verify(repository).guardar(p);
+        verify(intentos).registrarPendiente(TURNO, PACIENTE, IMPORTE, "Visa", "1111"); // antes de cobrar
+        verify(repository).actualizar(p);
         verify(eventoPublisher).publicar(TipoEventoTurno.PAGO_ACREDITADO, turno, null);
     }
 
@@ -132,7 +143,7 @@ class PagoServiceTest {
 
         assertEquals("El pago fue rechazado: Fondos insuficientes", e.getMessage());
         ArgumentCaptor<Pago> guardado = ArgumentCaptor.forClass(Pago.class);
-        verify(repository).guardar(guardado.capture());
+        verify(repository).actualizar(guardado.capture());
         assertEquals(Pago.Estado.RECHAZADO, guardado.getValue().getEstado());
         verifyNoInteractions(eventoPublisher);
     }
@@ -175,8 +186,41 @@ class PagoServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.pagar(PACIENTE, TURNO, null));
         PagoService.DatosTarjeta mala = new PagoService.DatosTarjeta("4111 1111 1111 1112", "12/30", "123", "ANA");
         assertThrows(IllegalArgumentException.class, () -> service.pagar(PACIENTE, TURNO, mala));
-        verifyNoInteractions(pasarela);
-        verify(repository, never()).guardar(any());
+        verifyNoInteractions(pasarela, intentos);
+    }
+
+    @Test
+    void siUnIntentoAnteriorSinRespuestaSeAproboNoSeCobraDeNuevo() {
+        Pago yaAprobado = new Pago();
+        yaAprobado.setTurnoId(TURNO);
+        yaAprobado.setEstado(Pago.Estado.APROBADO);
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of(5L));
+        when(repository.aprobadosDe(List.of(TURNO))).thenReturn(List.of(), List.of(yaAprobado));
+
+        assertSame(yaAprobado, service.pagar(PACIENTE, TURNO, VISA));
+
+        verify(intentos).conciliar(5L);
+        verify(pasarela, never()).cobrar(any(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void conUnIntentoTodaviaInciertoNoSeArriesgaOtroCobro() {
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of(5L));
+
+        assertThrows(PagoEnCursoException.class, () -> service.pagar(PACIENTE, TURNO, VISA));
+
+        verify(intentos).conciliar(5L);
+        verify(pasarela, never()).cobrar(any(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void siLaPasarelaRechazaLosDatosElIntentoNoQuedaPendiente() {
+        when(pasarela.cobrar(any(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(new PasarelaPagosClient.DatosInvalidosException("Esa Idempotency-Key ya se usó con otros datos"));
+
+        assertThrows(PasarelaPagosClient.DatosInvalidosException.class, () -> service.pagar(PACIENTE, TURNO, VISA));
+
+        verify(intentos).marcarFallido(99L, "Esa Idempotency-Key ya se usó con otros datos");
     }
 
     @Test
@@ -188,7 +232,11 @@ class PagoServiceTest {
         when(repository.aprobadosDe(List.of(TURNO))).thenReturn(List.of(aprobado));
         when(turnoService.buscarTurno(TURNO)).thenReturn(turno);
 
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of(5L));
+
         assertEquals(1, service.reembolsarDeTurno(TURNO));
+
+        verify(intentos).conciliar(5L); // un cobro incierto se concilia (y si se aprobo, se devuelve)
 
         verify(pasarela).reembolsar("pay_1");
         assertEquals(Pago.Estado.REEMBOLSADO, aprobado.getEstado());

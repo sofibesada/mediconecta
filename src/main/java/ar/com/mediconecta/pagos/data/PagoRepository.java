@@ -47,6 +47,32 @@ public class PagoRepository {
                 .getResultList();
     }
 
+    public Pago buscarPorId(Long id) {
+        return em.find(Pago.class, id);
+    }
+
+    /** Ids de los intentos con resultado incierto (de todos los turnos o de uno). */
+    public List<Long> idsPendientes() {
+        return em.createQuery("SELECT p.id FROM Pago p WHERE p.estado = :estado ORDER BY p.creadoEn", Long.class)
+                .setParameter("estado", Pago.Estado.PENDIENTE)
+                .getResultList();
+    }
+
+    public List<Long> idsPendientesDe(Long turnoId) {
+        return em.createQuery("SELECT p.id FROM Pago p WHERE p.turnoId = :turno AND p.estado = :estado", Long.class)
+                .setParameter("turno", turnoId)
+                .setParameter("estado", Pago.Estado.PENDIENTE)
+                .getResultList();
+    }
+
+    public boolean existeConIdExterno(String idExterno) {
+        return !em.createQuery("SELECT p.id FROM Pago p WHERE p.idExterno = :id AND p.estado <> :pendiente", Long.class)
+                .setParameter("id", idExterno)
+                .setParameter("pendiente", Pago.Estado.PENDIENTE)
+                .setMaxResults(1)
+                .getResultList().isEmpty();
+    }
+
     public Pago actualizar(Pago pago) {
         return em.merge(pago);
     }
