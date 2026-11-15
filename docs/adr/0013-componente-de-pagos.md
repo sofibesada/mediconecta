@@ -87,7 +87,9 @@ termine en un doble cobro ni en un pago sin devolver:
 - Mientras haya un PENDIENTE reciente (60 s, `mediconecta.pagos.ventanaSegundos`), un nuevo pago del
   turno responde **409**: no se arriesga un segundo cobro, aunque sea con otra tarjeta.
 - **Conciliación** (`IntentosPago`): se le pregunta a la pasarela cómo terminó. Aprobado → queda
-  registrado; si el turno ya se canceló, **se devuelve**. Sin rastro pasada la ventana → FALLIDO.
+  registrado; si el turno ya se canceló, **se devuelve**. Sin resultado, sigue PENDIENTE y bloqueando. Pasada la
+  ventana, MediConecta **anula ese intento en la pasarela por su clave** (`POST /pagos/anulaciones`): solo con la
+  respuesta definitiva (ANULADO o RECHAZADO) queda FALLIDO; si el pedido llega después, la pasarela no cobra.
 - Se concilia al volver a pagar, al cancelar y cada minuto (`ConciliacionPagos`, `@Schedule`).
 
 Pruebas: `IntentosPagoTest` y `PagoServiceTest`.

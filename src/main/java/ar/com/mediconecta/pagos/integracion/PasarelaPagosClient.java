@@ -125,6 +125,27 @@ public class PasarelaPagosClient {
         }
     }
 
+    /**
+     * Anula un intento por su clave. Respuesta definitiva de la pasarela: ANULADO (ese cobro ya no
+     * puede hacerse, aunque el pedido llegue despues), o el resultado que ya tenia (APROBADO o
+     * RECHAZADO) si el pedido habia llegado.
+     */
+    public Resultado anular(String claveIdempotencia, String referencia) {
+        try (Response r = client.target(baseUrl()).path("pagos").path("anulaciones")
+                .request(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + apiKey())
+                .post(Entity.json(Map.of("clave", claveIdempotencia, "referencia", referencia)))) {
+            if (r.getStatus() != 200) {
+                throw new PasarelaNoDisponibleException("La pasarela no pudo anular el intento (" + r.getStatus() + ")", null);
+            }
+            Resultado resultado = resultado(r.readEntity(JsonObject.class));
+            LOG.info("[REST externo] POST /pagos/anulaciones " + referencia + " -> " + resultado.estado());
+            return resultado;
+        } catch (ProcessingException e) {
+            throw new PasarelaNoDisponibleException("La pasarela de pagos no responde", e);
+        }
+    }
+
     private static Resultado resultado(JsonObject p) {
         return new Resultado(p.getString("id"), p.getString("estado"), p.getString("motivo", null),
                 p.getString("marca", null), p.getString("ultimos4", null), p.getString("codigoAutorizacion", null));

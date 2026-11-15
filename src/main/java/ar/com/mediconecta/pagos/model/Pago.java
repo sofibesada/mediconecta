@@ -52,6 +52,13 @@ public class Pago {
     @Column(name = "creado_en", nullable = false)
     private LocalDateTime creadoEn;
 
+    /** Idempotency-Key que se le mando a la pasarela en este intento (para anularlo si queda incierto). */
+    @Column(name = "clave_externa", length = 120)
+    private String claveExterna;
+
+    public String getClaveExterna() { return claveExterna; }
+    public void setClaveExterna(String claveExterna) { this.claveExterna = claveExterna; }
+
     /** Cuando se devolvio (al cancelar un turno pagado). */
     private LocalDateTime reembolsadoEn;
 

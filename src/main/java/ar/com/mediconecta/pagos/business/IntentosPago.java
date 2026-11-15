@@ -26,8 +26,11 @@ import java.util.logging.Logger;
  *
  * Conciliar = preguntarle a la pasarela como termino ese cobro:
  *  - aprobado: se registra; si el turno ya se cancelo, se devuelve en el momento;
- *  - sin rastro despues de la ventana de incertidumbre: FALLIDO (se puede volver a pagar);
- *  - sin rastro todavia: sigue PENDIENTE (bloquea otro cobro) y se reintenta despues.
+ *  - sin resultado todavia: sigue PENDIENTE y bloquea otro cobro del turno;
+ *  - sin resultado despues de la ventana: se ANULA ese intento en la pasarela por su clave. Solo
+ *    con la respuesta definitiva (ANULADO o RECHAZADO) queda FALLIDO y se puede pagar de nuevo;
+ *    si la pasarela responde APROBADO (el pedido llego), se registra esa aprobacion. El tiempo
+ *    solo decide CUANDO preguntar, nunca el resultado: un pedido que llega tarde no cobra.
  */
 @Stateless
 public class IntentosPago {
@@ -55,7 +58,8 @@ public class IntentosPago {
     /** Registra el intento ANTES de llamar a la pasarela. Devuelve su id. */
     @PermitAll
     @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
-    public Long registrarPendiente(Long turnoId, Long pacienteId, BigDecimal importe, String marca, String ultimos4) {
+    public Long registrarPendiente(Long turnoId, Long pacienteId, BigDecimal importe, String marca, String ultimos4,
+                                   String claveExterna) {
         Pago p = new Pago();
         p.setTurnoId(turnoId);
         p.setPacienteId(pacienteId);
@@ -63,6 +67,7 @@ public class IntentosPago {
         p.setEstado(Pago.Estado.PENDIENTE);
         p.setMarca(marca);
         p.setUltimos4(ultimos4);
+        p.setClaveExterna(claveExterna);
         p.setCreadoEn(LocalDateTime.now());
         return repository.guardar(p).getId();
     }
@@ -89,39 +94,56 @@ public class IntentosPago {
         }
         Optional<PasarelaPagosClient.Resultado> aprobado = pasarela.aprobadoDe(PagoService.referencia(p.getTurnoId()));
         if (aprobado.isPresent()) {
-            PasarelaPagosClient.Resultado r = aprobado.get();
-            if (repository.existeConIdExterno(r.id())) {
-                // Ese cobro ya lo registro otro intento: este quedo de mas.
-                p.setEstado(Pago.Estado.FALLIDO);
-                p.setMotivo("El cobro ya estaba registrado en otro intento");
-                repository.actualizar(p);
-                return p.getEstado();
-            }
-            p.setEstado(Pago.Estado.APROBADO);
-            p.setIdExterno(r.id());
-            p.setMarca(r.marca());
-            p.setUltimos4(r.ultimos4());
-            p.setCodigoAutorizacion(r.codigoAutorizacion());
-            Turno turno = turnoService.buscarTurno(p.getTurnoId());
-            if (turno != null && turno.getEstado() == EstadoTurno.CANCELADO) {
-                // Se cancelo mientras el cobro estaba en el aire: se devuelve ahora.
-                pasarela.reembolsar(r.id());
-                p.setEstado(Pago.Estado.REEMBOLSADO);
-                p.setReembolsadoEn(LocalDateTime.now());
-                eventoPublisher.publicar(TipoEventoTurno.PAGO_REEMBOLSADO, turno, null);
-            } else if (turno != null) {
-                eventoPublisher.publicar(TipoEventoTurno.PAGO_ACREDITADO, turno, null);
-            }
-            repository.actualizar(p);
-            LOG.info("[Pagos] intento #" + p.getId() + " del turno #" + p.getTurnoId() + " conciliado: " + p.getEstado());
-            return p.getEstado();
+            return registrarAprobacion(p, aprobado.get());
         }
-        if (p.getCreadoEn().isBefore(LocalDateTime.now().minusSeconds(ventanaSegundos()))) {
+        if (p.getCreadoEn().isAfter(LocalDateTime.now().minusSeconds(ventanaSegundos()))) {
+            return p.getEstado(); // el pedido puede seguir en camino: sigue PENDIENTE y bloqueando
+        }
+        if (p.getClaveExterna() == null) {
+            // Intento de una version anterior, sin clave guardada: no hay como anularlo.
             p.setEstado(Pago.Estado.FALLIDO);
             p.setMotivo("La pasarela no confirmó el cobro");
             repository.actualizar(p);
-            LOG.info("[Pagos] intento #" + p.getId() + " sin cobro en la pasarela: FALLIDO");
+            return p.getEstado();
         }
+        // Respuesta definitiva: se anula el intento en la pasarela. Si el pedido llega despues, no cobra.
+        PasarelaPagosClient.Resultado r = pasarela.anular(p.getClaveExterna(), PagoService.referencia(p.getTurnoId()));
+        if (r.aprobado()) {
+            return registrarAprobacion(p, r); // el pedido habia llegado y se aprobo
+        }
+        p.setEstado(Pago.Estado.FALLIDO);
+        p.setIdExterno(r.id());
+        p.setMotivo("ANULADO".equals(r.estado()) ? "Intento anulado en la pasarela: no se cobró" : r.motivo());
+        repository.actualizar(p);
+        LOG.info("[Pagos] intento #" + p.getId() + " cerrado en la pasarela como " + r.estado() + ": FALLIDO");
+        return p.getEstado();
+    }
+
+    private Pago.Estado registrarAprobacion(Pago p, PasarelaPagosClient.Resultado r) {
+        if (repository.existeConIdExterno(r.id())) {
+            // Ese cobro ya lo registro otro intento: este quedo de mas.
+            p.setEstado(Pago.Estado.FALLIDO);
+            p.setMotivo("El cobro ya estaba registrado en otro intento");
+            repository.actualizar(p);
+            return p.getEstado();
+        }
+        p.setEstado(Pago.Estado.APROBADO);
+        p.setIdExterno(r.id());
+        p.setMarca(r.marca());
+        p.setUltimos4(r.ultimos4());
+        p.setCodigoAutorizacion(r.codigoAutorizacion());
+        Turno turno = turnoService.buscarTurno(p.getTurnoId());
+        if (turno != null && turno.getEstado() == EstadoTurno.CANCELADO) {
+            // Se cancelo mientras el cobro estaba en el aire: se devuelve ahora.
+            pasarela.reembolsar(r.id());
+            p.setEstado(Pago.Estado.REEMBOLSADO);
+            p.setReembolsadoEn(LocalDateTime.now());
+            eventoPublisher.publicar(TipoEventoTurno.PAGO_REEMBOLSADO, turno, null);
+        } else if (turno != null) {
+            eventoPublisher.publicar(TipoEventoTurno.PAGO_ACREDITADO, turno, null);
+        }
+        repository.actualizar(p);
+        LOG.info("[Pagos] intento #" + p.getId() + " del turno #" + p.getTurnoId() + " conciliado: " + p.getEstado());
         return p.getEstado();
     }
 }

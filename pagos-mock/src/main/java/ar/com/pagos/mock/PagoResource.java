@@ -32,6 +32,8 @@ import java.util.logging.Logger;
  *   GET  /pagos/{id}             consulta un pago
  *   GET  /pagos?referencia=X     pagos de una referencia (para conciliar si una respuesta se perdio)
  *   POST /pagos/{id}/reembolso   devuelve un pago aprobado (idempotente)
+ *   POST /pagos/anulaciones      anula un intento por su Idempotency-Key: si todavia no llego,
+ *                                queda ANULADO y, si llega despues, no se cobra
  *
  * Idempotency-Key: el mismo pedido con la misma clave recibe la misma respuesta (no cobra dos
  * veces); la misma clave con OTROS datos se rechaza con 422, como en las pasarelas reales.
@@ -110,6 +112,11 @@ public class PagoResource {
     private Response cobrarUnaVez(String clave, PedidoDePago pedido) {
         String huella = huella(pedido);
         String previo = POR_CLAVE.get(clave);
+        if (previo != null && "ANULADO".equals(PAGOS.get(previo).estado)) {
+            // El intento se anulo antes de llegar: no se cobra (pedido viejo que llego tarde).
+            LOG.info("[Mock pagos] llego tarde un pedido con clave anulada: no se cobra");
+            return Response.ok(PAGOS.get(previo)).header("Idempotent-Replayed", "true").build();
+        }
         if (previo != null) {
             if (!huella.equals(HUELLA_POR_CLAVE.get(clave))) {
                 return problema(422, "idempotency-key-reutilizada", "Esa Idempotency-Key ya se usó con otros datos");
@@ -204,6 +211,46 @@ public class PagoResource {
             p.estado = "REEMBOLSADO";
             p.reembolsadoEn = LocalDateTime.now().toString();
             LOG.info("[Mock pagos] reembolso " + p.referencia + " ****" + p.ultimos4 + " $" + p.monto);
+            return Response.ok(p).build();
+        }
+    }
+
+    public static class PedidoDeAnulacion {
+        public String clave;
+        public String referencia;
+    }
+
+    /**
+     * Anula un intento por su Idempotency-Key. Si ese cobro ya se proceso, devuelve su resultado
+     * (aprobado o rechazado, sin cambiarlo). Si todavia no llego, queda ANULADO para siempre: si el
+     * pedido llega despues, no se cobra. Es la forma de cerrar un intento con resultado incierto.
+     */
+    @POST
+    @Path("/anulaciones")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response anular(@HeaderParam("Authorization") String auth, PedidoDeAnulacion pedido) {
+        Response error = controlar(auth);
+        if (error != null) {
+            return error;
+        }
+        if (pedido == null || pedido.clave == null || pedido.clave.isBlank()) {
+            return problema(400, "falta-clave", "Falta la clave del intento a anular");
+        }
+        synchronized (COBROS) {
+            String previo = POR_CLAVE.get(pedido.clave);
+            if (previo != null) {
+                return Response.ok(PAGOS.get(previo)).build();
+            }
+            Pago p = new Pago();
+            p.id = "anul_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            p.estado = "ANULADO";
+            p.motivo = "Intento anulado antes de procesarse";
+            p.referencia = pedido.referencia;
+            p.creadoEn = LocalDateTime.now().toString();
+            PAGOS.put(p.id, p);
+            POR_CLAVE.put(pedido.clave, p.id);
+            HUELLA_POR_CLAVE.put(pedido.clave, "ANULADO");
+            LOG.info("[Mock pagos] intento anulado " + p.referencia + " (todavia no habia llegado)");
             return Response.ok(p).build();
         }
     }

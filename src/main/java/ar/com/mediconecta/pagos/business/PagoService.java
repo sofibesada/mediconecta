@@ -109,17 +109,17 @@ public class PagoService {
         PasarelaPagosClient.Resultado r;
         if (yaCobrado.isPresent()) {
             r = yaCobrado.get();
-            intentoId = intentos.registrarPendiente(turnoId, pacienteId, importe, r.marca(), r.ultimos4());
+            intentoId = intentos.registrarPendiente(turnoId, pacienteId, importe, r.marca(), r.ultimos4(), null);
             LOG.info("[Pagos] la pasarela ya tenia aprobado el pago de " + referencia + ": se concilia sin cobrar de nuevo");
         } else {
             // 3) El intento queda PENDIENTE en su propia transaccion ANTES de cobrar: si la
             //    respuesta se pierde, bloquea otro cobro y el conciliador lo resuelve.
             int intento = repository.listarDeTurno(turnoId).size() + 1;
+            String clave = claveParaPasarela(turnoId, intento, numero, tarjeta.vencimiento(), importe);
             intentoId = intentos.registrarPendiente(turnoId, pacienteId, importe,
-                    Tarjetas.marca(numero), numero.substring(numero.length() - 4));
+                    Tarjetas.marca(numero), numero.substring(numero.length() - 4), clave);
             try {
-                r = pasarela.cobrar(importe, referencia, numero, tarjeta.vencimiento(), tarjeta.cvv(), tarjeta.titular().trim(),
-                        claveParaPasarela(turnoId, intento, numero, tarjeta.vencimiento(), importe));
+                r = pasarela.cobrar(importe, referencia, numero, tarjeta.vencimiento(), tarjeta.cvv(), tarjeta.titular().trim(), clave);
             } catch (PasarelaPagosClient.DatosInvalidosException e) {
                 intentos.marcarFallido(intentoId, e.getMessage()); // seguro que no se cobro
                 throw e;

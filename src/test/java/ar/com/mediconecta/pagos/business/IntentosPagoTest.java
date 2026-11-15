@@ -67,12 +67,13 @@ class IntentosPagoTest {
     @Test
     void registraElIntentoComoPendienteAntesDeCobrar() {
         when(repository.guardar(any())).thenAnswer(i -> i.getArgument(0));
-        intentos.registrarPendiente(TURNO, 7L, new BigDecimal("6000"), "Visa", "1111");
+        intentos.registrarPendiente(TURNO, 7L, new BigDecimal("6000"), "Visa", "1111", "mc-turno-30-1-abc");
 
         ArgumentCaptor<Pago> p = ArgumentCaptor.forClass(Pago.class);
         verify(repository).guardar(p.capture());
         assertEquals(Pago.Estado.PENDIENTE, p.getValue().getEstado());
         assertEquals("1111", p.getValue().getUltimos4());
+        assertEquals("mc-turno-30-1-abc", p.getValue().getClaveExterna());
         assertNotNull(p.getValue().getCreadoEn());
     }
 
@@ -117,6 +118,54 @@ class IntentosPagoTest {
         pendiente.setCreadoEn(LocalDateTime.now().minusSeconds(IntentosPago.VENTANA_POR_DEFECTO + 5));
         assertEquals(Pago.Estado.FALLIDO, intentos.conciliar(1L));
         assertEquals("La pasarela no confirmó el cobro", pendiente.getMotivo());
+    }
+
+    @Test
+    void unIntentoRecienteSinResultadoSigueBloqueandoYNoSeAnula() {
+        pendiente.setClaveExterna("mc-turno-30-1-abc");
+        when(pasarela.aprobadoDe("turno-30")).thenReturn(Optional.empty());
+
+        assertEquals(Pago.Estado.PENDIENTE, intentos.conciliar(1L));
+        verify(pasarela, never()).anular(any(), any());
+    }
+
+    @Test
+    void pasadaLaVentanaSeAnulaEnLaPasarelaYRecienAhiQuedaFallido() {
+        // Caso 76/63: el pedido todavia no llego a la pasarela. Se anula su clave: si llega despues, no cobra.
+        pendiente.setClaveExterna("mc-turno-30-1-abc");
+        pendiente.setCreadoEn(LocalDateTime.now().minusSeconds(63));
+        when(pasarela.aprobadoDe("turno-30")).thenReturn(Optional.empty());
+        when(pasarela.anular("mc-turno-30-1-abc", "turno-30"))
+                .thenReturn(new PasarelaPagosClient.Resultado("anul_1", "ANULADO", "Intento anulado antes de procesarse", null, null, null));
+
+        assertEquals(Pago.Estado.FALLIDO, intentos.conciliar(1L));
+        assertEquals("Intento anulado en la pasarela: no se cobró", pendiente.getMotivo());
+        verifyNoInteractions(eventoPublisher);
+    }
+
+    @Test
+    void siAlAnularLaPasarelaDiceQueYaLoAproboSeRegistraEsaAprobacion() {
+        pendiente.setClaveExterna("mc-turno-30-1-abc");
+        pendiente.setCreadoEn(LocalDateTime.now().minusSeconds(63));
+        when(pasarela.aprobadoDe("turno-30")).thenReturn(Optional.empty());
+        when(pasarela.anular("mc-turno-30-1-abc", "turno-30")).thenReturn(APROBADO);
+
+        assertEquals(Pago.Estado.APROBADO, intentos.conciliar(1L));
+        assertEquals("pay_tarde", pendiente.getIdExterno());
+        verify(eventoPublisher).publicar(TipoEventoTurno.PAGO_ACREDITADO, turno, null);
+    }
+
+    @Test
+    void siLaPasarelaNoRespondeAlAnularSigueBloqueando() {
+        pendiente.setClaveExterna("mc-turno-30-1-abc");
+        pendiente.setCreadoEn(LocalDateTime.now().minusSeconds(63));
+        when(pasarela.aprobadoDe("turno-30")).thenReturn(Optional.empty());
+        when(pasarela.anular("mc-turno-30-1-abc", "turno-30"))
+                .thenThrow(new ar.com.mediconecta.pagos.integracion.PasarelaNoDisponibleException("no responde", null));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ar.com.mediconecta.pagos.integracion.PasarelaNoDisponibleException.class, () -> intentos.conciliar(1L));
+        assertEquals(Pago.Estado.PENDIENTE, pendiente.getEstado());
     }
 
     @Test

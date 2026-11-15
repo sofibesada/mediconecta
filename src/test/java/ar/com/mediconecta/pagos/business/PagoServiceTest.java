@@ -72,7 +72,7 @@ class PagoServiceTest {
         intento.setTurnoId(TURNO);
         intento.setImporte(IMPORTE);
         intento.setEstado(Pago.Estado.PENDIENTE);
-        lenient().when(intentos.registrarPendiente(eq(TURNO), eq(PACIENTE), eq(IMPORTE), any(), any())).thenReturn(99L);
+        lenient().when(intentos.registrarPendiente(eq(TURNO), eq(PACIENTE), eq(IMPORTE), any(), any(), any())).thenReturn(99L);
         lenient().when(repository.buscarPorId(99L)).thenReturn(intento);
     }
 
@@ -93,7 +93,7 @@ class PagoServiceTest {
         assertEquals("123456", p.getCodigoAutorizacion());
         assertEquals(IMPORTE, p.getImporte());
         verify(turnoService).buscarTurnoParaPagar(TURNO);
-        verify(intentos).registrarPendiente(TURNO, PACIENTE, IMPORTE, "Visa", "1111"); // antes de cobrar
+        verify(intentos).registrarPendiente(TURNO, PACIENTE, IMPORTE, "Visa", "1111", clave); // antes de cobrar, con su clave
         verify(repository).actualizar(p);
         verify(eventoPublisher).publicar(TipoEventoTurno.PAGO_ACREDITADO, turno, null);
     }
