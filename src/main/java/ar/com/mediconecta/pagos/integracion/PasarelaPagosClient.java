@@ -4,6 +4,7 @@ import ar.com.mediconecta.config.Config;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Client;
@@ -13,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -76,14 +78,56 @@ public class PasarelaPagosClient {
             if (r.getStatus() != 200 && r.getStatus() != 201) {
                 throw new PasarelaNoDisponibleException("La pasarela de pagos respondió " + r.getStatus(), null);
             }
-            JsonObject p = r.readEntity(JsonObject.class);
-            Resultado resultado = new Resultado(p.getString("id"), p.getString("estado"), p.getString("motivo", null),
-                    p.getString("marca", null), p.getString("ultimos4", null), p.getString("codigoAutorizacion", null));
+            Resultado resultado = resultado(r.readEntity(JsonObject.class));
             LOG.info("[REST externo] POST /pagos " + referencia + " -> " + resultado.estado());
             return resultado;
         } catch (ProcessingException e) {
             throw new PasarelaNoDisponibleException("La pasarela de pagos no responde. Probá de nuevo en unos minutos o pagá en el consultorio.", e);
         }
+    }
+
+    /**
+     * Pago APROBADO que la pasarela ya tenga para esta referencia (conciliacion). Si una
+     * respuesta anterior se perdio (timeout, caida del broker al guardar), el cobro existe en
+     * la pasarela aunque MediConecta no lo tenga: se usa ese en lugar de cobrar de nuevo.
+     */
+    public Optional<Resultado> aprobadoDe(String referencia) {
+        try (Response r = client.target(baseUrl()).path("pagos").queryParam("referencia", referencia)
+                .request(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + apiKey())
+                .get()) {
+            if (r.getStatus() != 200) {
+                throw new PasarelaNoDisponibleException("La pasarela de pagos respondió " + r.getStatus(), null);
+            }
+            return r.readEntity(JsonArray.class).getValuesAs(JsonObject.class).stream()
+                    .filter(p -> "APROBADO".equals(p.getString("estado", null)))
+                    .findFirst()
+                    .map(PasarelaPagosClient::resultado);
+        } catch (ProcessingException e) {
+            throw new PasarelaNoDisponibleException("La pasarela de pagos no responde. Probá de nuevo en unos minutos o pagá en el consultorio.", e);
+        }
+    }
+
+    /** Devuelve un pago aprobado. Es idempotente: devolver dos veces no devuelve el doble. */
+    public Resultado reembolsar(String idExterno) {
+        try (Response r = client.target(baseUrl()).path("pagos").path(idExterno).path("reembolso")
+                .request(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + apiKey())
+                .post(Entity.json("{}"))) {
+            if (r.getStatus() != 200) {
+                throw new PasarelaNoDisponibleException("La pasarela no pudo hacer la devolución (" + r.getStatus() + ")", null);
+            }
+            Resultado resultado = resultado(r.readEntity(JsonObject.class));
+            LOG.info("[REST externo] POST /pagos/" + idExterno + "/reembolso -> " + resultado.estado());
+            return resultado;
+        } catch (ProcessingException e) {
+            throw new PasarelaNoDisponibleException("La pasarela de pagos no responde", e);
+        }
+    }
+
+    private static Resultado resultado(JsonObject p) {
+        return new Resultado(p.getString("id"), p.getString("estado"), p.getString("motivo", null),
+                p.getString("marca", null), p.getString("ultimos4", null), p.getString("codigoAutorizacion", null));
     }
 
     private String baseUrl() {

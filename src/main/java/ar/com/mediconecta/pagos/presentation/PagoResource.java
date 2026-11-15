@@ -68,7 +68,7 @@ public class PagoResource {
         Long pacienteId = usuarioActual.id();
         PagoService.DatosTarjeta tarjeta = new PagoService.DatosTarjeta(req.numero(), req.vencimiento(), req.cvv(), req.titular());
         IdempotenciaService.Resultado r = idempotencia.ejecutar(clave, pacienteId, "POST /pagos turno " + req.turnoId(),
-                () -> PagoResponse.from(pagoService.pagar(pacienteId, req.turnoId(), tarjeta, clave)));
+                () -> PagoResponse.from(pagoService.pagar(pacienteId, req.turnoId(), tarjeta)));
         if (r.repetido()) {
             return Response.ok(r.json(), MediaType.APPLICATION_JSON).header("Idempotent-Replayed", "true").build();
         }

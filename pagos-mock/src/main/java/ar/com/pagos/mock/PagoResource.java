@@ -6,12 +6,19 @@ import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Comparator;
+import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,8 +28,15 @@ import java.util.logging.Logger;
 /**
  * Pasarela de pagos simulada (proveedor EXTERNO, REST).
  *
- *   POST /pagos       cobra con tarjeta (exige Authorization: Bearer <api key> e Idempotency-Key)
- *   GET  /pagos/{id}  consulta un pago
+ *   POST /pagos                  cobra con tarjeta (exige Authorization: Bearer <api key> e Idempotency-Key)
+ *   GET  /pagos/{id}             consulta un pago
+ *   GET  /pagos?referencia=X     pagos de una referencia (para conciliar si una respuesta se perdio)
+ *   POST /pagos/{id}/reembolso   devuelve un pago aprobado (idempotente)
+ *
+ * Idempotency-Key: el mismo pedido con la misma clave recibe la misma respuesta (no cobra dos
+ * veces); la misma clave con OTROS datos se rechaza con 422, como en las pasarelas reales.
+ * Los cobros se procesan de a uno (el simulador es un unico proceso): dos pedidos simultaneos
+ * con la misma clave no pueden cobrar dos veces.
  *
  * Tarjetas de prueba (numeros con digito verificador valido, como los reales):
  *   4000 0000 0000 0002  rechazada por el banco emisor
@@ -42,6 +56,9 @@ public class PagoResource {
     private static final Logger LOG = Logger.getLogger(PagoResource.class.getName());
     private static final Map<String, Pago> PAGOS = new ConcurrentHashMap<>();
     private static final Map<String, String> POR_CLAVE = new ConcurrentHashMap<>();
+    /** Huella de los datos del pedido de cada clave: detecta la misma clave con otros datos. */
+    private static final Map<String, String> HUELLA_POR_CLAVE = new ConcurrentHashMap<>();
+    private static final Object COBROS = new Object();
 
     public static class DatosTarjeta {
         public String numero;
@@ -68,6 +85,7 @@ public class PagoResource {
         public String moneda;
         public String referencia;
         public String creadoEn;
+        public String reembolsadoEn;
     }
 
     @POST
@@ -81,13 +99,23 @@ public class PagoResource {
         if (clave == null || clave.isBlank()) {
             return problema(400, "falta-idempotency-key", "Falta el encabezado Idempotency-Key");
         }
-        // Mismo pedido repetido (reintento): la misma respuesta, sin cobrar dos veces.
-        String previo = POR_CLAVE.get(clave);
-        if (previo != null) {
-            return Response.ok(PAGOS.get(previo)).header("Idempotent-Replayed", "true").build();
-        }
         if (pedido == null || pedido.tarjeta == null || pedido.monto == null || pedido.monto.signum() <= 0) {
             return problema(400, "pedido-invalido", "Faltan el monto o los datos de la tarjeta");
+        }
+        synchronized (COBROS) {
+            return cobrarUnaVez(clave, pedido);
+        }
+    }
+
+    private Response cobrarUnaVez(String clave, PedidoDePago pedido) {
+        String huella = huella(pedido);
+        String previo = POR_CLAVE.get(clave);
+        if (previo != null) {
+            if (!huella.equals(HUELLA_POR_CLAVE.get(clave))) {
+                return problema(422, "idempotency-key-reutilizada", "Esa Idempotency-Key ya se usó con otros datos");
+            }
+            // Mismo pedido repetido (reintento): la misma respuesta, sin cobrar dos veces.
+            return Response.ok(PAGOS.get(previo)).header("Idempotent-Replayed", "true").build();
         }
         DatosTarjeta t = pedido.tarjeta;
         String numero = Tarjeta.soloDigitos(t.numero);
@@ -125,6 +153,7 @@ public class PagoResource {
         }
         PAGOS.put(p.id, p);
         POR_CLAVE.put(clave, p.id);
+        HUELLA_POR_CLAVE.put(clave, huella);
         LOG.info("[Mock pagos] " + p.referencia + " " + p.marca + " ****" + p.ultimos4 + " $" + p.monto + " -> " + p.estado);
         return Response.status(201).entity(p).build();
     }
@@ -138,6 +167,57 @@ public class PagoResource {
         }
         Pago p = PAGOS.get(id);
         return p == null ? problema(404, "no-encontrado", "Pago inexistente") : Response.ok(p).build();
+    }
+
+    @GET
+    public Response buscarPorReferencia(@HeaderParam("Authorization") String auth, @QueryParam("referencia") String referencia) {
+        Response error = controlar(auth);
+        if (error != null) {
+            return error;
+        }
+        if (referencia == null || referencia.isBlank()) {
+            return problema(400, "falta-referencia", "Falta el parámetro referencia");
+        }
+        List<Pago> pagos = PAGOS.values().stream().filter(p -> referencia.equals(p.referencia))
+                .sorted(Comparator.comparing(p -> p.creadoEn)).toList();
+        return Response.ok(pagos).build();
+    }
+
+    @POST
+    @Path("/{id}/reembolso")
+    public Response reembolsar(@HeaderParam("Authorization") String auth, @PathParam("id") String id) {
+        Response error = controlar(auth);
+        if (error != null) {
+            return error;
+        }
+        synchronized (COBROS) {
+            Pago p = PAGOS.get(id);
+            if (p == null) {
+                return problema(404, "no-encontrado", "Pago inexistente");
+            }
+            if ("REEMBOLSADO".equals(p.estado)) {
+                return Response.ok(p).header("Idempotent-Replayed", "true").build();
+            }
+            if (!"APROBADO".equals(p.estado)) {
+                return problema(409, "no-reembolsable", "Solo se puede devolver un pago aprobado");
+            }
+            p.estado = "REEMBOLSADO";
+            p.reembolsadoEn = LocalDateTime.now().toString();
+            LOG.info("[Mock pagos] reembolso " + p.referencia + " ****" + p.ultimos4 + " $" + p.monto);
+            return Response.ok(p).build();
+        }
+    }
+
+    /** Huella de los datos que definen el cobro (sin guardar la tarjeta en claro). */
+    private static String huella(PedidoDePago pedido) {
+        String datos = pedido.monto.stripTrailingZeros().toPlainString() + "|" + pedido.referencia + "|"
+                + Tarjeta.soloDigitos(pedido.tarjeta.numero) + "|" + pedido.tarjeta.vencimiento;
+        try {
+            byte[] h = MessageDigest.getInstance("SHA-256").digest(datos.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(h);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static void rechazar(Pago p, String motivo) {

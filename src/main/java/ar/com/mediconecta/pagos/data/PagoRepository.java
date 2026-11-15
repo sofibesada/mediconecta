@@ -36,6 +36,21 @@ public class PagoRepository {
                 .getResultList();
     }
 
+    /** Pagos aprobados o devueltos de varios turnos (lo que se muestra en cada turno). */
+    public List<Pago> vigentesDe(Collection<Long> turnoIds) {
+        if (turnoIds.isEmpty()) {
+            return List.of();
+        }
+        return em.createQuery("SELECT p FROM Pago p WHERE p.turnoId IN :turnos AND p.estado IN :estados", Pago.class)
+                .setParameter("turnos", turnoIds)
+                .setParameter("estados", List.of(Pago.Estado.APROBADO, Pago.Estado.REEMBOLSADO))
+                .getResultList();
+    }
+
+    public Pago actualizar(Pago pago) {
+        return em.merge(pago);
+    }
+
     public List<Pago> listarRecientes(int maximo) {
         return em.createQuery("SELECT p FROM Pago p ORDER BY p.creadoEn DESC", Pago.class)
                 .setMaxResults(maximo)

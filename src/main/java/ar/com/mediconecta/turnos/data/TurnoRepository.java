@@ -23,6 +23,11 @@ public class TurnoRepository {
         return em.find(Turno.class, id);
     }
 
+    /** El turno con bloqueo de escritura (SELECT ... FOR UPDATE) hasta que termine la transaccion. */
+    public Turno buscarPorIdBloqueado(Long id) {
+        return em.find(Turno.class, id, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    }
+
     public List<Turno> listarDisponiblesPorProfesional(Long profesionalId) {
         return em.createQuery(
                         "SELECT t FROM Turno t WHERE t.profesionalId = :profesionalId AND t.fechaHora > :ahora"

@@ -20,7 +20,7 @@ describe("turnos", () => {
 
   it("particular: paga el valor entero de la consulta", () => {
     const r = resumenDePago(turno({ importeCopago: 20000, importeObraSocial: null }));
-    expect(r).toEqual({ valorConsulta: 20000, cubreObraSocial: 0, aPagar: 20000, pagado: false, puedePagar: true });
+    expect(r).toEqual({ valorConsulta: 20000, cubreObraSocial: 0, aPagar: 20000, pagado: false, reembolsado: false, puedePagar: true });
   });
 
   it("con obra social: paga solo el copago", () => {
@@ -35,5 +35,14 @@ describe("turnos", () => {
     expect(resumenDePago(turno({ importeCopago: 0 })).puedePagar).toBe(false);
     expect(resumenDePago(turno({ estado: "CANCELADO", importeCopago: 6000 })).puedePagar).toBe(false);
     expect(resumenDePago(turno({ estado: "DISPONIBLE" })).valorConsulta).toBeNull();
+  });
+
+  it("un pago devuelto (turno cancelado) no cuenta como pagado ni se puede volver a pagar", () => {
+    const r = resumenDePago(
+      turno({ estado: "CANCELADO", importeCopago: 6000, pago: { estado: "REEMBOLSADO", marca: "Visa", ultimos4: "1111", pagadoEn: "2030-01-01T10:00:00" } }),
+    );
+    expect(r.reembolsado).toBe(true);
+    expect(r.pagado).toBe(false);
+    expect(r.puedePagar).toBe(false);
   });
 });

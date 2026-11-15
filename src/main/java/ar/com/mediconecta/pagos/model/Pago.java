@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "pago")
 public class Pago {
 
-    public enum Estado { APROBADO, RECHAZADO }
+    public enum Estado { APROBADO, RECHAZADO, REEMBOLSADO }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,6 +51,11 @@ public class Pago {
     @Column(name = "creado_en", nullable = false)
     private LocalDateTime creadoEn;
 
+    /** Cuando se devolvio (al cancelar un turno pagado). */
+    private LocalDateTime reembolsadoEn;
+
+    public LocalDateTime getReembolsadoEn() { return reembolsadoEn; }
+    public void setReembolsadoEn(LocalDateTime reembolsadoEn) { this.reembolsadoEn = reembolsadoEn; }
     public Long getId() { return id; }
     public Long getTurnoId() { return turnoId; }
     public void setTurnoId(Long turnoId) { this.turnoId = turnoId; }

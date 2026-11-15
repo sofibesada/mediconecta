@@ -28,7 +28,9 @@ export function DetalleCita({ turno: t }: { turno: Turno }) {
       {r.cubreObraSocial > 0 && <Kv label="Cubre tu obra social">{fmtPesos(r.cubreObraSocial)}</Kv>}
       {r.aPagar != null && <Kv label={t.obraSocial ? "Copago a tu cargo" : "A tu cargo"}>{fmtPesos(r.aPagar)}</Kv>}
       <Kv label="Pago">
-        {pago
+        {pago && r.reembolsado
+          ? `Devuelto a la ${pago.marca} terminada en ${pago.ultimos4}${pago.reembolsadoEn ? " el " + fmtFecha(pago.reembolsadoEn) : ""} (turno cancelado)`
+          : pago
           ? `Pagado con ${pago.marca} terminada en ${pago.ultimos4} el ${fmtFecha(pago.pagadoEn)}`
           : t.estado === "CANCELADO"
             ? "Sin cargo (turno cancelado)"

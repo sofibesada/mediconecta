@@ -82,7 +82,12 @@ public class IdempotenciaService {
         nuevo.setOperacion(operacion);
         nuevo.setRespuestaJson(JSONB.toJson(cuerpo));
         nuevo.setCreadoEn(LocalDateTime.now());
-        repository.guardar(nuevo);
+        try {
+            repository.guardar(nuevo);
+        } catch (jakarta.persistence.PersistenceException e) {
+            // Dos pedidos simultaneos con la misma clave: el otro ya la registro. 409, no 500.
+            throw new PedidoEnCursoException();
+        }
     }
 
     private static String validar(String clave) {

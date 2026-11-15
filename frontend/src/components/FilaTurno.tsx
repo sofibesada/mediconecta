@@ -44,7 +44,9 @@ export function FilaTurno({ turno: t, vistaProfesional, onUnirse, onCancelar, on
           {t.obraSocial && ` · ${t.obraSocial} (${t.codigoAutorizacion ?? ""})`}
         </div>
         <Badge clase={t.estado}>{estadoLindo(t.estado)}</Badge>
-        {pago.pagado ? (
+        {pago.reembolsado ? (
+          <span className="pill">Pago devuelto</span>
+        ) : pago.pagado ? (
           <span className="pill pill-ok">{vistaProfesional ? "Pagado online" : "Pagado"}</span>
         ) : (
           pago.puedePagar && (

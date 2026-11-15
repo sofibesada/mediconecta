@@ -85,6 +85,13 @@ public class TurnoService implements ITurnoService {
 
     @Override
     @RolesAllowed(Roles.PACIENTE)
+    @TransactionAttribute(TransactionAttributeType.MANDATORY)
+    public Turno buscarTurnoParaPagar(Long turnoId) {
+        return turnoRepository.buscarPorIdBloqueado(turnoId);
+    }
+
+    @Override
+    @RolesAllowed(Roles.PACIENTE)
     public void liberarReservaTemporal(Long pacienteId, Long turnoId) {
         Turno turno = turnoRepository.buscarPorId(turnoId);
         // Solo libera su propia reserva temporal: si ya se confirmo, vencio o es de otro, no hace nada.

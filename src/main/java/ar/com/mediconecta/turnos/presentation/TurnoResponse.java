@@ -26,7 +26,9 @@ public class TurnoResponse {
     /** Pago aprobado con tarjeta (null si no se pago online). */
     public PagoTurno pago;
 
-    public record PagoTurno(String marca, String ultimos4, String codigoAutorizacion, LocalDateTime pagadoEn) {}
+    /** estado: APROBADO, o REEMBOLSADO si el turno se cancelo y se devolvio el pago. */
+    public record PagoTurno(String estado, String marca, String ultimos4, String codigoAutorizacion, LocalDateTime pagadoEn,
+                            LocalDateTime reembolsadoEn) {}
 
     public static TurnoResponse from(Turno t, String profesionalNombre, String pacienteNombre) {
         TurnoResponse r = new TurnoResponse();

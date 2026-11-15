@@ -125,4 +125,13 @@ class IdempotenciaServiceTest {
         service.registrar("", USUARIO, OPERACION, "x");
         verifyNoInteractions(repository);
     }
+
+    @Test
+    void dosPedidosSimultaneosConLaMismaClaveDan409NoUn500() {
+        when(repository.buscar(eq("clave-1"), eq(7L), any())).thenReturn(null);
+        org.mockito.Mockito.doThrow(new jakarta.persistence.PersistenceException("clave duplicada"))
+                .when(repository).guardar(any());
+
+        assertThrows(PedidoEnCursoException.class, () -> service.ejecutar("clave-1", 7L, "POST /pagos turno 1", () -> "ok"));
+    }
 }

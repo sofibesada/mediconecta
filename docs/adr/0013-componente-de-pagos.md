@@ -59,3 +59,21 @@ desplegada aparte, como las de videollamadas y obras sociales.
 - Hay un sistema externo más para levantar y configurar (`PAGOS_API_KEY`, `mediconecta.pagos.url`).
 - Pruebas: `TarjetasTest` y `PagoServiceTest` (unitarias), `int06`/`int07` contra la API y
   `E2E-12` en el navegador (rechazo y aprobación con otra tarjeta).
+
+## Revisión (15/11/2026): un turno se cobra una sola vez
+
+Una prueba de carga encontró cobros duplicados y un pago asignado a otro paciente. Se corrigió así:
+
+- **Bloqueo del turno** (`SELECT … FOR UPDATE`) mientras se cobra: los pedidos simultáneos van de a uno.
+- **Clave propia hacia la pasarela** (turno + intento + huella de la tarjeta). La del navegador ya
+  no se reenvía: la pasarela es compartida y una clave repetida de otro paciente devolvía un pago ajeno.
+  La pasarela rechaza una misma clave con otros datos (422).
+- **Conciliación**: antes de cobrar se consulta a la pasarela si ese turno ya tiene un pago
+  aprobado (respuesta perdida por timeout o rollback por el broker). Si lo tiene, se registra ese.
+- **Pedidos simultáneos con la misma Idempotency-Key**: 409 en lugar de 500.
+- **Política de devolución**: al cancelar un turno pagado se devuelve el total. Como un turno solo
+  se cancela con 24 h de anticipación (o lo cancela el profesional), no hay penalidad. Lo hace Pagos
+  al recibir `TURNO_CANCELADO` del tópico (`PagosTurnoMDB`), sin acoplar Turnos con Pagos.
+
+Pruebas: `PagoServiceTest`, `IdempotenciaServiceTest`, `int06b` (4 pagos simultáneos), `int06c`
+(misma clave, dos pacientes) e `int06d` (devolución al cancelar).

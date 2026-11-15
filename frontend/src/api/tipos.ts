@@ -45,7 +45,15 @@ export type Turno = {
   importeObraSocial?: number | null;
   profesionalEspecialidad?: string | null;
   /** Pago online aprobado (null si no se pagó online). */
-  pago?: { marca: string; ultimos4: string; codigoAutorizacion?: string | null; pagadoEn: string } | null;
+  /** estado REEMBOLSADO: el turno se canceló y se devolvió el pago. */
+  pago?: {
+    estado?: "APROBADO" | "REEMBOLSADO";
+    marca: string;
+    ultimos4: string;
+    codigoAutorizacion?: string | null;
+    pagadoEn: string;
+    reembolsadoEn?: string | null;
+  } | null;
 };
 
 /** Lo que recuerda el AsistenteAgendamiento (@Stateful) de la conversación con el paciente. */
@@ -63,7 +71,7 @@ export type Pago = {
   id: number;
   turnoId: number;
   pacienteNombre?: string | null;
-  estado: "APROBADO" | "RECHAZADO";
+  estado: "APROBADO" | "RECHAZADO" | "REEMBOLSADO";
   importe: number;
   marca: string | null;
   ultimos4: string | null;

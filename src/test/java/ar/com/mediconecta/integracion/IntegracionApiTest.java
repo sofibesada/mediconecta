@@ -250,6 +250,68 @@ class IntegracionApiTest {
     }
 
     @Test
+    void int06b_cuatroPagosSimultaneosDelMismoTurnoCobranUnaSolaVez() throws Exception {
+        long turno = turnoConfirmado();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(4);
+        try {
+            List<java.util.concurrent.Future<Integer>> codigos = new java.util.ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                String clave = "int06b-" + turno + "-" + i;
+                codigos.add(pool.submit(() -> con(tokenPaciente).header("Idempotency-Key", clave)
+                        .body(json(tarjeta(turno, "4111111111111111", "123"))).post("/pagos").statusCode()));
+            }
+            List<Integer> obtenidos = new java.util.ArrayList<>();
+            for (java.util.concurrent.Future<Integer> f : codigos) {
+                obtenidos.add(f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            assertEquals(1, obtenidos.stream().filter(c -> c == 201).count(), "códigos: " + obtenidos);
+            assertTrue(obtenidos.stream().allMatch(c -> c == 201 || c == 409), "códigos: " + obtenidos);
+        } finally {
+            pool.shutdown();
+        }
+        List<String> estados = con(tokenPaciente).get("/pagos/turno/" + turno).jsonPath().getList("estado");
+        assertEquals(1, estados.stream().filter("APROBADO"::equals).count(), "pagos: " + estados);
+    }
+
+    @Test
+    void int06c_laMismaClaveDeDosPacientesNoCruzaLosPagos() {
+        String clave = "int06c-" + System.nanoTime();
+        long turnoA = turnoConfirmado();
+        Response a = con(tokenPaciente).header("Idempotency-Key", clave).body(json(tarjeta(turnoA, "4111111111111111", "123"))).post("/pagos");
+        assertEquals(201, a.statusCode(), a.asString());
+
+        String tokenB = given().contentType(ContentType.JSON)
+                .body(json(Map.of("nombre", "Paciente B Pagos", "email", "int_pagob_" + System.nanoTime() + "@test.local", "password", "Prueba1234")))
+                .post("/usuarios").then().statusCode(200).extract().path("token");
+        long turnoB = publicar();
+        con(tokenB).post("/turnos/" + turnoB + "/reservar").then().statusCode(200);
+        con(tokenB).post("/turnos/" + turnoB + "/confirmar?particular=true").then().statusCode(200);
+        Response b = con(tokenB).header("Idempotency-Key", clave).body(json(tarjeta(turnoB, "5555555555554444", "123"))).post("/pagos");
+
+        assertEquals(201, b.statusCode(), b.asString());
+        assertEquals(turnoB, ((Number) b.path("turnoId")).longValue());
+        assertEquals("4444", b.path("ultimos4"), "B quedó con la tarjeta de A");
+        assertNotEquals((Object) a.path("codigoAutorizacion"), b.path("codigoAutorizacion"));
+    }
+
+    @Test
+    void int06d_alCancelarUnTurnoPagadoSeDevuelveElPago() throws InterruptedException {
+        long turno = turnoConfirmado();
+        con(tokenPaciente).header("Idempotency-Key", "int06d-" + turno).body(json(tarjeta(turno, "4111111111111111", "123")))
+                .post("/pagos").then().statusCode(201);
+        assertEquals(204, con(tokenPaciente).delete("/turnos/" + turno).statusCode());
+
+        // La devolucion la hace Pagos al recibir TURNO_CANCELADO por el topico (asincronica).
+        List<String> estados = List.of();
+        for (int i = 0; i < 30 && !estados.contains("REEMBOLSADO"); i++) {
+            Thread.sleep(500);
+            estados = con(tokenPaciente).get("/pagos/turno/" + turno).jsonPath().getList("estado");
+        }
+        assertEquals(List.of("REEMBOLSADO"), estados);
+        assertEquals("REEMBOLSADO", con(tokenPaciente).get("/turnos/" + turno).path("pago.estado"));
+    }
+
+    @Test
     void int07_unaTarjetaRechazadaDa402YUnaInvalida400() {
         long turno = turnoConfirmado();
         Response r = con(tokenPaciente).body(json(tarjeta(turno, "4000000000000002", "123"))).post("/pagos");

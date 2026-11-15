@@ -52,12 +52,13 @@ public class TurnoResource {
     private void completar(List<TurnoResponse> respuestas) {
         Set<Long> profesionales = respuestas.stream().map(r -> r.profesionalId).collect(Collectors.toSet());
         Map<Long, String> especialidades = usuarioService.especialidadesDe(profesionales);
-        Map<Long, Pago> pagos = pagoService.aprobadosDe(respuestas.stream().map(r -> r.id).toList());
+        Map<Long, Pago> pagos = pagoService.vigentesDe(respuestas.stream().map(r -> r.id).toList());
         for (TurnoResponse r : respuestas) {
             r.profesionalEspecialidad = especialidades.get(r.profesionalId);
             Pago p = pagos.get(r.id);
             if (p != null) {
-                r.pago = new TurnoResponse.PagoTurno(p.getMarca(), p.getUltimos4(), p.getCodigoAutorizacion(), p.getCreadoEn());
+                r.pago = new TurnoResponse.PagoTurno(p.getEstado().name(), p.getMarca(), p.getUltimos4(), p.getCodigoAutorizacion(),
+                        p.getCreadoEn(), p.getReembolsadoEn());
             }
         }
     }

@@ -7,5 +7,7 @@ public enum TipoEventoTurno {
     /** Lo publica RecordatorioTurnos (@Schedule), no un usuario. */
     TURNO_RECORDATORIO,
     /** Lo publica el componente de pagos cuando la pasarela aprueba el cobro. */
-    PAGO_ACREDITADO
+    PAGO_ACREDITADO,
+    /** Se devolvio el pago de un turno cancelado. */
+    PAGO_REEMBOLSADO
 }

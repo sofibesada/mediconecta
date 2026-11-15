@@ -27,5 +27,7 @@ public class IdempotenciaRepository {
 
     public void guardar(RegistroIdempotencia registro) {
         em.persist(registro);
+        // flush: si otro pedido con la misma clave se guardo primero, el choque aparece aca.
+        em.flush();
     }
 }

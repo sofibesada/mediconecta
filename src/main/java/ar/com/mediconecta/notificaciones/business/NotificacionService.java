@@ -57,6 +57,12 @@ public class NotificacionService implements INotificacionService {
                 crear(e, e.getProfesionalId(), "Turno pagado",
                         paciente + " pagó online el turno del " + fecha + ".");
             }
+            case PAGO_REEMBOLSADO -> {
+                crear(e, e.getPacienteId(), "Te devolvimos el pago",
+                        "Como se canceló tu turno con " + profesional + " del " + fecha + ", te devolvimos el pago a la misma tarjeta.");
+                crear(e, e.getProfesionalId(), "Pago devuelto",
+                        "Se le devolvió a " + paciente + " el pago del turno cancelado del " + fecha + ".");
+            }
             case TURNO_RECORDATORIO -> {
                 crear(e, e.getPacienteId(), "Recordatorio de turno",
                         "Te recordamos tu turno con " + profesional + " el " + fecha + "."
