@@ -38,4 +38,8 @@ public interface IUsuarioService {
     Usuario actualizarPerfil(Long usuarioId, DatosPerfil datos);
     /** Especialidad de cada profesional (para mostrar en los turnos). */
     Map<Long, String> especialidadesDe(Set<Long> ids);
+    /** El profesional define las obras sociales que atiende: null = todas, vacia = solo particular. */
+    Usuario actualizarCartilla(Long profesionalId, List<String> obrasSociales);
+    /** True si el profesional atiende esa obra social (lo exige la confirmacion del turno). */
+    boolean atiende(Long profesionalId, String obraSocial);
 }

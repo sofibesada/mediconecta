@@ -200,3 +200,27 @@ a.boton-link:hover { background: var(--slate-50); border-color: var(--slate-300)
     .row-inline { flex-direction: column; align-items: stretch; }
     .confirmation { padding: 24px 0; }
 }
+
+/* Opciones con casillas (cartilla del profesional, filtro de Agendar) */
+.opciones-check {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 16px;
+  margin: 8px 0 12px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.35;
+  color: inherit;
+  cursor: pointer;
+}
+.check input {
+  width: auto;
+  margin: 0;
+}

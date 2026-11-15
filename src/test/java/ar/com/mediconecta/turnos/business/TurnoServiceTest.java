@@ -1,5 +1,6 @@
 package ar.com.mediconecta.turnos.business;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -196,6 +197,30 @@ class TurnoServiceTest {
             lenient().when(turnoRepository.buscarPorId(TURNO)).thenReturn(reservado);
             lenient().when(usuarioService.existeUsuario(PACIENTE)).thenReturn(true);
             lenient().when(usuarioService.buscarParaSesion(PACIENTE)).thenReturn(paciente);
+            // Por defecto el profesional atiende la obra social del paciente (cartilla).
+            lenient().when(usuarioService.atiende(eq(PROFESIONAL), anyString())).thenReturn(true);
+        }
+
+        @Test
+        void siElProfesionalNoAtiendeLaObraSocialNiSeConsultaAlLegado() {
+            conObraSocial();
+            when(usuarioService.atiende(PROFESIONAL, "OSDE")).thenReturn(false);
+
+            AutorizacionRechazadaException e = assertThrows(AutorizacionRechazadaException.class, () -> service.confirmarTurno(TURNO));
+
+            assertTrue(e.getMessage().contains("no atiende tu obra social (OSDE)"), e.getMessage());
+            verifyNoInteractions(obraSocialService, facturacionService, eventoPublisher);
+        }
+
+        @Test
+        void siNoAtiendeLaObraSocialIgualSePuedeConfirmarComoParticular() {
+            conObraSocial();
+            lenient().when(usuarioService.atiende(PROFESIONAL, "OSDE")).thenReturn(false);
+
+            Turno t = service.confirmarTurno(TURNO, true);
+
+            assertEquals(EstadoTurno.CONFIRMADO, t.getEstado());
+            assertNull(t.getObraSocial());
         }
 
         @Test

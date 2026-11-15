@@ -178,6 +178,12 @@ public class TurnoService implements ITurnoService {
         BigDecimal valor = valorConsulta();
         boolean conObraSocial = !particular && paciente.tieneObraSocial();
         if (conObraSocial) {
+            // Cartilla: si el profesional no atiende esa obra social, ni se consulta al legado.
+            // Es un rechazo de negocio (rollback): el turno sigue reservado y se ofrece particular.
+            if (!usuarioService.atiende(turno.getProfesionalId(), paciente.getObraSocial())) {
+                throw new AutorizacionRechazadaException("Este profesional no atiende tu obra social ("
+                        + paciente.getObraSocial() + "). Podés confirmar el turno como particular.");
+            }
             // Paso 2
             ResultadoAutorizacion autorizacion = autorizar(turno, paciente);
             // Paso 3

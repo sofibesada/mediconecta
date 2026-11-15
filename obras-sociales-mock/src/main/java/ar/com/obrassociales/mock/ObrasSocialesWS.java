@@ -84,7 +84,11 @@ public class ObrasSocialesWS {
         if (referencia == null || referencia.isBlank()) {
             throw new IllegalArgumentException("La referencia es obligatoria");
         }
-        ResultadoAutorizacion r = Padron.AUTORIZACIONES.computeIfAbsent(referencia, ref -> {
+        // Idempotente por referencia Y datos: el mismo pedido repetido recibe la misma respuesta
+        // (no se autoriza dos veces), pero si el paciente cambio su cobertura y reintenta el mismo
+        // turno, es un pedido nuevo y se evalua de nuevo.
+        String clave = referencia + "|" + obraSocial + "|" + numeroAfiliado;
+        ResultadoAutorizacion r = Padron.AUTORIZACIONES.computeIfAbsent(clave, ref -> {
             ResultadoAutorizacion nueva = new ResultadoAutorizacion();
             ResultadoCobertura cobertura = consultarCobertura(obraSocial, numeroAfiliado);
             if (!cobertura.cubierto) {

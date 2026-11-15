@@ -71,6 +71,7 @@ public class AdminResource {
         datos.setEmail(req.email);
         datos.setPassword(req.passwordTemporal);
         datos.setEspecialidad(req.especialidad);
+        datos.setCartillaObrasSociales(ar.com.mediconecta.usuarios.business.Cartilla.guardar(req.obrasSociales));
         return UsuarioResponse.from(usuarioService.crearProfesional(usuarioActual.id(), datos));
     }
 

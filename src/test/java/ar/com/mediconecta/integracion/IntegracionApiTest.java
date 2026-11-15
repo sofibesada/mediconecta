@@ -2,6 +2,7 @@ package ar.com.mediconecta.integracion;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -13,6 +14,7 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -168,6 +170,54 @@ class IntegracionApiTest {
                 .body(normal).post();
         assertEquals(200, r.statusCode());
         assertTrue(r.asString().contains("OSDE"));
+    }
+
+    @Test
+    void int05c_siElPacienteCambiaDeCoberturaElMismoTurnoSeVuelveAAutorizar() {
+        String token = given().contentType(ContentType.JSON)
+                .body(json(Map.of("nombre", "Paciente Cobertura", "email", "int_cob_" + System.nanoTime() + "@test.local", "password", "Prueba1234")))
+                .post("/usuarios").then().statusCode(200).extract().path("token");
+        long turno = publicar();
+        con(token).post("/turnos/" + turno + "/reservar").then().statusCode(200);
+
+        // Swiss Medical 12345677 tiene el tope alcanzado: la autorizacion se rechaza y el turno sigue reservado.
+        con(token).body(json(Map.of("obraSocial", "SWISS", "numeroAfiliado", "12345677"))).put("/cobertura").then().statusCode(200);
+        assertEquals(409, con(token).post("/turnos/" + turno + "/confirmar").statusCode());
+
+        // Cambia a OSDE y reintenta el MISMO turno: es un pedido nuevo para el legado, no el rechazo anterior.
+        con(token).body(json(Map.of("obraSocial", "OSDE", "numeroAfiliado", "12345678"))).put("/cobertura").then().statusCode(200);
+        Response r = con(token).post("/turnos/" + turno + "/confirmar");
+        assertEquals(200, r.statusCode(), r.asString());
+        assertNotNull(r.path("codigoAutorizacion"));
+    }
+
+    @Test
+    void int05d_siElProfesionalNoAtiendeLaObraSocialSoloSePuedeConfirmarComoParticular() {
+        // El profesional de esta clase pasa a atender solo OSDE.
+        Response cartilla = con(tokenProfesional).body("{\"todas\":false,\"obrasSociales\":[\"osde\"]}").put("/perfil/cartilla");
+        assertEquals(200, cartilla.statusCode(), cartilla.asString());
+        assertEquals(List.of("OSDE"), cartilla.jsonPath().getList("cartillaObrasSociales"));
+        long idProf = ((Number) con(tokenProfesional).get("/perfil").path("id")).longValue();
+        assertEquals(List.of("OSDE"), con(tokenPaciente).get("/profesionales").jsonPath()
+                .getList("findAll { it.id == " + idProf + " }.obrasSociales").get(0));
+        try {
+            String token = given().contentType(ContentType.JSON)
+                    .body(json(Map.of("nombre", "Paciente Swiss", "email", "int_swiss_" + System.nanoTime() + "@test.local", "password", "Prueba1234")))
+                    .post("/usuarios").then().statusCode(200).extract().path("token");
+            con(token).body(json(Map.of("obraSocial", "SWISS", "numeroAfiliado", "22223333"))).put("/cobertura").then().statusCode(200);
+            long turno = publicar();
+            con(token).post("/turnos/" + turno + "/reservar").then().statusCode(200);
+
+            Response r = con(token).post("/turnos/" + turno + "/confirmar");
+            assertEquals(409, r.statusCode());
+            assertTrue(r.<String>path("detail").contains("no atiende tu obra social (SWISS)"), r.asString());
+
+            Response particular = con(token).post("/turnos/" + turno + "/confirmar?particular=true");
+            assertEquals(200, particular.statusCode(), particular.asString());
+            assertNull(particular.path("obraSocial"));
+        } finally {
+            con(tokenProfesional).body("{\"todas\":true}").put("/perfil/cartilla").then().statusCode(200);
+        }
     }
 
     // ------------------------------------------------------------------ helpers

@@ -73,6 +73,7 @@ public class UsuarioService implements IUsuarioService {
         prof.setEmail(datos.getEmail());
         prof.setRol(RolUsuario.PROFESIONAL);
         prof.setEspecialidad(Especialidades.validar(datos.getEspecialidad()));
+        prof.setCartillaObrasSociales(datos.getCartillaObrasSociales());
         prof.setDebeCambiarPassword(true);
         prof.setPassword(BCrypt.hashpw(datos.getPassword(), BCrypt.gensalt()));
         return usuarioRepository.guardar(prof);
@@ -291,6 +292,24 @@ public class UsuarioService implements IUsuarioService {
             u.setEspecialidad(Especialidades.validar(datos.especialidad()));
         }
         return usuarioRepository.actualizar(u);
+    }
+
+    @Override
+    @RolesAllowed(Roles.PROFESIONAL)
+    public Usuario actualizarCartilla(Long profesionalId, List<String> obrasSociales) {
+        Usuario u = usuarioRepository.buscarPorId(profesionalId);
+        if (u == null || !u.isActivo() || u.getRol() != RolUsuario.PROFESIONAL) {
+            throw new IllegalArgumentException("Profesional no encontrado");
+        }
+        u.setCartillaObrasSociales(Cartilla.guardar(obrasSociales));
+        return usuarioRepository.actualizar(u);
+    }
+
+    @Override
+    @PermitAll
+    public boolean atiende(Long profesionalId, String obraSocial) {
+        Usuario u = usuarioRepository.buscarPorId(profesionalId);
+        return u != null && Cartilla.atiende(u.getCartillaObrasSociales(), obraSocial);
     }
 
     @Override

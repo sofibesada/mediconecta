@@ -35,6 +35,9 @@ public class PerfilResource {
 
     public record ActualizarPerfilRequest(String nombre, String email, String especialidad, String passwordActual) {}
 
+    /** todas = true: atiende todas las obras sociales; si no, solo las de la lista (vacia = solo particular). */
+    public record CartillaRequest(boolean todas, java.util.List<String> obrasSociales) {}
+
     @GET
     public UsuarioResponse obtener() {
         Usuario usuario = usuarioService.buscarParaSesion(usuarioActual.id());
@@ -53,6 +56,18 @@ public class PerfilResource {
         }
         return UsuarioResponse.from(usuarioService.actualizarPerfil(usuarioActual.id(),
                 new DatosPerfil(req.nombre(), req.email(), req.especialidad(), req.passwordActual())));
+    }
+
+    /** El profesional define su cartilla: las obras sociales que atiende. */
+    @PUT
+    @Path("/cartilla")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public UsuarioResponse actualizarCartilla(CartillaRequest req) {
+        if (req == null) {
+            throw new IllegalArgumentException("Faltan los datos");
+        }
+        return UsuarioResponse.from(usuarioService.actualizarCartilla(usuarioActual.id(),
+                req.todas() ? null : (req.obrasSociales() == null ? java.util.List.of() : req.obrasSociales())));
     }
 
     /** "No recuerdo mi contrasena actual": le avisa al administrador. */

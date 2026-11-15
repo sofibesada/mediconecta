@@ -16,6 +16,8 @@ public class UsuarioResponse {
     public String especialidad;
     /** El usuario pidio recuperar la contrasena y el administrador todavia no le genero una temporal. */
     public boolean recuperacionSolicitada;
+    /** Solo profesionales: obras sociales que atiende. null = todas, vacia = solo particular. */
+    public java.util.List<String> cartillaObrasSociales;
     /** Solo viene al iniciar sesion (login, registro, cambio de contrasena). */
     public String token;
 
@@ -33,6 +35,7 @@ public class UsuarioResponse {
         response.copagoPorcentaje = usuario.getCopagoPorcentaje();
         response.especialidad = usuario.getEspecialidad();
         response.recuperacionSolicitada = usuario.getRecuperacionSolicitadaEn() != null;
+        response.cartillaObrasSociales = ar.com.mediconecta.usuarios.business.Cartilla.lista(usuario.getCartillaObrasSociales());
         return response;
     }
 }

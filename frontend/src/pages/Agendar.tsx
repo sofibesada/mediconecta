@@ -16,6 +16,7 @@ import { BotonAccion, Encabezado, Kv, Lista, Muted, Pantalla } from "../componen
 import { coberturaRechazada, reservaTerminada, turnoRetenido } from "../features/agenda/agendaSlice";
 import { cuentaRegresiva, fmtFecha, modalidadLinda, nuevaClave } from "../lib/formato";
 import { filtrarHorarios } from "../lib/turnos";
+import { atiende, resumenCartilla } from "../lib/cartilla";
 
 /**
  * Agendar un turno. La reserva en curso la recuerda el SERVIDOR: un AsistenteAgendamiento
@@ -28,6 +29,8 @@ export function Agendar() {
   const retenido = useAppSelector((s) => s.agenda.turnoRetenido);
 
   const profesionales = useProfesionalesQuery();
+  const usuario = useUsuario();
+  const nombreObraSocial = useNombreObraSocial();
   const [pedirEstado] = useLazyEstadoAsistenteQuery();
   const [elegir] = useElegirProfesionalMutation();
   const [reservarTurno] = useReservarMutation();
@@ -39,8 +42,13 @@ export function Agendar() {
   const [especialidad, setEspecialidad] = useState("");
   const [modalidad, setModalidad] = useState<"" | Modalidad>("");
   const [desde, setDesde] = useState("");
+  // Solo los profesionales que atienden la obra social del paciente (cartilla).
+  const [soloMiObraSocial, setSoloMiObraSocial] = useState(false);
   const especialidades = useEspecialidadesQuery();
-  const profesionalesFiltrados = (profesionales.data ?? []).filter((p) => !especialidad || p.especialidad === especialidad);
+  const profesionalesFiltrados = (profesionales.data ?? []).filter(
+    (p) => (!especialidad || p.especialidad === especialidad) && (!soloMiObraSocial || atiende(p.obrasSociales, usuario.obraSocial)),
+  );
+  const elegido = profesionales.data?.find((p) => p.id === profesionalId);
   // Agrupados por especialidad (la opción muestra solo el nombre).
   const grupos = [...new Set(profesionalesFiltrados.map((p) => p.especialidad))].sort();
   // Si el paciente cambia de profesional antes de que llegue la respuesta, se ignora la vieja.
@@ -139,6 +147,23 @@ export function Agendar() {
             <input id="agDesde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
           </div>
         </div>
+        {usuario.obraSocial && (
+          <label className="check" style={{ marginBottom: 12 }}>
+            <input
+              type="checkbox"
+              id="agSoloMiObraSocial"
+              checked={soloMiObraSocial}
+              onChange={(e) => {
+                setSoloMiObraSocial(e.target.checked);
+                if (e.target.checked && elegido && !atiende(elegido.obrasSociales, usuario.obraSocial)) {
+                  setProfesionalId("");
+                  void mostrarHorarios("");
+                }
+              }}
+            />
+            Mostrar solo quienes atienden {nombreObraSocial(usuario.obraSocial)}
+          </label>
+        )}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="agSelectProf">Profesional</label>
           <select
@@ -164,6 +189,17 @@ export function Agendar() {
             ))}
           </select>
         </div>
+        {elegido && (
+          <p className="inline-hint" id="agCartilla">
+            {!usuario.obraSocial ? (
+              <>Atiende: {resumenCartilla(elegido.obrasSociales, nombreObraSocial)}.</>
+            ) : atiende(elegido.obrasSociales, usuario.obraSocial) ? (
+              <span className="pill pill-ok">Atiende {nombreObraSocial(usuario.obraSocial)}</span>
+            ) : (
+              <span className="pill pill-pendiente">No atiende {nombreObraSocial(usuario.obraSocial)}: el turno sería particular</span>
+            )}
+          </p>
+        )}
         <div id="agDispLista" style={{ marginTop: 16 }}>
           {profesionales.error ? (
             <Muted>{mensajeDeError(profesionales.error)}</Muted>
@@ -183,6 +219,7 @@ export function Agendar() {
           <Reserva
             key={retenido.id}
             turno={retenido}
+            atiendeMiObraSocial={atiende(profesionales.data?.find((p) => p.id === retenido.profesionalId)?.obrasSociales, usuario.obraSocial)}
             onTerminada={() => {
               setAsistente(null);
               void mostrarHorarios(profesionalId);
@@ -245,7 +282,7 @@ function Horarios({
 }
 
 /** El turno retenido, con la cuenta regresiva hasta que vence la reserva. */
-function Reserva({ turno, onTerminada }: { turno: Turno; onTerminada: () => void }) {
+function Reserva({ turno, atiendeMiObraSocial, onTerminada }: { turno: Turno; atiendeMiObraSocial: boolean; onTerminada: () => void }) {
   const usuario = useUsuario();
   const dispatch = useAppDispatch();
   const toast = useToast();
@@ -308,7 +345,12 @@ function Reserva({ turno, onTerminada }: { turno: Turno; onTerminada: () => void
       <Kv label="Profesional">{turno.profesionalNombre || "—"}</Kv>
       <Kv label="Fecha">{fmtFecha(turno.fechaHora)}</Kv>
       <Kv label="Cobertura">{usuario.obraSocial ? `${nombreObraSocial(usuario.obraSocial)} · ${usuario.planObraSocial ?? ""}` : "Particular"}</Kv>
-      {usuario.obraSocial && <p className="inline-hint">Al confirmar pedimos la autorización a tu obra social.</p>}
+      {usuario.obraSocial && atiendeMiObraSocial && <p className="inline-hint">Al confirmar pedimos la autorización a tu obra social.</p>}
+      {usuario.obraSocial && !atiendeMiObraSocial && (
+        <p className="inline-hint" id="agFueraDeCartilla">
+          Este profesional no atiende tu obra social: el turno se confirma como particular.
+        </p>
+      )}
       <div className="hold-box">
         La reserva vence en <strong>{texto}</strong>. Si expira, el turno vuelve a estar disponible.
       </div>
@@ -330,9 +372,9 @@ function Reserva({ turno, onTerminada }: { turno: Turno; onTerminada: () => void
         className={(aviso ? "btn-secondary" : "btn-primary") + " btn-full"}
         style={{ marginTop: aviso ? 8 : 16 }}
         disabled={vencida}
-        onClick={() => confirmar(false)}
+        onClick={() => confirmar(!!usuario.obraSocial && !atiendeMiObraSocial)}
       >
-        {aviso ? "Reintentar con la obra social" : "Confirmar turno"}
+        {aviso ? "Reintentar con la obra social" : usuario.obraSocial && !atiendeMiObraSocial ? "Confirmar como particular" : "Confirmar turno"}
       </BotonAccion>
       <button type="button" className="btn-secondary btn-full" style={{ marginTop: 8 }} onClick={soltar}>
         Soltar este horario

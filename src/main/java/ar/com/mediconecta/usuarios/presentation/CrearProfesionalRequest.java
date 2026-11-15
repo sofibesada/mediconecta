@@ -5,4 +5,6 @@ public class CrearProfesionalRequest {
     public String email;
     public String passwordTemporal;
     public String especialidad;
+    /** Obras sociales que atiende; si no viene, todas. */
+    public java.util.List<String> obrasSociales;
 }

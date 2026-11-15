@@ -18,6 +18,8 @@ export type Usuario = {
   especialidad?: string | null;
   /** Pidió recuperar la contraseña y el administrador todavía no le generó una temporal. */
   recuperacionSolicitada?: boolean;
+  /** Profesional: obras sociales que atiende. null = todas, [] = solo particular. */
+  cartillaObrasSociales?: string[] | null;
 };
 
 export type EstadoTurno = "DISPONIBLE" | "RESERVADO_TEMPORAL" | "CONFIRMADO" | "CANCELADO" | "FINALIZADO";
@@ -55,7 +57,7 @@ export type EstadoAsistente = {
   turnoRetenido?: Turno | null;
 };
 
-export type Profesional = { id: number; nombre: string; especialidad: string };
+export type Profesional = { id: number; nombre: string; especialidad: string; obrasSociales?: string[] | null };
 
 export type Pago = {
   id: number;

@@ -9,6 +9,7 @@ import {
   useObrasSocialesQuery,
   useQuitarCoberturaMutation,
   useRecuperarDesdePerfilMutation,
+  useActualizarCartillaMutation,
 } from "../api/mediconectaApi";
 import type { ObraSocial, Usuario } from "../api/tipos";
 import { BotonAccion, Encabezado, Kv, Muted, Pantalla } from "../components/comunes";
@@ -23,6 +24,7 @@ export function Perfil() {
       <DatosCuenta usuario={usuario} />
       <CambioPassword usuario={usuario} />
       {usuario.rol === "PACIENTE" && <Cobertura usuario={usuario} />}
+      {usuario.rol === "PROFESIONAL" && <CartillaProfesional usuario={usuario} />}
     </Pantalla>
   );
 }
@@ -157,6 +159,73 @@ function CambioPassword({ usuario }: { usuario: Usuario }) {
           )}
         </div>
       )}
+    </form>
+  );
+}
+
+/**
+ * Obras sociales que atiende el profesional (su cartilla). Los pacientes de las que no atiende
+ * pueden sacar turno igual, pero como particulares.
+ */
+function CartillaProfesional({ usuario }: { usuario: Usuario }) {
+  const dispatch = useAppDispatch();
+  const toast = useToast();
+  const obras = useObrasSocialesQuery();
+  const [guardarCartilla] = useActualizarCartillaMutation();
+  const [ejecutar, ocupado] = useAccion();
+  const actual = usuario.cartillaObrasSociales;
+  const [todas, setTodas] = useState(actual == null);
+  const [elegidas, setElegidas] = useState<string[]>(actual ?? []);
+
+  function alternar(codigo: string) {
+    setElegidas((l) => (l.includes(codigo) ? l.filter((c) => c !== codigo) : [...l, codigo]));
+  }
+
+  function enviar(e: FormEvent) {
+    e.preventDefault();
+    void ejecutar(async () => {
+      const u = await guardarCartilla({ todas, obrasSociales: elegidas }).unwrap();
+      dispatch(usuarioActualizado(u));
+      toast("Cartilla actualizada", "ok");
+    });
+  }
+
+  return (
+    <form className="card card-narrow" id="cardCartilla" onSubmit={enviar} noValidate>
+      <h2 className="card-titulo">Obras sociales que atendés</h2>
+      <p className="inline-hint" style={{ marginTop: 0 }}>
+        Los pacientes de una obra social que no atendés pueden sacar turno igual, como particulares.
+      </p>
+      <div className="opciones-check" role="radiogroup" aria-label="Cartilla">
+        <label className="check">
+          <input type="radio" name="cartilla" id="cartTodas" checked={todas} onChange={() => setTodas(true)} />
+          Todas las obras sociales y prepagas
+        </label>
+        <label className="check">
+          <input type="radio" name="cartilla" id="cartAlgunas" checked={!todas} onChange={() => setTodas(false)} />
+          Solo las que marco
+        </label>
+      </div>
+      {!todas && (
+        <>
+          {obras.error ? (
+            <Muted sinPadding>{mensajeDeError(obras.error)}</Muted>
+          ) : (
+            <div className="opciones-check" id="cartLista">
+              {(obras.data ?? []).map((o) => (
+                <label className="check" key={o.codigo}>
+                  <input type="checkbox" id={"cart-" + o.codigo} checked={elegidas.includes(o.codigo)} onChange={() => alternar(o.codigo)} />
+                  {o.nombre}
+                </label>
+              ))}
+            </div>
+          )}
+          {elegidas.length === 0 && <p className="inline-hint">Sin ninguna marcada, atendés solo particulares.</p>}
+        </>
+      )}
+      <BotonAccion ocupado={ocupado} type="submit" id="btnCartilla">
+        Guardar cartilla
+      </BotonAccion>
     </form>
   );
 }

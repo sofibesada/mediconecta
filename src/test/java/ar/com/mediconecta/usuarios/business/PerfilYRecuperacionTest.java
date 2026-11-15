@@ -1,6 +1,7 @@
 package ar.com.mediconecta.usuarios.business;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -127,7 +128,36 @@ class PerfilYRecuperacionTest {
             datos.setPassword("temp1234");
             assertEquals(Especialidades.POR_DEFECTO, service.crearProfesional(1L, datos).getEspecialidad());
             datos.setEspecialidad("Dermatología");
-            assertEquals("Dermatología", service.crearProfesional(1L, datos).getEspecialidad());
+            datos.setCartillaObrasSociales("OSDE");
+            Usuario creado = service.crearProfesional(1L, datos);
+            assertEquals("Dermatología", creado.getEspecialidad());
+            assertEquals("OSDE", creado.getCartillaObrasSociales());
+        }
+
+        @Test
+        void elProfesionalDefineSuCartilla() {
+            assertNull(profesional.getCartillaObrasSociales(), "por defecto atiende todas");
+            assertTrue(service.atiende(6L, "PAMI"));
+
+            assertEquals("OSDE,SWISS", service.actualizarCartilla(6L, List.of("swiss", " OSDE ", "OSDE")).getCartillaObrasSociales());
+            assertTrue(service.atiende(6L, "OSDE"));
+            assertFalse(service.atiende(6L, "PAMI"));
+
+            assertEquals("", service.actualizarCartilla(6L, List.of()).getCartillaObrasSociales());
+            assertFalse(service.atiende(6L, "OSDE"), "cartilla vacia: solo particular");
+
+            assertNull(service.actualizarCartilla(6L, null).getCartillaObrasSociales(), "null vuelve a todas");
+        }
+
+        @Test
+        void soloUnProfesionalActivoTieneCartilla() {
+            assertThrows(IllegalArgumentException.class, () -> service.actualizarCartilla(5L, List.of("OSDE")));
+            assertThrows(IllegalArgumentException.class, () -> service.actualizarCartilla(99L, List.of("OSDE")));
+            profesional.setActivo(false);
+            assertThrows(IllegalArgumentException.class, () -> service.actualizarCartilla(6L, List.of("OSDE")));
+            profesional.setActivo(true);
+            assertThrows(IllegalArgumentException.class, () -> service.actualizarCartilla(6L, List.of("no vale!")));
+            assertFalse(service.atiende(99L, "OSDE"), "un profesional que no existe no atiende nada");
         }
 
         @Test

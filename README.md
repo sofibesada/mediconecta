@@ -89,6 +89,12 @@ planes. Los afiliados, los porcentajes de copago y los descuentos son de ejemplo
 real de cada entidad no es público, así que lo simula el sistema legado (se administra desde
 su panel, ver abajo).
 
+### Cartilla: qué obras sociales atiende cada profesional
+
+Cada profesional elige en **Mi Perfil** las obras sociales que atiende (por defecto, todas). En
+**Agendar turno** el paciente ve si el profesional atiende la suya y puede mostrar solo a los que
+sí; si no la atiende, el turno se confirma como particular. El servidor lo exige igual (409).
+
 ### Tarjetas de prueba de la pasarela de pagos
 
 La pasarela es simulada: no se cobra plata real. Valida la marca (por los primeros dígitos),

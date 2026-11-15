@@ -79,6 +79,12 @@ public class Usuario {
     public Integer getCopagoPorcentaje() { return copagoPorcentaje; }
     public void setCopagoPorcentaje(Integer copagoPorcentaje) { this.copagoPorcentaje = copagoPorcentaje; }
 
+    /** Obras sociales que atiende un profesional (ver Cartilla): null = todas, "" = ninguna. */
+    @Column(name = "cartilla_obras_sociales", length = 500)
+    private String cartillaObrasSociales;
+
+    public String getCartillaObrasSociales() { return cartillaObrasSociales; }
+    public void setCartillaObrasSociales(String cartillaObrasSociales) { this.cartillaObrasSociales = cartillaObrasSociales; }
     public String getEspecialidad() { return especialidad; }
     public void setEspecialidad(String especialidad) { this.especialidad = especialidad; }
     public java.time.LocalDateTime getRecuperacionSolicitadaEn() { return recuperacionSolicitadaEn; }

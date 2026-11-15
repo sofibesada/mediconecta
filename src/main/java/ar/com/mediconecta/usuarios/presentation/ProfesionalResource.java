@@ -1,5 +1,6 @@
 package ar.com.mediconecta.usuarios.presentation;
 
+import ar.com.mediconecta.usuarios.business.Cartilla;
 import ar.com.mediconecta.usuarios.business.Especialidades;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
 import jakarta.inject.Inject;
@@ -19,14 +20,16 @@ public class ProfesionalResource {
     @Inject
     private IUsuarioService usuarioService;
 
-    public record ProfesionalPublico(Long id, String nombre, String especialidad) {}
+    /** obrasSociales: las que atiende; null = todas, vacia = solo particular. */
+    public record ProfesionalPublico(Long id, String nombre, String especialidad, List<String> obrasSociales) {}
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public List<ProfesionalPublico> listar() {
         return usuarioService.listarProfesionales().stream()
                 .map(u -> new ProfesionalPublico(u.getId(), u.getNombre(),
-                        u.getEspecialidad() != null ? u.getEspecialidad() : Especialidades.POR_DEFECTO))
+                        u.getEspecialidad() != null ? u.getEspecialidad() : Especialidades.POR_DEFECTO,
+                        Cartilla.lista(u.getCartillaObrasSociales())))
                 .toList();
     }
 

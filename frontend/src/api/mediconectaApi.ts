@@ -158,6 +158,9 @@ export const mediconectaApi = createApi({
     actualizarPerfil: b.mutation<Usuario, { nombre: string; email: string; especialidad?: string; passwordActual?: string }>({
       query: (body) => ({ url: "/perfil", method: "PUT", body }),
     }),
+    actualizarCartilla: b.mutation<Usuario, { todas: boolean; obrasSociales: string[] }>({
+      query: (body) => ({ url: "/perfil/cartilla", method: "PUT", body }),
+    }),
     recuperarPassword: b.mutation<{ mensaje: string }, { email: string }>({
       query: (body) => ({ url: "/usuarios/recuperar-password", method: "POST", body }),
     }),
@@ -202,6 +205,7 @@ export const {
   useCancelarTurnoMutation,
   useLazySalaQuery,
   useProfesionalesQuery,
+  useActualizarCartillaMutation,
   useLazyEstadoAsistenteQuery,
   useElegirProfesionalMutation,
   useReservarMutation,

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useAccion, useToast } from "../app/hooks";
+import { useAccion, useNombreObraSocial, useToast } from "../app/hooks";
 import { mensajeDeError } from "../api/baseQuery";
 import {
   useCambiarEstadoUsuarioMutation,
@@ -11,6 +11,7 @@ import {
 import type { Usuario } from "../api/tipos";
 import { Actualizar, BotonAccion, ContenidoDeLista, Encabezado, Lista, Pantalla } from "../components/comunes";
 import { rolLindo } from "../lib/formato";
+import { resumenCartilla } from "../lib/cartilla";
 
 export function Administracion() {
   const usuarios = useUsuariosQuery();
@@ -100,6 +101,7 @@ function CrearProfesional() {
 }
 
 function FilaUsuario({ usuario: u }: { usuario: Usuario }) {
+  const nombreObraSocial = useNombreObraSocial(u.rol === "PROFESIONAL");
   const toast = useToast();
   const [cambiarEstado] = useCambiarEstadoUsuarioMutation();
   const [resetear] = useResetearPasswordMutation();
@@ -133,6 +135,7 @@ function FilaUsuario({ usuario: u }: { usuario: Usuario }) {
         <div className="fila-detalle">
           {u.email} · <span className="badge badge-rol">{rolLindo(u.rol)}</span>
           {u.especialidad && ` · ${u.especialidad}`}
+          {u.rol === "PROFESIONAL" && ` · Atiende: ${resumenCartilla(u.cartillaObrasSociales, nombreObraSocial)}`}
           {!u.activo && (
             <>
               {" · "}
