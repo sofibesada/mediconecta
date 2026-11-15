@@ -43,7 +43,21 @@ public class AdminResource {
         return Map.of(
                 "autorizaciones", auditoria.listarRecientes(),
                 "reclamos", facturacionService.listarRecientes(),
-                "pagos", pagoService.listarRecientes());
+                "pagos", pagosConPaciente());
+    }
+
+    /** Pago con el nombre del paciente, para la pantalla de Facturacion. */
+    public record PagoAdmin(Long id, Long turnoId, Long pacienteId, String pacienteNombre, String estado,
+                            java.math.BigDecimal importe, String marca, String ultimos4, String codigoAutorizacion,
+                            String motivo, java.time.LocalDateTime creadoEn) {}
+
+    private List<PagoAdmin> pagosConPaciente() {
+        List<ar.com.mediconecta.pagos.model.Pago> pagos = pagoService.listarRecientes();
+        Map<Long, String> nombres = usuarioService.nombresDe(
+                pagos.stream().map(ar.com.mediconecta.pagos.model.Pago::getPacienteId).collect(java.util.stream.Collectors.toSet()));
+        return pagos.stream().map(p -> new PagoAdmin(p.getId(), p.getTurnoId(), p.getPacienteId(),
+                nombres.get(p.getPacienteId()), p.getEstado().name(), p.getImporte(), p.getMarca(), p.getUltimos4(),
+                p.getCodigoAutorizacion(), p.getMotivo(), p.getCreadoEn())).toList();
     }
 
     @Inject

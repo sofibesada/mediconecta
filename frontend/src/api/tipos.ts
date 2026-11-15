@@ -62,6 +62,7 @@ export type Profesional = { id: number; nombre: string; especialidad: string; ob
 export type Pago = {
   id: number;
   turnoId: number;
+  pacienteNombre?: string | null;
   estado: "APROBADO" | "RECHAZADO";
   importe: number;
   marca: string | null;

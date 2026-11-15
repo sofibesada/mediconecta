@@ -5,8 +5,8 @@ import { APIRequestContext, Page, expect } from "@playwright/test";
  * arranque desde el estado que necesita. Lo que se prueba despues se hace por la UI.
  */
 export const API = process.env.API_URL ?? "http://localhost:8080/mediconecta/api";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@mediconecta.com";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin1234";
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@mediconecta.com";
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin1234";
 
 export type Sesion = { id: number; nombre: string; email: string; password: string; token: string };
 

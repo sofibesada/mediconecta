@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useAccion, useRevisarNotificacionesPronto, useToast } from "../app/hooks";
+import { useAccion, useRevisarNotificacionesPronto, useToast, useUsuario } from "../app/hooks";
 import { usePagarMutation } from "../api/mediconectaApi";
 import type { Turno } from "../api/tipos";
 import { fmtPesos, nuevaClave } from "../lib/formato";
@@ -13,6 +13,7 @@ import { BotonAccion } from "./comunes";
  */
 export function PagoTarjeta({ turno, importe, onPagado, onCancelar }: { turno: Turno; importe: number; onPagado: () => void; onCancelar: () => void }) {
   const toast = useToast();
+  const usuario = useUsuario();
   const revisarPronto = useRevisarNotificacionesPronto();
   const [numero, setNumero] = useState("");
   const [vencimiento, setVencimiento] = useState("");
@@ -26,6 +27,17 @@ export function PagoTarjeta({ turno, importe, onPagado, onCancelar }: { turno: T
   const [ejecutar, ocupado] = useAccion();
   const m = marca(numero);
   const id = (campo: string) => `pago-${campo}-${turno.id}`;
+
+  // Para probar sin tipear: una Visa de prueba que la pasarela simulada aprueba, con un
+  // vencimiento siempre futuro. Un número inventado se sigue rechazando, como en un banco real.
+  function usarTarjetaDePrueba() {
+    const anio = String((new Date().getFullYear() + 3) % 100).padStart(2, "0");
+    setNumero(formatear("4111111111111111"));
+    setVencimiento("12/" + anio);
+    setCvv("123");
+    setTitular((usuario.nombre || "Paciente de prueba").toUpperCase());
+    setError(null);
+  }
 
   function enviar(e: FormEvent) {
     e.preventDefault();
@@ -53,6 +65,9 @@ export function PagoTarjeta({ turno, importe, onPagado, onCancelar }: { turno: T
       <div className="card-titulo" style={{ marginBottom: 10 }}>
         Pagar {fmtPesos(importe)} con tarjeta
       </div>
+      <button type="button" className="btn-secondary btn-sm" id={id("prueba")} style={{ marginBottom: 12 }} onClick={usarTarjetaDePrueba}>
+        Usar una tarjeta de prueba
+      </button>
       <div className="form-group">
         <label htmlFor={id("numero")}>Número de tarjeta</label>
         <div className="tarjeta-numero">

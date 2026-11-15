@@ -45,9 +45,14 @@ export function FilaTurno({ turno: t, vistaProfesional, onUnirse, onCancelar, on
         </div>
         <Badge clase={t.estado}>{estadoLindo(t.estado)}</Badge>
         {pago.pagado ? (
-          <span className="pill pill-ok">Pagado</span>
+          <span className="pill pill-ok">{vistaProfesional ? "Pagado online" : "Pagado"}</span>
         ) : (
-          pago.puedePagar && <span className="pill pill-pendiente">A pagar {fmtPesos(pago.aPagar)}</span>
+          pago.puedePagar && (
+            <span className="pill pill-pendiente">
+              {vistaProfesional ? "Cobrar en el consultorio " : "A pagar "}
+              {fmtPesos(pago.aPagar)}
+            </span>
+          )
         )}
         {children}
       </div>

@@ -15,10 +15,23 @@ Característica: Pagar el turno online
   @E2E-12
   Escenario: Pago con una tarjeta aprobada
     Dado que estoy pagando un turno confirmado
-    Cuando ingreso una tarjeta válida, por ejemplo una Mastercard
+    Cuando ingreso una tarjeta válida o uso "Usar una tarjeta de prueba"
     Entonces la marca se reconoce mientras escribo
-    Y veo "Pago aprobado con Mastercard terminada en 4444"
+    Y veo "Pago aprobado con Visa terminada en 1111"
     Y el turno queda "Pagado" y recibo el aviso "Pago acreditado"
+
+  @E2E-16
+  Escenario: El profesional sabe qué cobrar en el consultorio
+    Dado que tengo un turno pagado online y otro sin pagar
+    Cuando el profesional abre "Mi Agenda"
+    Entonces el pagado dice "Pagado online"
+    Y el otro dice "Cobrar en el consultorio" con el importe
+
+  @E2E-17
+  Escenario: El administrador ve quién pagó
+    Dado que un paciente pagó su turno con tarjeta
+    Cuando el administrador abre "Facturación"
+    Entonces ve el pago con el nombre del paciente, la marca y los últimos 4 dígitos
 
   @E2E-12
   Escenario: El banco rechaza la tarjeta

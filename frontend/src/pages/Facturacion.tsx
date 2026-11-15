@@ -42,7 +42,8 @@ export function Facturacion() {
                 <div className="fila" key={p.id}>
                   <div className="fila-info">
                     <div className="fila-titulo">
-                      Turno #{p.turnoId} · {fmtPesos(p.importe)}
+                      Turno #{p.turnoId}
+                      {p.pacienteNombre && " · " + p.pacienteNombre} · {fmtPesos(p.importe)}
                     </div>
                     <div className="fila-detalle">
                       {p.marca ?? "Tarjeta"} terminada en {p.ultimos4 ?? "—"}
