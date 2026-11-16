@@ -59,8 +59,12 @@ class ExceptionMappersTest {
 
     @Test
     void otraFallaEs500SinMensajeInterno() {
-        assertRespuesta(500, "Error interno", ejb.toResponse(new EJBException(new RuntimeException())));
-        assertRespuesta(500, "solo", ejb.toResponse(new EJBException("solo")));
+        assertRespuesta(500, ApiError.ERROR_INESPERADO, ejb.toResponse(new EJBException(new RuntimeException())));
+        assertRespuesta(500, ApiError.ERROR_INESPERADO, ejb.toResponse(new EJBException("solo")));
+        // Un error de base de datos no muestra el SQL ni los datos.
+        Response r = ejb.toResponse(new EJBException(new jakarta.persistence.PersistenceException(
+                "could not execute statement [ERROR: new row for relation \"pago\" violates check constraint] [insert into pago ...]")));
+        assertRespuesta(500, ApiError.ERROR_INESPERADO, r);
     }
 
     @Test
@@ -96,8 +100,8 @@ class ExceptionMappersTest {
     void elGenericoRespetaLasRespuestasDeJaxRs() {
         GenericExceptionMapper g = new GenericExceptionMapper();
         assertEquals(404, g.toResponse(new NotFoundException()).getStatus());
-        assertRespuesta(500, "boom", g.toResponse(new RuntimeException("boom")));
-        assertRespuesta(500, "Error interno", g.toResponse(new RuntimeException()));
+        assertRespuesta(500, ApiError.ERROR_INESPERADO, g.toResponse(new RuntimeException("select * from usuarios")));
+        assertRespuesta(500, ApiError.ERROR_INESPERADO, g.toResponse(new RuntimeException()));
     }
 
     @Test

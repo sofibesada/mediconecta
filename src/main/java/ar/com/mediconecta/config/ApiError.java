@@ -18,6 +18,9 @@ import jakarta.ws.rs.core.Response;
  */
 public class ApiError {
 
+    /** Lo unico que ve el cliente ante un error inesperado (500): sin SQL, clases ni datos. */
+    public static final String ERROR_INESPERADO = "Ocurrió un error inesperado. Probá de nuevo en unos minutos.";
+
     public static final String PROBLEM_JSON = "application/problem+json";
     public static final MediaType PROBLEM_JSON_TYPE = MediaType.valueOf(PROBLEM_JSON);
 

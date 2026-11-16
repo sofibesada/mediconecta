@@ -1,5 +1,7 @@
 package ar.com.mediconecta.config;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import ar.com.mediconecta.obrassociales.integracion.ObrasSocialesNoDisponibleException;
 import jakarta.ejb.EJBAccessException;
 import jakarta.ejb.EJBException;
@@ -9,6 +11,8 @@ import jakarta.ws.rs.ext.Provider;
 
 @Provider
 public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
+
+    private static final Logger LOG = Logger.getLogger(EJBExceptionMapper.class.getName());
 
     @Override
     public Response toResponse(EJBException ex) {
@@ -42,7 +46,12 @@ public class EJBExceptionMapper implements ExceptionMapper<EJBException> {
             estado = Response.Status.INTERNAL_SERVER_ERROR;
         }
 
-        String mensaje = causa.getMessage() != null ? causa.getMessage() : "Error interno";
+        if (estado == Response.Status.INTERNAL_SERVER_ERROR) {
+            // Error inesperado: el detalle (SQL, clases, datos) va SOLO al log del servidor.
+            LOG.log(Level.SEVERE, "[API] error inesperado", causa);
+            return ApiError.respuesta(estado, ApiError.ERROR_INESPERADO);
+        }
+        String mensaje = causa.getMessage() != null ? causa.getMessage() : ApiError.ERROR_INESPERADO;
         return ApiError.respuesta(estado, mensaje);
     }
 
