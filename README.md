@@ -9,25 +9,33 @@ Grupo 4 · Desarrollo de Aplicaciones II · UADE · 2.º cuatrimestre 2026.
 Requisito: **Docker** con Docker Compose (Docker Desktop en Windows/Mac). Nada más:
 Java, Maven, WildFly, PostgreSQL y el broker corren dentro de los contenedores.
 
-La primera vez, crear el archivo `.env` con las contraseñas de las cuentas de servicio del
-broker (SEC-07) y la clave que cifra los datos clínicos (SEC-10). No tienen valor por
-defecto y el `.env` no se sube al repositorio:
-
 ```bash
-cp .env.example .env
-# completar ARTEMIS_PUB_PASSWORD y ARTEMIS_CON_PASSWORD con dos valores largos y distintos,
-# y MEDICONECTA_CLAVE_DATOS con:  openssl rand -base64 32
+scripts/iniciar.sh
 ```
 
-Guarden bien `MEDICONECTA_CLAVE_DATOS`: si se pierde, los diagnósticos y recetas guardados
-no se pueden volver a leer.
+En Windows, desde Git Bash con ese mismo comando, o desde PowerShell:
 
-```bash
-docker compose up --build
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\iniciar.ps1
 ```
 
-La primera vez compila y descarga las imágenes (unos 5 minutos según la conexión).
-El sistema está listo cuando `docker compose ps` muestra el servicio `app` como `healthy`.
+El script:
+
+1. crea el `.env` a partir de `.env.example` si no existe (el `.env` no se sube al repositorio);
+2. completa con valores al azar las claves obligatorias que estén vacías: las contraseñas de las
+   cuentas de servicio del broker (SEC-07) y las claves que cifran los datos clínicos y los
+   respaldos (SEC-10). Nunca cambia un valor que ya existe y no los muestra por pantalla;
+3. corre `docker compose up --build` y espera a que todos los servicios estén listos.
+
+Se puede correr todas las veces que haga falta. La primera vez compila y descarga las imágenes
+(unos 5 minutos según la conexión).
+
+Guarden una copia de `MEDICONECTA_CLAVE_DATOS` y `MEDICONECTA_CLAVE_RESPALDOS` fuera de la
+máquina: si se pierden, los diagnósticos y recetas guardados no se pueden volver a leer y los
+respaldos no se restauran.
+
+Sin el script: copiar `.env.example` como `.env`, completar esas cuatro claves
+(`openssl rand -base64 32` para las dos de cifrado) y correr `docker compose up --build`.
 
 | Qué | Dónde |
 |---|---|
