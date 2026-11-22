@@ -19,6 +19,7 @@ con una etiqueta (`@must`, `@should`, `@could`).
 | HU-12 | Pagar el turno online con tarjeta | Should |
 | HU-13 | Editar mi perfil y recuperar la contraseña | Should |
 | HU-14 | Cartilla de obras sociales de cada profesional | Should |
+| HU-15 | Orientador de especialidad con IA | Could |
 | — | Aplicación móvil nativa | Won't (fuera del alcance de esta versión) |
 
 Los escenarios con etiqueta `@E2E-NN` están automatizados en `e2e/tests`: cada prueba

@@ -206,6 +206,11 @@ el `pom.xml`.
 | `mediconecta.jwt.secret` | Clave HMAC con la que se firman los tokens de sesión | aleatoria en cada deploy |
 | `mediconecta.cors.origenes` | Orígenes del frontend que pueden mandar cookies | `http://localhost:5173,http://127.0.0.1:5173` |
 | `mediconecta.recordatorio.horas` | Con cuántas horas de anticipación se avisa un turno | `24` |
+| `mediconecta.ia.proveedor` | Proveedor del orientador de IA: `simulado` o `claude` (también `MEDICONECTA_IA_PROVEEDOR`) | `simulado` |
+| `mediconecta.ia.apiKey` | API key de Anthropic, solo para `claude` (también `ANTHROPIC_API_KEY`) | sin valor: se usa el simulado |
+| `mediconecta.ia.modelo` | Modelo de Claude (también `MEDICONECTA_IA_MODELO`) | `claude-opus-5-5` |
+| `mediconecta.ia.consultasPorMinuto` | Consultas al orientador por paciente y por minuto (también `MEDICONECTA_IA_CONSULTAS_POR_MINUTO`) | `5` |
+| `mediconecta.ia.simularFalla` | Demo de fallas del proveedor simulado: `lento` (8 s) o `caido` | sin valor |
 | `mediconecta.videollamadas.url` | URL base del proveedor de videollamadas | `http://localhost:8080/videollamadas-mock/api/v1` |
 | `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |
 | `videollamadas.mock.apiKey` | API key que exige el mock (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |

@@ -176,10 +176,38 @@ docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command=
 # La pasarela de pagos responde 503 (el paciente ve que el servicio de pagos no está disponible)
 docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command="/system-property=pagos.mock.fallar:add(value=true)"
 
+# El orientador de IA tarda 8 s (el gateway corta a los 5 s y responde el respaldo)
+docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command="/system-property=mediconecta.ia.simularFalla:add(value=lento)"
+# ...o directamente no responde (value=caido)
+
 # Apagar y volver a prender el broker
 docker compose stop broker
 docker compose start broker
 ```
+
+## Orientador de especialidad (IA)
+
+En «Agendar turno», el paciente cuenta qué le pasa y la app le sugiere una especialidad
+(`POST /ia/orientacion`). Todo pasa por un gateway que:
+
+- detecta urgencias e indica la guardia sin consultar a la IA;
+- no manda los intentos de cambiar las instrucciones;
+- oculta correos, DNI y teléfonos;
+- valida la respuesta;
+- corta a los 5 s;
+- permite 5 consultas por minuto por paciente (después responde 429).
+
+Ver [ADR 0015](docs/adr/0015-gateway-de-ia.md).
+
+Por defecto usa un **proveedor simulado**: funciona sin internet y sin costo. Para usar
+**Claude** (Anthropic), en el `.env`:
+
+```bash
+MEDICONECTA_IA_PROVEEDOR=claude
+ANTHROPIC_API_KEY=...        # de console.anthropic.com; es personal y se cobra por uso
+```
+
+y `docker compose up -d app`. Si falta la clave, usa el simulado y lo avisa en el log.
 
 ## Más documentación
 

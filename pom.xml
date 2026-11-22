@@ -33,6 +33,13 @@
             <version>0.4</version>
         </dependency>
 
+        <!-- SDK oficial de Claude (Anthropic): lo usa solo el gateway de IA (ia/gateway). -->
+        <dependency>
+            <groupId>com.anthropic</groupId>
+            <artifactId>anthropic-java</artifactId>
+            <version>3.3.0</version>
+        </dependency>
+
         <!-- Pruebas de seguridad (Clase 11): corren contra el WildFly local solo si se
              pasa -Dapi.base=...; en un build normal se saltean. Ver src/test/README-seguridad.md -->
         <dependency>

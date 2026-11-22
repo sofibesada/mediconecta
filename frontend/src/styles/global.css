@@ -224,3 +224,10 @@ a.boton-link:hover { background: var(--slate-50); border-color: var(--slate-300)
   width: auto;
   margin: 0;
 }
+
+/* Orientador de especialidad (IA) */
+.ia-resultado { margin-top: 14px; padding: 12px 14px; border-radius: 8px; background: var(--slate-50); border: 1px solid var(--slate-200); }
+.ia-resultado p { margin: 0 0 8px; }
+.ia-urgencia { background: var(--red-50); border-color: var(--red-200); }
+.ia-urgencia strong { color: var(--red-600); }
+.ia-error { margin-top: 12px; color: var(--red-600); font-size: 13px; }

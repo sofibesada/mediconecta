@@ -15,6 +15,7 @@ import type {
   Sala,
   Turno,
   Usuario,
+  Orientacion,
 } from "./tipos";
 
 const ASISTENTE = "/asistente-agendamiento";
@@ -78,6 +79,10 @@ export const mediconectaApi = createApi({
     }),
     profesionales: b.query<Profesional[], void>({
       query: () => "/profesionales",
+    }),
+    // Orientador de especialidad (IA detrás del gateway del servidor).
+    orientar: b.mutation<Orientacion, { sintomas: string }>({
+      query: (body) => ({ url: "/ia/orientacion", method: "POST", body }),
     }),
 
     // ---------- asistente de agendamiento (@Stateful, atado a la cookie de sesión) ----------
@@ -227,6 +232,7 @@ export const {
   useResetearPasswordMutation,
   useFacturacionQuery,
   useEspecialidadesQuery,
+  useOrientarMutation,
   useActualizarPerfilMutation,
   useRecuperarPasswordMutation,
   useRecuperarDesdePerfilMutation,

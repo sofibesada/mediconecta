@@ -67,6 +67,15 @@ export type EstadoAsistente = {
 
 export type Profesional = { id: number; nombre: string; especialidad: string; obrasSociales?: string[] | null };
 
+/** Respuesta del Orientador de especialidad (POST /ia/orientacion). */
+export type Orientacion = {
+  especialidad: string | null;
+  motivo: string;
+  tipo: "SUGERENCIA" | "URGENCIA" | "FUERA_DE_TEMA";
+  fuente: "IA" | "RESPALDO" | "REGLA";
+  aviso: string;
+};
+
 export type Pago = {
   id: number;
   turnoId: number;

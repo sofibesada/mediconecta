@@ -17,6 +17,7 @@ import { coberturaRechazada, reservaTerminada, turnoRetenido } from "../features
 import { cuentaRegresiva, fmtFecha, modalidadLinda, nuevaClave } from "../lib/formato";
 import { filtrarHorarios } from "../lib/turnos";
 import { atiende, resumenCartilla } from "../lib/cartilla";
+import { OrientadorEspecialidad } from "../components/OrientadorEspecialidad";
 
 /**
  * Agendar un turno. La reserva en curso la recuerda el SERVIDOR: un AsistenteAgendamiento
@@ -104,9 +105,20 @@ export function Agendar() {
     }
   }
 
+  /** Filtra por especialidad; si el profesional elegido es de otra, se deselecciona. */
+  function elegirEspecialidad(esp: string) {
+    setEspecialidad(esp);
+    const actual = profesionales.data?.find((p) => p.id === profesionalId);
+    if (esp && actual && actual.especialidad !== esp) {
+      setProfesionalId("");
+      void mostrarHorarios("");
+    }
+  }
+
   return (
     <Pantalla id="agendar">
       <Encabezado titulo="Agendar turno" subtitulo="Buscá por especialidad, fecha o modalidad y reservá un horario disponible" />
+      <OrientadorEspecialidad onUsar={elegirEspecialidad} />
       <div className="card">
         <h2 className="card-titulo">1 · Buscá un turno</h2>
         <div className="row-inline" style={{ marginBottom: 16 }} id="agFiltros">
@@ -115,16 +127,7 @@ export function Agendar() {
             <select
               id="agEspecialidad"
               value={especialidad}
-              onChange={(e) => {
-                const esp = e.target.value;
-                setEspecialidad(esp);
-                // Si el profesional elegido no es de esa especialidad, se deselecciona.
-                const elegido = profesionales.data?.find((p) => p.id === profesionalId);
-                if (esp && elegido && elegido.especialidad !== esp) {
-                  setProfesionalId("");
-                  void mostrarHorarios("");
-                }
-              }}
+              onChange={(e) => elegirEspecialidad(e.target.value)}
             >
               <option value="">Todas</option>
               {especialidades.data?.map((esp) => (

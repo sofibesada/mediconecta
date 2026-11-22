@@ -5,6 +5,16 @@
          version="6.0">
 
     <!--
+        La API serializa con JSON-B. El SDK de Claude trae Jackson en WEB-INF/lib y, al verlo,
+        WildFly pasaria a usar Jackson para TODAS las respuestas (fechas como arreglos, nulls
+        visibles): se rompian el ETag, la idempotencia y el frontend. Esto lo deja fijo.
+    -->
+    <context-param>
+        <param-name>resteasy.preferJacksonOverJsonB</param-name>
+        <param-value>false</param-value>
+    </context-param>
+
+    <!--
         Seguridad declarativa. Quien es el usuario lo resuelve JwtAuthenticationMechanism
         (Jakarta Security) a partir del token "Authorization: Bearer ...". Aca se declara
         QUE puede hacer cada rol; gana el url-pattern mas especifico.

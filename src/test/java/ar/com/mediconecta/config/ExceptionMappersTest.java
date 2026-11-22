@@ -116,6 +116,14 @@ class ExceptionMappersTest {
     }
 
     /** Todo error sale en formato Problem Details (RFC 9457), con "error" por compatibilidad. */
+    @Test
+    void demasiadasConsultasAlOrientadorEs429ConRetryAfter() {
+        var ex = new ar.com.mediconecta.ia.business.LimiteDeConsultasException(42);
+        Response r = new LimiteDeConsultasExceptionMapper().toResponse(ex);
+        assertRespuesta(429, ex.getMessage(), r);
+        assertEquals("42", r.getHeaderString("Retry-After"));
+    }
+
     private static void assertRespuesta(int estado, String mensaje, Response r) {
         assertEquals(estado, r.getStatus());
         assertEquals(ApiError.PROBLEM_JSON_TYPE, r.getMediaType());

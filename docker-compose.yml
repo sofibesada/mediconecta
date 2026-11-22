@@ -78,6 +78,12 @@ services:
       VIDEOLLAMADAS_API_KEY: ${VIDEOLLAMADAS_API_KEY:-videollamadas-demo}
       PAGOS_API_KEY: ${PAGOS_API_KEY:-pagos-demo}
       OBRASSOCIALES_ADMIN_KEY: ${OBRASSOCIALES_ADMIN_KEY:-padron-demo}
+      # Orientador de especialidad (IA): "simulado" no usa red ni clave. Con "claude" hace
+      # falta ANTHROPIC_API_KEY en el .env (nunca en el repositorio); sin clave usa el simulado.
+      MEDICONECTA_IA_PROVEEDOR: ${MEDICONECTA_IA_PROVEEDOR:-simulado}
+      MEDICONECTA_IA_MODELO: ${MEDICONECTA_IA_MODELO:-claude-opus-5-5}
+      MEDICONECTA_IA_CONSULTAS_POR_MINUTO: ${MEDICONECTA_IA_CONSULTAS_POR_MINUTO:-5}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8080:8080"
     depends_on:
