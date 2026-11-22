@@ -34,6 +34,7 @@ public class GatewayIA {
     private static final Logger LOG = Logger.getLogger(GatewayIA.class.getName());
 
     public static final int MAX_CARACTERES = 500;
+    public static final String TEXTO_VACIO = "Contanos qué te pasa para poder orientarte";
     static final int MAX_MOTIVO = 280;
     static final String DATO_OCULTO = "[dato oculto]";
     static final String NINGUNA = "NINGUNA";
@@ -60,13 +61,14 @@ public class GatewayIA {
 
     /** Frases tipicas de quien intenta cambiar las instrucciones del modelo. */
     private static final Pattern INYECCION = Pattern.compile(
-            "(ignora|olvida|olvidate|descarta|saltea)\\w*\\s+(\\w+\\s+){0,3}(instruccion|regla|indicacion|prompt)"
+            "(ignora|olvida|olvidate|descarta|saltea)\\w*+\\s++(?:\\w++\\s++){0,3}(instruccion|regla|indicacion|prompt)"
                     + "|(prompt|mensaje|instrucciones)\\s+(del|de)\\s+sistema|system\\s*prompt"
                     + "|ignore\\s+(all\\s+|the\\s+)?(previous\\s+)?instructions"
                     + "|(actua|comportate|hace de cuenta)\\s+como|a partir de ahora (sos|eres)|modo desarrollador"
                     + "|</?\\s*(consulta|system|instrucciones)");
 
-    private static final Pattern CORREO = Pattern.compile("[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+");
+    /** Cuantificadores posesivos (++): sin retroceso, un texto largo no puede desbordar la pila. */
+    private static final Pattern CORREO = Pattern.compile("[\\w.+-]++@[\\w-]++(?:\\.[\\w-]++)++");
     /** DNI, CUIL, telefonos y numeros de tarjeta: 7 o mas digitos, con o sin separadores. */
     private static final Pattern NUMERO_LARGO = Pattern.compile("\\+?\\d[\\d .-]{5,}\\d");
     private static final Pattern ETIQUETA = Pattern.compile("<[^>]*>");
@@ -90,7 +92,7 @@ public class GatewayIA {
 
     public Orientacion orientar(Long usuarioId, String texto) {
         if (texto == null || texto.isBlank()) {
-            throw new IllegalArgumentException("Contanos qué te pasa para poder orientarte");
+            throw new IllegalArgumentException(TEXTO_VACIO);
         }
         if (texto.length() > MAX_CARACTERES) {
             throw new IllegalArgumentException("Contalo en " + MAX_CARACTERES + " caracteres como máximo");
