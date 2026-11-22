@@ -1,6 +1,6 @@
 # Integracion continua: en cada push y pull request a main.
 #   1. secretos   gitleaks revisa TODO el historial (no puede haber claves en el repo)
-#   2. build      compila y corre las pruebas unitarias del backend
+#   2. build      compila y corre las pruebas unitarias del backend (con reporte de cobertura)
 #      frontend   ESLint, TypeScript, pruebas unitarias (Vitest) y build de la SPA en React
 #   3. api        levanta el sistema completo con Docker Compose y corre las pruebas de la API,
 #                 las de punta a punta (Playwright) y Lighthouse de accesibilidad
@@ -43,6 +43,17 @@ jobs:
           cache: maven
       - name: mvn verify
         run: mvn -B verify
+      - name: Resumen de cobertura del backend
+        if: always() && hashFiles('target/site/jacoco/jacoco.csv') != ''
+        run: awk -f scripts/ci/cobertura-backend.awk target/site/jacoco/jacoco.csv >> "$GITHUB_STEP_SUMMARY"
+      - name: Cobertura del backend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-backend
+          path: |
+            target/site/jacoco/
+            target/surefire-reports/
 
   frontend:
     name: Frontend (lint, tipos, pruebas y build)
@@ -67,6 +78,9 @@ jobs:
         run: npx vitest run --coverage
       - name: Build de produccion
         run: npm run build
+      - name: Resumen de cobertura del frontend
+        if: always() && hashFiles('frontend/coverage/coverage-summary.json') != ''
+        run: node ../scripts/ci/cobertura-frontend.cjs coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
       - name: Cobertura del frontend
         if: always()
         uses: actions/upload-artifact@v4

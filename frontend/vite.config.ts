@@ -15,7 +15,7 @@ export default defineConfig({
     css: false,
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text", "html", "lcov", "json-summary"],
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/main.tsx", "src/**/*.test.{ts,tsx}", "src/setupTests.ts", "src/vite-env.d.ts"],
     },
