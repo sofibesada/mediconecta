@@ -180,6 +180,8 @@ docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command=
 
 # La plataforma de videollamadas responde 503
 docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command="/system-property=videollamadas.mock.fallar:add(value=true)"
+# ...o falla solo los próximos 2 pedidos: la cola reintenta (3 intentos, cada 2 s) y la sala se crea igual
+docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command="/system-property=videollamadas.mock.fallarPedidos:add(value=2)"
 
 # La pasarela de pagos responde 503 (el paciente ve que el servicio de pagos no está disponible)
 docker compose exec app /opt/jboss/wildfly/bin/jboss-cli.sh --connect --command="/system-property=pagos.mock.fallar:add(value=true)"

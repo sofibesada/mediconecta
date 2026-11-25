@@ -86,6 +86,12 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8080:8080"
+    # Con el broker apagado, el DNS interno de Docker tarda varios segundos en decir que el
+    # nombre "broker" no existe, y la confirmacion de un turno tardaba 8 s en responder 503
+    # (la HU-04 pide 5 s como maximo; defecto D-14). Se acota la espera de cada consulta DNS.
+    dns_opt:
+      - timeout:1
+      - attempts:1
     depends_on:
       db:
         condition: service_healthy

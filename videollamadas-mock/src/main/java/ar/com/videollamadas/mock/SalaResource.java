@@ -8,6 +8,8 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 /**
@@ -22,6 +24,7 @@ import java.util.logging.Logger;
  *
  * Para simular fallas del proveedor (system properties de WildFly):
  *   videollamadas.mock.fallar=true    responde 503 en POST/DELETE
+ *   videollamadas.mock.fallarPedidos=2  responde 503 en los proximos 2 POST/DELETE y despues anda
  *   videollamadas.mock.demoraMs=7000  tarda N ms en responder (provoca timeout del cliente)
  */
 @Path("/rooms")
@@ -98,12 +101,38 @@ public class SalaResource {
         return clave != null && ("Bearer " + clave).equals(auth) ? null : problema(401, "no-autorizado", "API key inválida o ausente");
     }
 
+    /** Valor de fallarPedidos que se esta contando y cuantos pedidos ya fallaron con el. */
+    private static final AtomicReference<String> FALLAR_PEDIDOS_ACTUAL = new AtomicReference<>();
+    private static final AtomicInteger PEDIDOS_FALLADOS = new AtomicInteger();
+
+    /**
+     * videollamadas.mock.fallarPedidos=N: fallan los proximos N pedidos y despues responde bien.
+     * Sirve para mostrar que los reintentos de la cola alcanzan cuando el proveedor se recupera.
+     */
+    private static boolean fallaPorCantidad() {
+        String valor = System.getProperty("videollamadas.mock.fallarPedidos");
+        if (valor == null) {
+            FALLAR_PEDIDOS_ACTUAL.set(null);
+            return false;
+        }
+        if (!valor.equals(FALLAR_PEDIDOS_ACTUAL.getAndSet(valor))) {
+            PEDIDOS_FALLADOS.set(0); // valor nuevo: se empieza a contar de cero
+        }
+        int n;
+        try {
+            n = Integer.parseInt(valor.trim());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        return PEDIDOS_FALLADOS.incrementAndGet() <= n;
+    }
+
     private Response simularFalla() {
         long demora = Long.getLong("videollamadas.mock.demoraMs", 0L);
         if (demora > 0) {
             try { Thread.sleep(demora); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
-        if (Boolean.getBoolean("videollamadas.mock.fallar")) {
+        if (Boolean.getBoolean("videollamadas.mock.fallar") || fallaPorCantidad()) {
             LOG.warning("[Mock videollamadas] falla simulada -> 503");
             return problema(503, "servicio-no-disponible", "Falla simulada del proveedor de videollamadas");
         }

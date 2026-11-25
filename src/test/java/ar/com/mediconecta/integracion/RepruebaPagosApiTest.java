@@ -8,8 +8,6 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -56,10 +54,10 @@ class RepruebaPagosApiTest {
 
     @BeforeAll
     void preparar() throws Exception {
-        Assumptions.assumeTrue(docker("version").ok(), "Hace falta el comando docker para simular las fallas");
+        Assumptions.assumeTrue(Docker.ejecutar("version").ok(), "Hace falta el comando docker para simular las fallas");
         RestAssured.baseURI = System.getProperty("api.base");
         urlPasarela = System.getProperty("api.base").replace("/mediconecta/api", "/pagos-mock/api/v1");
-        String clave = docker("compose", "exec", "-T", "app", "printenv", "PAGOS_API_KEY").salida().trim();
+        String clave = Docker.variable("app", "PAGOS_API_KEY");
         apiKeyPasarela = clave.isEmpty() ? "pagos-demo" : clave;
 
         String sufijo = String.valueOf(System.currentTimeMillis());
@@ -81,13 +79,13 @@ class RepruebaPagosApiTest {
     @Test
     void rp01_conLaPasarelaCaidaNoSeCobraYDespuesSePagaUnaSolaVez() throws Exception {
         long turno = turnoConfirmado();
-        propiedad("pagos.mock.fallar", "true");
+        Docker.propiedad("pagos.mock.fallar", "true");
         try {
             Response r = pagar(turno);
             assertEquals(503, r.statusCode(), r.asString());
             assertTrue(r.contentType().startsWith("application/problem+json"));
         } finally {
-            sinPropiedad("pagos.mock.fallar");
+            Docker.sinPropiedad("pagos.mock.fallar");
         }
         assertEquals(0, aprobadosEnLaPasarela(turno), "con la pasarela caída no tiene que haber cobros");
 
@@ -205,56 +203,10 @@ class RepruebaPagosApiTest {
         String sql = "INSERT INTO pago (turno_id, paciente_id, importe, estado, marca, ultimos4, creado_en, clave_externa) "
                 + "VALUES (" + turno + ", " + pacienteId + ", " + importe(turno) + ", 'PENDIENTE', 'Visa', '1111', "
                 + "'" + LocalDateTime.now(HORA_CLINICA).minusMinutes(minutosAtras).format(ISO) + "', " + (clave == null ? "NULL" : "'" + clave + "'") + ")";
-        String usuario = docker("compose", "exec", "-T", "db", "printenv", "POSTGRES_USER").salida().trim();
+        String usuario = Docker.variable("db", "POSTGRES_USER");
         // El SQL va por la entrada estándar: así no depende de cómo cada sistema pasa las comillas.
-        Resultado r = dockerConEntrada(sql + ";\n", "compose", "exec", "-T", "db", "psql", "-U", usuario, "-d", "mediconecta", "-v", "ON_ERROR_STOP=1");
+        Docker.Resultado r = Docker.conEntrada(sql + ";\n", "compose", "exec", "-T", "db", "psql", "-U", usuario, "-d", "mediconecta", "-v", "ON_ERROR_STOP=1");
         assertTrue(r.ok(), "no se pudo insertar el intento: " + r.salida());
-    }
-
-    private void propiedad(String nombre, String valor) throws Exception {
-        sinPropiedad(nombre);
-        jbossCli("/system-property=" + nombre + ":add(value=" + valor + ")");
-    }
-
-    private void sinPropiedad(String nombre) throws Exception {
-        jbossCli("/system-property=" + nombre + ":remove");
-    }
-
-    private void jbossCli(String comando) throws Exception {
-        docker("compose", "exec", "-T", "app", "/opt/jboss/wildfly/bin/jboss-cli.sh", "--connect", "--command=" + comando);
-    }
-
-    record Resultado(int codigo, String salida) {
-        boolean ok() {
-            return codigo == 0;
-        }
-    }
-
-    private static Resultado docker(String... args) throws IOException, InterruptedException {
-        return dockerConEntrada(null, args);
-    }
-
-    private static Resultado dockerConEntrada(String entrada, String... args) throws IOException, InterruptedException {
-        String[] comando = new String[args.length + 1];
-        comando[0] = "docker";
-        System.arraycopy(args, 0, comando, 1, args.length);
-        Process p;
-        try {
-            p = new ProcessBuilder(comando).redirectErrorStream(true).start();
-        } catch (IOException e) {
-            return new Resultado(-1, e.getMessage());
-        }
-        try (var in = p.getOutputStream()) {
-            if (entrada != null) {
-                in.write(entrada.getBytes(StandardCharsets.UTF_8));
-            }
-        }
-        String salida = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        if (!p.waitFor(60, TimeUnit.SECONDS)) {
-            p.destroyForcibly();
-            return new Resultado(-1, "docker no respondió");
-        }
-        return new Resultado(p.exitValue(), salida);
     }
 
     private RequestSpecification pasarela() {
