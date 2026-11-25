@@ -1,16 +1,22 @@
 # language: es
 @HU-15 @could
-Característica: Orientador de especialidad con IA
+Característica: Asistente de salud con IA
   Como paciente
-  quiero contar qué me pasa y recibir una sugerencia de especialidad
+  quiero contarle a un asistente qué me pasa, desde cualquier pantalla, y recibir una sugerencia de especialidad
   para saber con quién sacar turno cuando no conozco la especialidad indicada
 
   @E2E-18
-  Escenario: Recibo una especialidad y filtro por ella
-    Dado que ingresé como paciente y estoy en "Agendar turno"
-    Cuando escribo "Me pica la piel y tengo ronchas desde hace una semana" y pido una sugerencia
-    Entonces veo "Te sugerimos Dermatología" y el aviso de que no es un diagnóstico
-    Y al tocar "Ver profesionales de Dermatología" el filtro de especialidad queda en Dermatología
+  Escenario: Recibo una especialidad y saco turno con ella
+    Dado que ingresé como paciente
+    Cuando abro el asistente con "¿Qué te pasa?" y le escribo "Me pica la piel y tengo ronchas desde hace una semana"
+    Entonces el asistente responde "Te sugerimos Dermatología" con el aviso de que no es un diagnóstico
+    Y al tocar "Sacar turno de Dermatología" se abre "Agendar turno" con el filtro de especialidad en Dermatología
+
+  @E2E-18
+  Escenario: La charla se conserva mientras uso la aplicación
+    Dado que le conté algo al asistente y fui a otra pantalla
+    Cuando lo vuelvo a abrir
+    Entonces veo los mensajes anteriores
 
   @E2E-18
   Escenario: Una urgencia indica la guardia

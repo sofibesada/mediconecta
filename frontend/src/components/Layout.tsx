@@ -5,6 +5,7 @@ import { menuDe, tituloDe } from "../app/rutas";
 import { salir } from "../features/sesion/salir";
 import { temaElegido, type Tema } from "../features/ui/uiSlice";
 import { iniciales, rolLindo } from "../lib/formato";
+import { AsistenteSalud } from "./AsistenteSalud";
 import { Toasts } from "./Toasts";
 import { useAvisosDeNotificaciones } from "./useAvisosDeNotificaciones";
 
@@ -108,6 +109,8 @@ export function Layout() {
             <Outlet />
           </main>
         </div>
+        {/* Asistente de salud (IA): solo pacientes. key = usuario: otra cuenta empieza de cero. */}
+        {conNotificaciones && usuario.rol === "PACIENTE" && <AsistenteSalud key={usuario.id} />}
       </div>
     </>
   );

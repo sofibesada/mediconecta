@@ -193,10 +193,12 @@ docker compose stop broker
 docker compose start broker
 ```
 
-## Orientador de especialidad (IA)
+## Asistente de salud (IA)
 
-En «Agendar turno», el paciente cuenta qué le pasa y la app le sugiere una especialidad
-(`POST /ia/orientacion`). Todo pasa por un gateway que:
+Desde cualquier pantalla, el paciente toca «¿Qué te pasa?» (abajo a la derecha), le cuenta
+al asistente qué le pasa y recibe la especialidad sugerida con un botón para sacar turno
+(`POST /ia/orientacion`). Cada mensaje se evalúa solo: no se le manda el historial a la IA.
+Todo pasa por un gateway que:
 
 - detecta urgencias e indica la guardia sin consultar a la IA;
 - no manda los intentos de cambiar las instrucciones;

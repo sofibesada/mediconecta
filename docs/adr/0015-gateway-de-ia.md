@@ -25,6 +25,7 @@ Toda consulta pasa por **`GatewayIA`** (patrón Gateway). Ningún otro código l
 
 | Pieza | Qué hace |
 |---|---|
+| `AsistenteSalud` (frontend) | Botón flotante «¿Qué te pasa?» con una charla, en todas las pantallas del paciente. Cada mensaje es una consulta independiente; «Sacar turno de…» abre Agendar con la especialidad filtrada |
 | `OrientacionResource` | `POST /ia/orientacion {"sintomas": "..."}` |
 | `OrientadorService` | `@Singleton`, solo PACIENTE. Arma el gateway según la configuración |
 | `GatewayIA` | Controles antes y después de consultar al proveedor, corte a los 5 s y respaldo |
@@ -69,6 +70,10 @@ Clínica médica, marcada como «Sugerencia general». La pantalla nunca queda s
 
 ## Alternativas consideradas
 
+- **Charla con memoria (el modelo repregunta).** Para el 30/11 se descartó: habría que mandar el
+  historial al modelo y controlar la inyección en cada turno. El asistente tiene forma de charla,
+  pero cada mensaje es una consulta independiente al mismo gateway. Queda como mejora posible.
+
 - **Llamar al modelo desde el frontend.** Descartada: la API key quedaría en el navegador y no
   habría límite ni controles.
 - **Confiar en las instrucciones del modelo para las urgencias.** Descartada: una urgencia no
@@ -100,7 +105,8 @@ Clínica médica, marcada como «Sugerencia general». La pantalla nunca queda s
 | `ProveedorSimuladoTest` | Formato de la respuesta, palabras completas, modos `lento` y `caido` |
 | `ExceptionMappersTest` | 429 en Problem Details con `Retry-After` |
 | `int12`, `int12b` (API) | 200, urgencia, inyección, 400, 403 para un profesional y 429 con `Retry-After` |
-| E2E-18 | Sugerencia, filtro por la especialidad sugerida y urgencia en la pantalla |
+| `AsistenteSalud.test.tsx` | Abrir y cerrar con foco y Escape, sugerencia, «Sacar turno de…» navega con la especialidad, urgencia sin turno, 429 como respuesta, últimos 20 mensajes |
+| E2E-18 | Desde el inicio: sugerencia en el asistente, «Sacar turno de…» filtra Agendar, la charla se conserva y una urgencia indica la guardia |
 
 Prueba manual de resiliencia (hecha el 22/11 en Docker): con `simularFalla=lento` la respuesta
 llegó en 5,04 s con el respaldo. Con `caido` llegó al instante con el respaldo. Con Claude y una

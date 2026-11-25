@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAccion, useAppDispatch, useAppSelector, useNombreObraSocial, useRevisarNotificacionesPronto, useToast, useUsuario } from "../app/hooks";
 import { mensajeDeError } from "../api/baseQuery";
 import {
@@ -17,7 +17,6 @@ import { coberturaRechazada, reservaTerminada, turnoRetenido } from "../features
 import { cuentaRegresiva, fmtFecha, modalidadLinda, nuevaClave } from "../lib/formato";
 import { filtrarHorarios } from "../lib/turnos";
 import { atiende, resumenCartilla } from "../lib/cartilla";
-import { OrientadorEspecialidad } from "../components/OrientadorEspecialidad";
 
 /**
  * Agendar un turno. La reserva en curso la recuerda el SERVIDOR: un AsistenteAgendamiento
@@ -115,10 +114,26 @@ export function Agendar() {
     }
   }
 
+  // El asistente de salud manda la especialidad sugerida en el state de la navegación. Se aplica
+  // una sola vez por navegación y cuando ya llegó la lista de profesionales (para poder soltar
+  // un profesional de otra especialidad).
+  const location = useLocation();
+  const sugerida = (location.state as { especialidad?: string } | null)?.especialidad;
+  const aplicada = useRef<string | null>(null);
+  useEffect(() => {
+    if (!sugerida || !profesionales.data || aplicada.current === location.key) return;
+    aplicada.current = location.key;
+    elegirEspecialidad(sugerida);
+    // elegirEspecialidad cambia en cada render; lo que importa es la navegación y los datos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sugerida, location.key, profesionales.data]);
+
   return (
     <Pantalla id="agendar">
       <Encabezado titulo="Agendar turno" subtitulo="Buscá por especialidad, fecha o modalidad y reservá un horario disponible" />
-      <OrientadorEspecialidad onUsar={elegirEspecialidad} />
+      <p className="inline-hint" id="agAyudaAsistente">
+        ¿No sabés qué especialidad elegir? Tocá «¿Qué te pasa?», abajo a la derecha, y contale al asistente qué te pasa.
+      </p>
       <div className="card">
         <h2 className="card-titulo">1 · Buscá un turno</h2>
         <div className="row-inline" style={{ marginBottom: 16 }} id="agFiltros">
