@@ -93,3 +93,21 @@ termine en un doble cobro ni en un pago sin devolver:
 - Se concilia al volver a pagar, al cancelar y cada minuto (`ConciliacionPagos`, `@Schedule`).
 
 Pruebas: `IntentosPagoTest` y `PagoServiceTest`.
+
+### Cobros duplicados que llegan tarde (25/11/2026, defecto D-11)
+
+Un intento PENDIENTE guardado por la versión anterior no tiene clave: no se puede anular en la
+pasarela. Pasada la ventana se da por fallido y el paciente puede pagar de nuevo. Si el pedido
+viejo llega después a la pasarela, el turno queda **cobrado dos veces**. La reprueba lo reprodujo
+(`RepruebaPagosApiTest.rp06`).
+
+- **Red de seguridad** (`IntentosPago#devolverDuplicados`, cada minuto desde `ConciliacionPagos`): para cada
+  turno pagado en las últimas 48 h (`mediconecta.pagos.horasDuplicados`), si la pasarela tiene otro cobro
+  aprobado que MediConecta no tiene registrado, **lo devuelve** y lo registra como REEMBOLSADO con el motivo.
+  El paciente recibe el aviso de la devolución.
+- No toca un turno con intentos PENDIENTES ni uno sin pago registrado: ahí el cobro puede estar en curso.
+- Cubre cualquier cobro duplicado que llegue tarde, no solo los de la versión anterior.
+
+Pruebas: `IntentosPagoTest`, `ConciliacionPagosTest` y `RepruebaPagosApiTest` (contra el sistema levantado:
+pasarela caída, intento aprobado sin registrar, intento anulado que llega tarde, intento reciente que bloquea e
+intentos de la versión anterior).

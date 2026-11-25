@@ -4,8 +4,11 @@ import ar.com.mediconecta.pagos.model.Pago;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @ApplicationScoped
 public class PagoRepository {
@@ -63,6 +66,21 @@ public class PagoRepository {
                 .setParameter("turno", turnoId)
                 .setParameter("estado", Pago.Estado.PENDIENTE)
                 .getResultList();
+    }
+
+    /** Turnos con un pago aprobado o devuelto desde esa fecha (para buscar cobros duplicados). */
+    public List<Long> turnosPagadosDesde(LocalDateTime desde) {
+        return em.createQuery("SELECT DISTINCT p.turnoId FROM Pago p WHERE p.creadoEn >= :desde AND p.estado IN :estados", Long.class)
+                .setParameter("desde", desde)
+                .setParameter("estados", List.of(Pago.Estado.APROBADO, Pago.Estado.REEMBOLSADO))
+                .getResultList();
+    }
+
+    /** Ids de la pasarela que MediConecta ya tiene registrados para el turno (en cualquier estado). */
+    public Set<String> idsExternosDe(Long turnoId) {
+        return new HashSet<>(em.createQuery("SELECT p.idExterno FROM Pago p WHERE p.turnoId = :turno AND p.idExterno IS NOT NULL", String.class)
+                .setParameter("turno", turnoId)
+                .getResultList());
     }
 
     public boolean existeConIdExterno(String idExterno) {

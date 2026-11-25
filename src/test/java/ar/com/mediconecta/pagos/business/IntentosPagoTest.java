@@ -20,7 +20,9 @@ import ar.com.mediconecta.turnos.model.EstadoTurno;
 import ar.com.mediconecta.turnos.model.Turno;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -194,5 +196,66 @@ class IntentosPagoTest {
         intentos.marcarFallido(3L, "x");
         intentos.marcarFallido(4L, "x");
         assertEquals(Pago.Estado.APROBADO, aprobado.getEstado());
+    }
+
+    // ---------------------------------------------------------------- cobros duplicados (D-11)
+
+    private Pago registrado(String idExterno) {
+        Pago p = new Pago();
+        p.setTurnoId(TURNO);
+        p.setPacienteId(7L);
+        p.setImporte(new BigDecimal("6000"));
+        p.setEstado(Pago.Estado.APROBADO);
+        p.setIdExterno(idExterno);
+        return p;
+    }
+
+    @Test
+    void unCobroAprobadoQueMediConectaNoConoceSeDevuelveYQuedaRegistrado() {
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of());
+        when(repository.vigentesDe(List.of(TURNO))).thenReturn(List.of(registrado("pay_bueno")));
+        when(repository.idsExternosDe(TURNO)).thenReturn(Set.of("pay_bueno"));
+        when(pasarela.aprobadosDe("turno-30")).thenReturn(List.of(
+                new PasarelaPagosClient.Resultado("pay_bueno", "APROBADO", null, "Visa", "1111", "1"), APROBADO));
+
+        assertEquals(1, intentos.devolverDuplicados(TURNO));
+
+        verify(pasarela).reembolsar("pay_tarde");
+        verify(pasarela, never()).reembolsar("pay_bueno");
+        ArgumentCaptor<Pago> p = ArgumentCaptor.forClass(Pago.class);
+        verify(repository).guardar(p.capture());
+        assertEquals(Pago.Estado.REEMBOLSADO, p.getValue().getEstado());
+        assertEquals("pay_tarde", p.getValue().getIdExterno());
+        assertEquals(7L, p.getValue().getPacienteId());
+        assertNotNull(p.getValue().getReembolsadoEn());
+        verify(eventoPublisher).publicar(TipoEventoTurno.PAGO_REEMBOLSADO, turno, null);
+    }
+
+    @Test
+    void siTodosLosCobrosEstanRegistradosNoDevuelveNada() {
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of());
+        when(repository.vigentesDe(List.of(TURNO))).thenReturn(List.of(registrado("pay_tarde")));
+        when(repository.idsExternosDe(TURNO)).thenReturn(Set.of("pay_tarde"));
+        when(pasarela.aprobadosDe("turno-30")).thenReturn(List.of(APROBADO));
+
+        assertEquals(0, intentos.devolverDuplicados(TURNO));
+        verify(pasarela, never()).reembolsar(any());
+        verify(repository, never()).guardar(any());
+        verifyNoInteractions(eventoPublisher);
+    }
+
+    @Test
+    void conUnCobroEnCursoOSinPagoRegistradoNoSeTocaLaPasarela() {
+        // Un intento PENDIENTE: su cobro todavía no está registrado y no es un duplicado.
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of(1L));
+        assertEquals(0, intentos.devolverDuplicados(TURNO));
+
+        // Sin pago registrado: el primer cobro puede estar terminando de guardarse.
+        when(repository.idsPendientesDe(TURNO)).thenReturn(List.of());
+        when(repository.vigentesDe(List.of(TURNO))).thenReturn(List.of());
+        assertEquals(0, intentos.devolverDuplicados(TURNO));
+
+        verifyNoInteractions(pasarela);
+        verify(repository, never()).guardar(any());
     }
 }

@@ -15,7 +15,9 @@ import jakarta.ejb.TransactionAttributeType;
 import jakarta.inject.Inject;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -117,6 +119,58 @@ public class IntentosPago {
         repository.actualizar(p);
         LOG.info("[Pagos] intento #" + p.getId() + " cerrado en la pasarela como " + r.estado() + ": FALLIDO");
         return p.getEstado();
+    }
+
+    /**
+     * Red de seguridad contra el cobro doble (D-11): si el turno ya tiene su pago registrado y la
+     * pasarela tiene OTRO cobro aprobado de ese turno que MediConecta no conoce (por ejemplo, el
+     * pedido de un intento de la version anterior, sin clave para anularlo, que llego tarde), ese
+     * cobro se devuelve y queda registrado como REEMBOLSADO. Devuelve cuantos devolvio.
+     *
+     * No se toca un turno con intentos PENDIENTES (un cobro en curso todavia no esta registrado)
+     * ni uno sin pago registrado (el primer cobro puede estar terminando de guardarse).
+     */
+    @PermitAll
+    @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
+    public int devolverDuplicados(Long turnoId) {
+        if (!repository.idsPendientesDe(turnoId).isEmpty()) {
+            return 0;
+        }
+        List<Pago> registrados = repository.vigentesDe(List.of(turnoId));
+        if (registrados.isEmpty()) {
+            return 0;
+        }
+        Set<String> conocidos = repository.idsExternosDe(turnoId);
+        Pago base = registrados.get(0);
+        int devueltos = 0;
+        for (PasarelaPagosClient.Resultado r : pasarela.aprobadosDe(PagoService.referencia(turnoId))) {
+            if (conocidos.contains(r.id())) {
+                continue;
+            }
+            pasarela.reembolsar(r.id());
+            Pago duplicado = new Pago();
+            duplicado.setTurnoId(turnoId);
+            duplicado.setPacienteId(base.getPacienteId());
+            duplicado.setImporte(base.getImporte());
+            duplicado.setEstado(Pago.Estado.REEMBOLSADO);
+            duplicado.setMarca(r.marca());
+            duplicado.setUltimos4(r.ultimos4());
+            duplicado.setIdExterno(r.id());
+            duplicado.setCodigoAutorizacion(r.codigoAutorizacion());
+            duplicado.setMotivo("Cobro duplicado en la pasarela: devuelto automáticamente");
+            duplicado.setCreadoEn(LocalDateTime.now());
+            duplicado.setReembolsadoEn(LocalDateTime.now());
+            repository.guardar(duplicado);
+            devueltos++;
+            LOG.warning("[Pagos] cobro duplicado " + r.id() + " del turno #" + turnoId + ": devuelto");
+        }
+        if (devueltos > 0) {
+            Turno turno = turnoService.buscarTurno(turnoId);
+            if (turno != null) {
+                eventoPublisher.publicar(TipoEventoTurno.PAGO_REEMBOLSADO, turno, null);
+            }
+        }
+        return devueltos;
     }
 
     private Pago.Estado registrarAprobacion(Pago p, PasarelaPagosClient.Resultado r) {

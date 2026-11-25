@@ -13,6 +13,7 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -92,6 +93,14 @@ public class PasarelaPagosClient {
      * la pasarela aunque MediConecta no lo tenga: se usa ese en lugar de cobrar de nuevo.
      */
     public Optional<Resultado> aprobadoDe(String referencia) {
+        return aprobadosDe(referencia).stream().findFirst();
+    }
+
+    /**
+     * Todos los cobros APROBADOS (no devueltos) que la pasarela tiene para la referencia. Si hay
+     * mas de uno, el turno se cobro dos veces (ver IntentosPago#devolverDuplicados).
+     */
+    public List<Resultado> aprobadosDe(String referencia) {
         try (Response r = client.target(baseUrl()).path("pagos").queryParam("referencia", referencia)
                 .request(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + apiKey())
@@ -101,8 +110,8 @@ public class PasarelaPagosClient {
             }
             return r.readEntity(JsonArray.class).getValuesAs(JsonObject.class).stream()
                     .filter(p -> "APROBADO".equals(p.getString("estado", null)))
-                    .findFirst()
-                    .map(PasarelaPagosClient::resultado);
+                    .map(PasarelaPagosClient::resultado)
+                    .toList();
         } catch (ProcessingException e) {
             throw new PasarelaNoDisponibleException("La pasarela de pagos no responde. Probá de nuevo en unos minutos o pagá en el consultorio.", e);
         }
