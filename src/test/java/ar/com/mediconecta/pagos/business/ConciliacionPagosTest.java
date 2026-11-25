@@ -56,7 +56,9 @@ class ConciliacionPagosTest {
     }
 
     private static void assertCerca(LocalDateTime esperado, LocalDateTime obtenido) {
-        org.junit.jupiter.api.Assertions.assertTrue(Math.abs(java.time.Duration.between(esperado, obtenido).toSeconds()) < 60,
+        java.time.ZoneId zona = java.time.ZoneId.systemDefault();
+        long segundos = java.time.Duration.between(esperado.atZone(zona).toInstant(), obtenido.atZone(zona).toInstant()).toSeconds();
+        org.junit.jupiter.api.Assertions.assertTrue(Math.abs(segundos) < 60,
                 "esperado cerca de " + esperado + " y fue " + obtenido);
     }
 }
