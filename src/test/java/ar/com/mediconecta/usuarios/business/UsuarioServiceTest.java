@@ -124,7 +124,8 @@ class UsuarioServiceTest {
 
         @Test
         void validaciones() {
-            assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos(null, "dr@x", "t")));
+            assertEquals("Nombre, email y contraseña temporal son obligatorios",
+                    assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos(null, "dr@x", "t"))).getMessage());
             assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("Dr", " ", "t")));
             assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("Dr", "dr@x", "")));
             assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("", "dr@x", "t")));
@@ -168,11 +169,15 @@ class UsuarioServiceTest {
 
         @Test
         void reglasDelCambio() {
-            assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "otra", "nueva1"));
+            // Los mensajes los ve el usuario: con ñ (D-13).
+            assertEquals("La contraseña actual es incorrecta",
+                    assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "otra", "nueva1")).getMessage());
             assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, null, "nueva1"));
-            assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "actual", "abc"));
+            assertEquals("La contraseña nueva debe tener al menos 4 caracteres",
+                    assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "actual", "abc")).getMessage());
             assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "actual", null));
-            assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "actual", "actual"));
+            assertEquals("La contraseña nueva no puede ser igual a la actual",
+                    assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(5L, "actual", "actual")).getMessage());
             assertThrows(IllegalArgumentException.class, () -> service.cambiarPassword(99L, "actual", "nueva1"));
             u.setActivo(false);
             assertThrows(IllegalStateException.class, () -> service.cambiarPassword(5L, "actual", "nueva1"));

@@ -74,7 +74,7 @@ public class ObrasSocialesClient {
         try {
             return new URL(url() + "?wsdl");
         } catch (MalformedURLException e) {
-            throw new IllegalStateException("URL del sistema de obras sociales invalida: " + url(), e);
+            throw new IllegalStateException("URL del sistema de obras sociales inválida: " + url(), e);
         }
     }
 

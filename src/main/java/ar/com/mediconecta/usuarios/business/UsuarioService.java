@@ -68,7 +68,7 @@ public class UsuarioService implements IUsuarioService {
         if (datos.getNombre() == null || datos.getNombre().isBlank()
                 || datos.getEmail() == null || datos.getEmail().isBlank()
                 || datos.getPassword() == null || datos.getPassword().isBlank()) {
-            throw new IllegalArgumentException("Nombre, email y contrasena temporal son obligatorios");
+            throw new IllegalArgumentException("Nombre, email y contraseña temporal son obligatorios");
         }
         if (usuarioRepository.buscarPorEmail(datos.getEmail()) != null) {
             throw new IllegalStateException("Ya existe un usuario con ese email");
@@ -95,13 +95,13 @@ public class UsuarioService implements IUsuarioService {
             throw new IllegalStateException("Tu cuenta está desactivada. Contactá al administrador.");
         }
         if (passwordActual == null || !BCrypt.checkpw(passwordActual, u.getPassword())) {
-            throw new IllegalArgumentException("La contrasena actual es incorrecta");
+            throw new IllegalArgumentException("La contraseña actual es incorrecta");
         }
         if (passwordNueva == null || passwordNueva.length() < 4) {
-            throw new IllegalArgumentException("La contrasena nueva debe tener al menos 4 caracteres");
+            throw new IllegalArgumentException("La contraseña nueva debe tener al menos 4 caracteres");
         }
         if (BCrypt.checkpw(passwordNueva, u.getPassword())) {
-            throw new IllegalArgumentException("La contrasena nueva no puede ser igual a la actual");
+            throw new IllegalArgumentException("La contraseña nueva no puede ser igual a la actual");
         }
         u.setPassword(BCrypt.hashpw(passwordNueva, BCrypt.gensalt()));
         u.setDebeCambiarPassword(false);

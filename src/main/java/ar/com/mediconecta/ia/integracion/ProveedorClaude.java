@@ -59,7 +59,7 @@ public class ProveedorClaude implements ProveedorIA {
             throw new ProveedorIAException("claude: " + e.getClass().getSimpleName(), e);
         }
         if (respuesta.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) {
-            throw new ProveedorIAException("claude: el modelo rechazo la consulta");
+            throw new ProveedorIAException("claude: el modelo rechazó la consulta");
         }
         return respuesta.content().stream()
                 .flatMap(bloque -> bloque.text().stream())
