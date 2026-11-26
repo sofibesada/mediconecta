@@ -1,6 +1,7 @@
 package ar.com.mediconecta.usuarios.presentation;
 
 import ar.com.mediconecta.config.ApiError;
+import ar.com.mediconecta.seguridad.IntentosDeIngreso;
 import ar.com.mediconecta.seguridad.TokenService;
 import ar.com.mediconecta.seguridad.UsuarioActual;
 import ar.com.mediconecta.usuarios.business.IUsuarioService;
@@ -21,6 +22,9 @@ public class UsuarioResource {
 
     @Inject
     private TokenService tokenService;
+
+    @Inject
+    private IntentosDeIngreso intentos;
 
     @Inject
     private UsuarioActual usuarioActual;
@@ -61,10 +65,18 @@ public class UsuarioResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response login(LoginRequest request) {
-        Usuario usuario = usuarioService.autenticar(request.email, request.password);
-        if (usuario == null) {
+        if (request == null) {
             return ApiError.respuesta(Response.Status.UNAUTHORIZED, "Email o contraseña incorrectos");
         }
+        // Fuerza bruta: con demasiados intentos fallidos la cuenta responde 429, aunque esta vez
+        // la contraseña sea correcta (si no, el ataque seguiría probando).
+        intentos.verificar(request.email);
+        Usuario usuario = usuarioService.autenticar(request.email, request.password);
+        if (usuario == null) {
+            intentos.registrarFallido(request.email);
+            return ApiError.respuesta(Response.Status.UNAUTHORIZED, "Email o contraseña incorrectos");
+        }
+        intentos.limpiar(request.email);
         if (!usuario.isActivo()) {
             return ApiError.respuesta(Response.Status.FORBIDDEN, "Tu cuenta está desactivada. Contactá al administrador.");
         }

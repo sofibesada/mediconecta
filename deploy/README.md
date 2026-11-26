@@ -210,6 +210,8 @@ el `pom.xml`.
 | `mediconecta.ia.apiKey` | API key de Anthropic, solo para `claude` (también `ANTHROPIC_API_KEY`) | sin valor: se usa el simulado |
 | `mediconecta.ia.modelo` | Modelo de Claude (también `MEDICONECTA_IA_MODELO`) | `claude-opus-5-5` |
 | `mediconecta.ia.consultasPorMinuto` | Consultas al orientador por paciente y por minuto (también `MEDICONECTA_IA_CONSULTAS_POR_MINUTO`) | `5` |
+| `mediconecta.login.maxFallidos` | Intentos fallidos de ingreso a una cuenta antes de responder 429 (también `MEDICONECTA_LOGIN_MAX_FALLIDOS`) | `5` |
+| `mediconecta.login.ventanaSegundos` | Ventana en que se cuentan esos intentos (también `MEDICONECTA_LOGIN_VENTANA_SEGUNDOS`) | `900` (15 min) |
 | `mediconecta.ia.simularFalla` | Demo de fallas del proveedor simulado: `lento` (8 s) o `caido` | sin valor |
 | `mediconecta.videollamadas.url` | URL base del proveedor de videollamadas | `http://localhost:8080/videollamadas-mock/api/v1` |
 | `mediconecta.videollamadas.apiKey` | API key que se le envía al proveedor (también `VIDEOLLAMADAS_API_KEY`) | sin valor: hay que configurarla |

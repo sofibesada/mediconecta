@@ -98,3 +98,22 @@ Además, el broker guardaba sus mensajes dentro del contenedor: se perdían con
 - **Frontend:** `baseQuery.test.ts` (If-Match e Idempotency-Key en los pedidos).
 - **Prueba manual:** dejar 3 mensajes en una cola de prueba, `docker compose down` y `up`, y
   los 3 siguen ahí.
+
+## Revisión (26/11/2026): freno de fuerza bruta en el login
+
+La cátedra prueba en vivo la fuerza bruta sobre el login y espera **429**. El login no limitaba
+los intentos.
+
+- `IntentosDeIngreso` cuenta los intentos **fallidos** por cuenta (el email normalizado, exista o
+  no, para no revelar qué cuentas existen). Con **5 fallidos en 15 minutos**, el ingreso a esa
+  cuenta responde **429 con `Retry-After`** y Problem Details hasta que el más viejo sale de la
+  ventana, **aunque llegue la contraseña correcta**: si no, el ataque seguiría probando.
+- Un ingreso correcto limpia el contador. Se configura con `mediconecta.login.maxFallidos` y
+  `mediconecta.login.ventanaSegundos` (ver `deploy/README.md`).
+- **No se limita por IP**: detrás de Docker todos los pedidos llegan con la IP del puente y se
+  bloquearía a todos los usuarios. Con un proxy que informe la IP real (`X-Forwarded-For` de
+  confianza) se podría sumar un límite por IP.
+- Vive en memoria: alcanza para una sola instancia de WildFly.
+
+Pruebas: `IntentosDeIngresoTest`, `ExceptionMappersTest` y `SeguridadApiTest.secFb` (contra el
+sistema levantado: 5 fallidos, el 6.º con la contraseña correcta responde 429 y otra cuenta ingresa).

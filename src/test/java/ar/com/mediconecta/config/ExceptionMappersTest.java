@@ -1,6 +1,7 @@
 package ar.com.mediconecta.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import ar.com.mediconecta.obrassociales.integracion.ObrasSocialesNoDisponibleException;
@@ -122,6 +123,15 @@ class ExceptionMappersTest {
         Response r = new LimiteDeConsultasExceptionMapper().toResponse(ex);
         assertRespuesta(429, ex.getMessage(), r);
         assertEquals("42", r.getHeaderString("Retry-After"));
+    }
+
+    @Test
+    void demasiadosIngresosFallidosEs429ConRetryAfter() {
+        var ex = new ar.com.mediconecta.seguridad.IngresoBloqueadoException(600);
+        Response r = new IngresoBloqueadoExceptionMapper().toResponse(ex);
+        assertRespuesta(429, ex.getMessage(), r);
+        assertEquals("600", r.getHeaderString("Retry-After"));
+        assertTrue(ex.getMessage().contains("10 minutos"), ex.getMessage());
     }
 
     private static void assertRespuesta(int estado, String mensaje, Response r) {

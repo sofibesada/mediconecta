@@ -19,6 +19,12 @@ Característica: Registro e ingreso de pacientes
     Entonces veo el mensaje "Email o contraseña incorrectos"
     Y sigo en la pantalla de ingreso
 
+  Escenario: Muchos intentos fallidos frenan el ingreso a la cuenta
+    Dado que alguien intentó ingresar a mi cuenta 5 veces con contraseñas equivocadas en los últimos 15 minutos
+    Cuando se intenta ingresar otra vez, aunque sea con la contraseña correcta
+    Entonces se responde 429 con el tiempo que hay que esperar y no se inicia la sesión
+    Y las demás cuentas pueden ingresar normalmente
+
   Escenario: No se puede registrar dos veces el mismo email
     Dado que ya existe una cuenta con mi email
     Cuando intento registrarme otra vez con ese email

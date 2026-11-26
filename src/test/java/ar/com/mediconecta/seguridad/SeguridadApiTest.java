@@ -412,6 +412,33 @@ class SeguridadApiTest {
         assertEquals(403, con(pacienteA.token()).get("/admin/auditoria/historia-clinica").statusCode());
     }
 
+    // ------------------------------------------------------------------ Fuerza bruta en el login
+
+    @Test
+    void secFb_fuerzaBrutaEnElLogin_429ConRetryAfterAunqueLlegueLaContrasenaCorrecta() {
+        String email = "sec_fb_" + System.currentTimeMillis() + "@test.local";
+        registrar("Paciente Fuerza Bruta", email);
+        String intentoFallido = json(Map.of("email", email, "password", "incorrecta"));
+        for (int i = 1; i <= 5; i++) {
+            assertEquals(401, given().contentType(ContentType.JSON).body(intentoFallido).post("/usuarios/login").statusCode(),
+                    "el intento fallido " + i + " todavía responde 401");
+        }
+        // Sexto intento, ahora con la contraseña correcta: la cuenta ya está frenada.
+        Response r = given().contentType(ContentType.JSON).body(json(Map.of("email", email, "password", "Prueba1234")))
+                .post("/usuarios/login");
+        evidencia("Fuerza bruta", "6.º intento tras 5 fallidos, con la contraseña correcta", "POST /usuarios/login",
+                "429 con Retry-After, sin token", r);
+        assertEquals(429, r.statusCode());
+        assertNotNull(r.header("Retry-After"), "falta Retry-After");
+        assertTrue(r.contentType().startsWith("application/problem+json"));
+        assertNull(r.path("token"), "no se entrega un token");
+
+        // Otra cuenta no queda afectada.
+        Response otra = given().contentType(ContentType.JSON).body(json(Map.of("email", requerida("admin.email"), "password", requerida("admin.password"))))
+                .post("/usuarios/login");
+        assertEquals(200, otra.statusCode());
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private RequestSpecification con(String token) {
