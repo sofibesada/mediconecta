@@ -102,4 +102,13 @@
         <role-name>ADMIN</role-name>
     </security-role>
 
+    <!-- Cookie de sesion (la usa el AsistenteAgendamiento): solo por HTTPS, sin acceso desde
+         JavaScript. SameSite=Strict lo agrega WEB-INF/undertow-handlers.conf. -->
+    <session-config>
+        <cookie-config>
+            <http-only>true</http-only>
+            <secure>true</secure>
+        </cookie-config>
+    </session-config>
+
 </web-app>

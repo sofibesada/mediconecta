@@ -1,7 +1,9 @@
 # MediConecta completo con un solo comando:  docker compose up --build
 #
-#   frontend  http://localhost:5173                     SPA (nginx)
-#   app       http://localhost:8080/mediconecta/api     WildFly + los dos simuladores externos
+#   frontend  https://localhost:8443                    la aplicacion: SPA y API por HTTPS (nginx)
+#             http://localhost:5173                     redirige a HTTPS
+#   app       http://localhost:8080/mediconecta/api     WildFly + los simuladores externos (solo desde
+#                                                       esta maquina: pruebas y paneles de los simuladores)
 #   broker    http://localhost:8161/console             consola de ActiveMQ Artemis (DLQ, reproceso)
 #
 # Las credenciales de abajo son SOLO del entorno local de demo y se pueden cambiar sin
@@ -85,7 +87,8 @@ services:
       MEDICONECTA_IA_CONSULTAS_POR_MINUTO: ${MEDICONECTA_IA_CONSULTAS_POR_MINUTO:-5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
-      - "8080:8080"
+      # Solo desde esta maquina: el navegador entra por nginx (HTTPS).
+      - "127.0.0.1:8080:8080"
     # Con el broker apagado, el DNS interno de Docker tarda varios segundos en decir que el
     # nombre "broker" no existe, y la confirmacion de un turno tardaba 8 s en responder 503
     # (la HU-04 pide 5 s como maximo; defecto D-14). Se acota la espera de cada consulta DNS.
@@ -108,8 +111,9 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://localhost:8080/mediconecta/api
+        VITE_API_URL: /mediconecta/api
     ports:
+      - "8443:443"
       - "5173:80"
     depends_on:
       - app

@@ -14,12 +14,13 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
- * CORS para el frontend, que se sirve desde otro origen (puerto 5173).
+ * CORS solo para el frontend en desarrollo (npm run dev en el puerto 5173). En Docker la SPA
+ * y la API comparten el origen https://localhost:8443 (nginx) y no hace falta CORS.
  *
  * A los origenes conocidos se les permite enviar cookies (Allow-Credentials): hace
  * falta para la cookie de sesion que ata al paciente con su AsistenteAgendamiento
- * (@Stateful). Con credenciales el navegador NO acepta "*", por eso se devuelve el
- * origen exacto. Cualquier otro origen sigue pudiendo usar la API, pero sin cookies.
+ * (@Stateful). Se devuelve el origen exacto, nunca "*". Un origen desconocido no recibe
+ * encabezados CORS: el navegador no le deja leer las respuestas.
  *
  * Origenes permitidos: system property mediconecta.cors.origenes (separados por coma).
  */
@@ -54,13 +55,14 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
      * CORS, si no el navegador lo ve como "error de red" y el frontend no se entera.
      */
     public static void aplicar(String origen, BiConsumer<String, String> setter) {
-        if (origen != null && origenesPermitidos().contains(origen)) {
-            setter.accept("Access-Control-Allow-Origin", origen);
-            setter.accept("Access-Control-Allow-Credentials", "true");
-            setter.accept("Vary", "Origin");
-        } else {
-            setter.accept("Access-Control-Allow-Origin", "*");
+        // Sin comodin: la SPA se sirve en el mismo origen que la API (nginx con HTTPS) y no
+        // necesita CORS. Solo los origenes de desarrollo configurados reciben los encabezados.
+        if (origen == null || !origenesPermitidos().contains(origen)) {
+            return;
         }
+        setter.accept("Access-Control-Allow-Origin", origen);
+        setter.accept("Access-Control-Allow-Credentials", "true");
+        setter.accept("Vary", "Origin");
         setter.accept("Access-Control-Allow-Methods", ALLOW_METHODS);
         setter.accept("Access-Control-Allow-Headers", ALLOW_HEADERS);
         setter.accept("Access-Control-Expose-Headers", EXPOSE_HEADERS);

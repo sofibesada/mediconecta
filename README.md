@@ -39,13 +39,20 @@ Sin el script: copiar `.env.example` como `.env`, completar esas cuatro claves
 
 | Qué | Dónde |
 |---|---|
-| Aplicación (frontend) | http://localhost:5173 |
-| API REST | http://localhost:8080/mediconecta/api |
+| **Aplicación** | **https://localhost:8443** (el certificado es de prueba: la primera vez el navegador avisa; elegir «Avanzado» → «Continuar») |
+| API REST (misma dirección que la app) | https://localhost:8443/mediconecta/api |
+| http://localhost:5173 | Redirige a la aplicación en HTTPS |
 | Sistema legado de obras sociales (SOAP) | http://localhost:8080/obras-sociales-mock/ObrasSociales?wsdl |
 | Panel del legado (obras sociales, afiliados, vademécum) | http://localhost:8080/obras-sociales-mock/admin.html |
 | Plataforma de videollamadas (REST, simulada) | http://localhost:8080/videollamadas-mock/api/v1/rooms |
 | Pasarela de pagos con tarjeta (REST, simulada) | http://localhost:8080/pagos-mock/api/v1/pagos |
 | Consola del broker ActiveMQ Artemis (colas, DLQ, reproceso) | http://localhost:8161/console |
+
+El navegador entra solo por nginx, con HTTPS: la SPA y la API comparten el origen (sin CORS) y
+cada respuesta lleva HSTS, Content-Security-Policy y los demás encabezados de seguridad
+(`frontend/nginx/`). El puerto 8080 de WildFly queda abierto solo para esta máquina: lo usan las
+pruebas de API y los paneles de los simuladores. En un despliegue real se monta un certificado
+válido en `/etc/nginx/tls` del contenedor `frontend`.
 
 Para apagar: `docker compose down` (agregar `-v` para borrar también la base de datos).
 

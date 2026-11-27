@@ -69,7 +69,9 @@ class JwtAuthenticationMechanismTest {
         when(contexto.responseUnauthorized()).thenReturn(AuthenticationStatus.SEND_FAILURE);
 
         assertEquals(AuthenticationStatus.SEND_FAILURE, mecanismo.validateRequest(request, response, contexto));
-        verify(response).setHeader("Access-Control-Allow-Origin", "*");
+        // Sin Origin conocido no hay encabezados CORS (nunca el comodín "*").
+        verify(response, org.mockito.Mockito.never()).setHeader(org.mockito.ArgumentMatchers.eq("Access-Control-Allow-Origin"),
+                org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test

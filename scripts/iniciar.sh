@@ -103,8 +103,8 @@ cat <<'FIN'
 
 MediConecta esta listo.
 
-  Aplicacion                http://localhost:5173
-  API REST                  http://localhost:8080/mediconecta/api
+  Aplicacion                https://localhost:8443  (certificado de prueba: el navegador avisa la primera vez)
+  API REST                  https://localhost:8443/mediconecta/api
   Consola del broker        http://localhost:8161/console
   Panel del legado (SOAP)   http://localhost:8080/obras-sociales-mock/admin.html
 

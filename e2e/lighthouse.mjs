@@ -5,12 +5,13 @@ import * as chromeLauncher from "chrome-launcher";
 import lighthouse from "lighthouse";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const URL = process.env.FRONT_URL ?? "http://localhost:5173";
+const URL = process.env.FRONT_URL ?? "https://localhost:8443";
 const MINIMO = 90;
 
 const chrome = await chromeLauncher.launch({
   chromePath: chromium.executablePath(),
-  chromeFlags: ["--headless=new", "--no-sandbox"],
+  // El certificado del entorno local es autofirmado.
+  chromeFlags: ["--headless=new", "--no-sandbox", "--ignore-certificate-errors"],
 });
 try {
   const r = await lighthouse(URL, {

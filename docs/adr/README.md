@@ -25,6 +25,7 @@ Cada ADR explica una decisión técnica importante de MediConecta:
 | [0013](0013-componente-de-pagos.md) | Cobro del copago con tarjeta | Componente Pagos + Adapter a una pasarela externa |
 | [0014](0014-cifrado-de-datos-clinicos.md) | Datos clínicos ilegibles en la base y en los volcados | AES-256-GCM con un `AttributeConverter` de JPA |
 | [0015](0015-gateway-de-ia.md) | Asistente de salud con IA: controles, 5 s y respaldo | Gateway + proveedores intercambiables (simulado, Claude) |
+| [0016](0016-https-y-encabezados-de-seguridad.md) | Entrada única por nginx con HTTPS, CSP y HSTS | TLS en el proxy, mismo origen para SPA y API, cookies Secure |
 
 Para agregar uno: copiar la estructura de un ADR existente, usar el número siguiente y
 sumarlo a esta tabla.
