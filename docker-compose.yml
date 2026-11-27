@@ -85,6 +85,8 @@ services:
       MEDICONECTA_IA_PROVEEDOR: ${MEDICONECTA_IA_PROVEEDOR:-simulado}
       MEDICONECTA_IA_MODELO: ${MEDICONECTA_IA_MODELO:-claude-opus-5-5}
       MEDICONECTA_IA_CONSULTAS_POR_MINUTO: ${MEDICONECTA_IA_CONSULTAS_POR_MINUTO:-5}
+      # Freno de fuerza bruta en el login (ver ADR 0012).
+      MEDICONECTA_LOGIN_MAX_FALLIDOS: ${MEDICONECTA_LOGIN_MAX_FALLIDOS:-5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       # Solo desde esta maquina: el navegador entra por nginx (HTTPS).

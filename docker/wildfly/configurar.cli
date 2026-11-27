@@ -44,4 +44,10 @@ data-source add --name=MediconectaDS --jndi-name=java:/MediconectaDS --driver-na
 # --- Seguridad: Jakarta Security con el mecanismo propio (token JWT) ----------------
 /subsystem=undertow/application-security-domain=other:write-attribute(name=integrated-jaspi, value=false)
 
+# --- OpenAPI: descripcion de la API generada a partir de los recursos JAX-RS ----------
+# Se publica en http://localhost:8080/openapi (solo desde esta maquina: nginx no lo expone).
+# La usan el escaneo activo de OWASP ZAP y las pruebas de contrato.
+/extension=org.wildfly.extension.microprofile.openapi-smallrye:add
+/subsystem=microprofile-openapi-smallrye:add
+
 stop-embedded-server

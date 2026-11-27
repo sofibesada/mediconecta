@@ -130,9 +130,9 @@ class UsuarioServiceTest {
             assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("Dr", "dr@x", "")));
             assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("", "dr@x", "t")));
             assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("Dr", null, "t")));
-            assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("Dr", "dr@x", null)));
-            when(repo.buscarPorEmail("dr@x")).thenReturn(new Usuario());
-            assertThrows(IllegalStateException.class, () -> service.crearProfesional(ADMIN, datos("Dr", "dr@x", "t")));
+            assertThrows(IllegalArgumentException.class, () -> service.crearProfesional(ADMIN, datos("Dr", "dr@x.com", null)));
+            when(repo.buscarPorEmail("dr@x.com")).thenReturn(new Usuario());
+            assertThrows(IllegalStateException.class, () -> service.crearProfesional(ADMIN, datos("Dr", "dr@x.com", "t")));
         }
 
         @Test

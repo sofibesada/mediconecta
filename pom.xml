@@ -19,6 +19,28 @@
         <sonar.coverage.exclusions>**/model/*.java,**/data/**,**/presentation/**,**/messaging/**,**/integracion/**,**/eventos/**,**/config/ApplicationConfig.java,**/config/CorsFilter.java,**/config/SeedAdmin.java,**/config/ApiError.java</sonar.coverage.exclusions>
     </properties>
 
+    <!-- Versiones forzadas de dependencias transitivas con vulnerabilidades conocidas (SCA con
+         Trivy en el CI). Las trae el SDK de Anthropic: Jackson 2.19.4 tenia CVE altas (DoS y
+         ejecucion de codigo) y OpenTelemetry 1.62.0 una media. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>2.22.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>1.67.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>jakarta.platform</groupId>

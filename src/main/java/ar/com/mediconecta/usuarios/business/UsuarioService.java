@@ -47,6 +47,8 @@ public class UsuarioService implements IUsuarioService {
                 || usuario.getPassword() == null || usuario.getPassword().isBlank()) {
             throw new IllegalArgumentException("Nombre, email y contraseña son obligatorios");
         }
+        validarDatosDeCuenta(usuario.getNombre(), usuario.getEmail());
+        validarLargoDePassword(usuario.getPassword());
         if (usuarioRepository.buscarPorEmail(usuario.getEmail()) != null) {
             throw new IllegalStateException("El correo ya está registrado");
         }
@@ -70,6 +72,8 @@ public class UsuarioService implements IUsuarioService {
                 || datos.getPassword() == null || datos.getPassword().isBlank()) {
             throw new IllegalArgumentException("Nombre, email y contraseña temporal son obligatorios");
         }
+        validarDatosDeCuenta(datos.getNombre(), datos.getEmail());
+        validarLargoDePassword(datos.getPassword());
         if (usuarioRepository.buscarPorEmail(datos.getEmail()) != null) {
             throw new IllegalStateException("Ya existe un usuario con ese email");
         }
@@ -100,6 +104,7 @@ public class UsuarioService implements IUsuarioService {
         if (passwordNueva == null || passwordNueva.length() < 4) {
             throw new IllegalArgumentException("La contraseña nueva debe tener al menos 4 caracteres");
         }
+        validarLargoDePassword(passwordNueva);
         if (BCrypt.checkpw(passwordNueva, u.getPassword())) {
             throw new IllegalArgumentException("La contraseña nueva no puede ser igual a la actual");
         }
@@ -282,6 +287,7 @@ public class UsuarioService implements IUsuarioService {
         if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
             throw new IllegalArgumentException("El email no es válido");
         }
+        validarDatosDeCuenta(datos.nombre(), email);
         if (!email.equalsIgnoreCase(u.getEmail())) {
             // Cambiar el email cambia con que se ingresa: se pide la contrasena para confirmar.
             if (datos.passwordActual() == null || !BCrypt.checkpw(datos.passwordActual(), u.getPassword())) {
@@ -346,5 +352,38 @@ public class UsuarioService implements IUsuarioService {
             return usuario;
         }
         return null;
+    }
+
+    // ------------------------------------------------------------------ validaciones comunes
+
+    static final int MAX_NOMBRE = 80;
+    /** Largo maximo de un email segun el RFC 5321 (la columna admite 255). */
+    static final int MAX_EMAIL = 254;
+    /** BCrypt solo usa los primeros 72 bytes: una contraseña mas larga se cortaria sin avisar. */
+    static final int MAX_PASSWORD = 72;
+    private static final java.util.regex.Pattern EMAIL = java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
+    /**
+     * Nombre y email de una cuenta (registro, alta de profesional y perfil). Sin esto un texto
+     * demasiado largo llegaba a la base y respondia 500, y el registro aceptaba cualquier email
+     * (D-16, lo encontro OWASP ZAP).
+     */
+    static void validarDatosDeCuenta(String nombre, String email) {
+        if (nombre == null || nombre.isBlank()) {
+            throw new IllegalArgumentException("El nombre es obligatorio");
+        }
+        if (nombre.trim().length() > MAX_NOMBRE) {
+            throw new IllegalArgumentException("El nombre puede tener hasta " + MAX_NOMBRE + " caracteres");
+        }
+        String e = email == null ? "" : email.trim();
+        if (e.length() > MAX_EMAIL || !EMAIL.matcher(e).matches()) {
+            throw new IllegalArgumentException("El email no es válido");
+        }
+    }
+
+    static void validarLargoDePassword(String password) {
+        if (password != null && password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_PASSWORD) {
+            throw new IllegalArgumentException("La contraseña puede tener hasta " + MAX_PASSWORD + " caracteres");
+        }
     }
 }

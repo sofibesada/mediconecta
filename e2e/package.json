@@ -8,8 +8,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.1",
-    "@playwright/test": "1.48.2",
+    "@playwright/test": "1.55.1",
     "chrome-launcher": "1.1.2",
-    "lighthouse": "12.2.1"
+    "lighthouse": "13.6.0"
   }
 }

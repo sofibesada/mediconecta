@@ -69,6 +69,19 @@ class ExceptionMappersTest {
     }
 
     @Test
+    void unCuerpoQueNoEsJsonValidoEs400YNo500() {
+        GenericExceptionMapper generico = new GenericExceptionMapper();
+        // Lo que tira RESTEasy cuando JSON-B no puede leer el cuerpo ("abc" donde va un número, "{").
+        var tipoEquivocado = new jakarta.ws.rs.ProcessingException("RESTEASY008200: JSON Binding deserialization error",
+                new jakarta.json.bind.JsonbException("Unable to deserialize property 'turnoId'"));
+        assertRespuesta(400, GenericExceptionMapper.CUERPO_INVALIDO, generico.toResponse(tipoEquivocado));
+        var malFormado = new jakarta.ws.rs.ProcessingException("x", new jakarta.json.stream.JsonParsingException("EOF", null));
+        assertRespuesta(400, GenericExceptionMapper.CUERPO_INVALIDO, generico.toResponse(malFormado));
+        // Cualquier otra falla sigue siendo 500 sin detalles.
+        assertRespuesta(500, ApiError.ERROR_INESPERADO, generico.toResponse(new IllegalStateException("interno")));
+    }
+
+    @Test
     void laCausaSeBuscaAunqueVengaEnvueltaEnVariosEJBException() {
         // Un EJB que llama a otro en la misma transaccion: el contenedor envuelve dos veces.
         EJBException doble = new EJBException(new EJBException(new IllegalStateException("ocupado")));

@@ -5,6 +5,7 @@
 #      frontend   ESLint, TypeScript, pruebas unitarias (Vitest) y build de la SPA en React
 #   3. api        levanta el sistema completo con Docker Compose y corre las pruebas de la API,
 #                 las de punta a punta (Playwright) y Lighthouse de accesibilidad
+#      seguridad  Trivy (dependencias sin CVE criticas ni altas) y OWASP ZAP baseline + activo autenticado
 #   4. sonar      analisis estatico en SonarCloud (solo si esta cargado el secreto SONAR_TOKEN)
 name: CI
 
@@ -182,6 +183,66 @@ jobs:
             app.log
             e2e/reporte/
             e2e/resultados/
+      - name: Bajar el sistema
+        if: always()
+        run: docker compose down -v
+
+  seguridad:
+    name: Seguridad (Trivy y OWASP ZAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Dependencias del backend (Trivy sobre el WAR, sin CVE criticas ni altas)
+        run: |
+          mvn -B -q package -DskipTests -Djacoco.skip=true
+          docker run --rm -v "$PWD:/src" aquasec/trivy:0.58.2 rootfs --scanners vuln             --severity CRITICAL,HIGH --exit-code 1 --format table /src/target/mediconecta.war
+      - name: Dependencias del frontend y de las E2E (Trivy, incluidas las de desarrollo)
+        run: |
+          for d in frontend e2e; do
+            docker run --rm -v "$PWD/$d/package-lock.json:/src/package-lock.json:ro" aquasec/trivy:0.58.2 fs               --scanners vuln --include-dev-deps --severity CRITICAL,HIGH --exit-code 1 --format table /src
+          done
+      - name: Secretos de esta corrida
+        run: |
+          echo "ARTEMIS_PUB_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "ARTEMIS_CON_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "MEDICONECTA_CLAVE_DATOS=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Levantar el sistema (docker compose)
+        # Limites altos solo para el escaneo: con 5 consultas por minuto el asistente y el login
+        # responden 429 a mitad del escaneo y ZAP lo confunde con una inyeccion SQL (falso
+        # positivo). Los limites tienen sus propias pruebas (IntentosDeIngresoTest, int12b, secFb).
+        env:
+          MEDICONECTA_IA_CONSULTAS_POR_MINUTO: '100000'
+          MEDICONECTA_LOGIN_MAX_FALLIDOS: '100000'
+        run: docker compose up --build -d --wait --wait-timeout 600
+      - name: ZAP baseline sobre la app (HTTPS)
+        run: |
+          mkdir -p target/zap && chmod a+w target/zap
+          docker run --rm --network host -v "$PWD/target/zap:/zap/wrk:rw" zaproxy/zap-stable:2.16.1             zap-baseline.py -t https://localhost:8443 -I -J baseline.json -r baseline.html
+          python3 scripts/ci/zap-resumen.py target/zap/baseline.json "Baseline sobre la app (HTTPS)" >> "$GITHUB_STEP_SUMMARY"
+      - name: ZAP activo autenticado sobre la API (OpenAPI)
+        run: |
+          API=http://localhost:8080/mediconecta/api
+          TOKEN=$(curl -s -H 'Content-Type: application/json'             -d "{\"nombre\":\"Paciente ZAP\",\"email\":\"zap_${{ github.run_id }}@test.local\",\"password\":\"Prueba1234\"}"             "$API/usuarios" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+          echo "::add-mask::$TOKEN"
+          curl -s -H "Accept: application/json" http://localhost:8080/openapi | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          d['servers'] = [{'url': 'https://localhost:8443'}]
+          open('target/zap/openapi.json', 'w').write(json.dumps(d))"
+          docker run --rm --network host -v "$PWD/target/zap:/zap/wrk:rw" zaproxy/zap-stable:2.16.1             zap-api-scan.py -t /zap/wrk/openapi.json -f openapi -I -J api.json -r api.html             -z "-config replacer.full_list(0).description=token -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Authorization -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=Bearer\ $TOKEN -config scanner.maxScanDurationInMins=12"
+          python3 scripts/ci/zap-resumen.py target/zap/api.json "Activo autenticado sobre la API" >> "$GITHUB_STEP_SUMMARY"
+      - name: Reportes de ZAP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seguridad-zap
+          path: target/zap/
       - name: Bajar el sistema
         if: always()
         run: docker compose down -v
