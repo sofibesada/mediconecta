@@ -1,6 +1,7 @@
 # Integracion continua: en cada push y pull request a main.
 #   1. secretos   gitleaks revisa TODO el historial (no puede haber claves en el repo)
 #   2. build      compila y corre las pruebas unitarias del backend (con reporte de cobertura)
+#      mutacion   PIT sobre la capa de dominio: el build falla si el mutation score baja de 60 %
 #      frontend   ESLint, TypeScript, pruebas unitarias (Vitest) y build de la SPA en React
 #   3. api        levanta el sistema completo con Docker Compose y corre las pruebas de la API,
 #                 las de punta a punta (Playwright) y Lighthouse de accesibilidad
@@ -54,6 +55,29 @@ jobs:
           path: |
             target/site/jacoco/
             target/surefire-reports/
+
+  mutacion:
+    name: Mutation testing (PIT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: PIT sobre la capa de dominio (minimo 60 %)
+        run: mvn -B test-compile org.pitest:pitest-maven:mutationCoverage -Djacoco.skip=true
+      - name: Resumen del mutation testing
+        if: always() && hashFiles('target/pit-reports/mutations.xml') != ''
+        run: python3 scripts/ci/mutacion-resumen.py target/pit-reports/mutations.xml >> "$GITHUB_STEP_SUMMARY"
+      - name: Reporte de PIT
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutacion-pit
+          path: target/pit-reports/
 
   frontend:
     name: Frontend (lint, tipos, pruebas y build)

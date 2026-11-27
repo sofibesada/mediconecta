@@ -162,6 +162,49 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Mutation testing (PIT): cambia el codigo de la capa de dominio (invierte condiciones,
+                 cambia limites, borra llamadas...) y corre las pruebas: cada cambio que ninguna
+                 prueba detecta es un hueco. Mismo alcance que el umbral de JaCoCo. No corre con
+                 "verify": mvn test-compile org.pitest:pitest-maven:mutationCoverage
+                 El build falla si el mutation score baja de 60 % (criterio de la catedra). -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>1.16.1</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>1.2.1</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <targetClasses>
+                        <param>ar.com.mediconecta.*.business.*</param>
+                        <param>ar.com.mediconecta.turnos.model.estado.*</param>
+                        <param>ar.com.mediconecta.seguridad.*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>ar.com.mediconecta.*</param>
+                    </targetTests>
+                    <!-- Las pruebas contra el sistema levantado no corren aca (necesitan Docker). -->
+                    <excludedTestClasses>
+                        <param>ar.com.mediconecta.integracion.*</param>
+                        <param>ar.com.mediconecta.seguridad.SeguridadApiTest</param>
+                    </excludedTestClasses>
+                    <jvmArgs>
+                        <jvmArg>-javaagent:${org.mockito:mockito-core:jar}</jvmArg>
+                        <jvmArg>-Xshare:off</jvmArg>
+                    </jvmArgs>
+                    <threads>4</threads>
+                    <mutationThreshold>60</mutationThreshold>
+                    <outputFormats>
+                        <param>HTML</param>
+                        <param>XML</param>
+                    </outputFormats>
+                    <timestampedReports>false</timestampedReports>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.wildfly.plugins</groupId>
                 <artifactId>wildfly-maven-plugin</artifactId>

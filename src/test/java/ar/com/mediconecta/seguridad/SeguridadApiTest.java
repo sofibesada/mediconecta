@@ -439,6 +439,52 @@ class SeguridadApiTest {
         assertEquals(200, otra.statusCode());
     }
 
+    // ------------------------------------------------------------------ Inyección SQL y XSS
+    // Los cuerpos van con body(Map): REST Assured los serializa a JSON escapando las comillas.
+
+    private static final String SQL = "x' OR '1'='1'; DROP TABLE usuarios; --";
+    private static final String XSS = "<script>alert('xss')</script><img src=x onerror=alert(1)>";
+
+    @Test
+    void secInjA_inyeccionSqlEnElLogin_401SinEntrar() {
+        for (String payload : List.of("' OR '1'='1' --", "admin@mediconecta.com' --", "\" OR \"\"=\"", SQL)) {
+            Response r = given().contentType(ContentType.JSON).body(Map.of("email", payload, "password", payload)).post("/usuarios/login");
+            evidencia("Inyección", "SQL en el login", "POST /usuarios/login email=" + payload, "401 sin token (ni 200 ni 500)", r);
+            assertEquals(401, r.statusCode(), "payload: " + payload);
+            assertNull(r.path("token"));
+        }
+    }
+
+    @Test
+    void secInjB_sqlYXssEnElRegistroSeGuardanComoTextoYLaBaseSigueIntacta() {
+        String sufijo = String.valueOf(System.nanoTime());
+        for (String nombre : List.of("Robert'); DROP TABLE usuarios;--", "<img src=x onerror=alert(1)>")) {
+            Response alta = given().contentType(ContentType.JSON)
+                    .body(Map.of("nombre", nombre, "email", "sec_inj_" + sufijo + nombre.length() + "@test.local", "password", "Prueba1234"))
+                    .post("/usuarios");
+            evidencia("Inyección", "SQL/XSS en el nombre del registro", "POST /usuarios nombre=" + nombre, "200 y el nombre guardado tal cual", alta);
+            assertEquals(200, alta.statusCode(), alta.asString());
+            Response perfil = con(alta.path("token")).get("/perfil");
+            assertEquals(nombre, perfil.path("nombre"), "se devuelve como dato, sin interpretarlo");
+            assertTrue(perfil.contentType().startsWith("application/json"));
+        }
+        // La tabla de usuarios sigue existiendo y respondiendo.
+        assertEquals(200, con(tokenAdmin).get("/admin/usuarios").statusCode());
+    }
+
+    @Test
+    void secInjC_sqlYXssEnUnDiagnosticoQuedanComoDato() {
+        String texto = "DIAG " + System.nanoTime() + " " + SQL + " " + XSS;
+        con(profesional.token()).body(Map.of("descripcion", texto))
+                .post("/historia-clinica/" + pacienteA.id() + "/diagnosticos").then().statusCode(204);
+        Response historia = con(profesional.token()).get("/historia-clinica/" + pacienteA.id());
+        evidencia("Inyección", "SQL/XSS en la descripción de un diagnóstico", "POST /historia-clinica/{A}/diagnosticos",
+                "204 y el texto devuelto igual, como JSON", historia);
+        assertTrue(historia.contentType().startsWith("application/json"));
+        List<String> descripciones = historia.jsonPath().getList("diagnosticos.descripcion");
+        assertTrue(descripciones.contains(texto), "el texto vuelve exactamente igual: " + descripciones);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private RequestSpecification con(String token) {

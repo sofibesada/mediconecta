@@ -228,6 +228,30 @@ ANTHROPIC_API_KEY=...        # de console.anthropic.com; es personal y se cobra 
 
 y `docker compose up -d app`. Si falta la clave, usa el simulado y lo avisa en el log.
 
+## Pruebas
+
+Todas corren en el CI en cada push. Para correrlas a mano (con Java 17 y Maven):
+
+```bash
+# Unitarias del backend + cobertura (JaCoCo; el build falla si la capa de negocio baja de 80 % / 70 %)
+mvn verify
+
+# Una sola clase o un solo método (por ejemplo, después de una mutación manual)
+mvn test -Dtest=TurnoServiceTest
+mvn test -Dtest='EstadoDelTurnoTest#unHorarioPasadoNoSeReserva'
+
+# Mutation testing (PIT) sobre la capa de dominio; reporte en target/pit-reports/index.html
+mvn test-compile org.pitest:pitest-maven:mutationCoverage
+
+# Contra el sistema levantado (scripts/iniciar.sh): API, seguridad, reprueba de pagos y resiliencia
+mvn test -Dapi.base=http://localhost:8080/mediconecta/api \
+  -Dadmin.email=admin@mediconecta.com -Dadmin.password=admin1234
+
+# Frontend (Vitest) y punta a punta (Playwright, contra https://localhost:8443)
+cd frontend && npm test
+cd e2e && npx playwright test          # --headed para ver el navegador
+```
+
 ## Más documentación
 
 - `deploy/README.md`: instalación manual en un WildFly propio (sin Docker) y todas las propiedades de configuración.
